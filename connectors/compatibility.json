@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "community_api_schema": "1.0",
+  "minimum_dashboard_version": "0.1.0",
+  "platforms": {
+    "woocommerce": {
+      "release_ready": false,
+      "tested_platform_versions": [],
+      "artifact": null
+    },
+    "prestashop": {
+      "release_ready": false,
+      "tested_platform_versions": [],
+      "artifact": null
+    },
+    "magento": {
+      "release_ready": false,
+      "tested_platform_versions": [],
+      "artifact": null
+    },
+    "shopify": {
+      "release_ready": false,
+      "tested_platform_versions": [],
+      "artifact": null
+    }
+  }
+}

@@ -1,0 +1,7 @@
+# One reviewed path relative to the connector source root per line.
+# Blank lines and comments are ignored.
+plugin-entrypoint.php
+src/Client.php
+src/EventQueue.php
+README.md
+LICENSE
