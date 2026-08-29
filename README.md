@@ -1,5 +1,9 @@
 # NeuroCheckout Community
 
+> **Technical Preview — v0.1.0-preview.1.** This release is intended for
+> evaluation and integration testing. Treat the Cloud API contract, deployment
+> process and user experience as pre-stable until the first stable release.
+
 NeuroCheckout Community is the self-hosted, open-source member interface.
 Business decisions, the eight-agent orchestration, quotas, delivery and sensitive
 processing remain NeuroCheckout Cloud services. Community never embeds a Cloud
@@ -54,6 +58,8 @@ npm audit --omit=dev
 Connector packages are not declared released until
 `connectors/compatibility.json` marks an audited, tested and signed platform
 artifact as `release_ready: true`.
+
+See `CHANGELOG.md` for release notes and known limitations.
 
 ## License
 
