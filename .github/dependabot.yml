@@ -9,6 +9,11 @@ updates:
       time: "06:00"
       timezone: Indian/Antananarivo
     open-pull-requests-limit: 5
+    allow:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
 
   - package-ecosystem: github-actions
     directory: /
@@ -18,3 +23,8 @@ updates:
       time: "06:15"
       timezone: Indian/Antananarivo
     open-pull-requests-limit: 5
+    allow:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
