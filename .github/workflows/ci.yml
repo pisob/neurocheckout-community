@@ -44,5 +44,8 @@ jobs:
       - name: Build the production application
         run: npm run build
 
+      - name: Smoke-test OAuth and Cloud proxy
+        run: npm run smoke:integration
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
