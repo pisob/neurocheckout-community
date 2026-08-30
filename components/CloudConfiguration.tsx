@@ -75,6 +75,7 @@ export default function CloudConfiguration() {
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<"shop" | "email" | "byok" | "connector">("shop");
 
   const selectedShop = useMemo(
     () => shops.find((shop) => shopUuid(shop) === selectedShopUuid) || null,
@@ -281,62 +282,90 @@ export default function CloudConfiguration() {
 
   return (
     <section id="configuration" className="configuration-section">
-      <div className="section-heading">
-        <div><p className="eyebrow">Personnalisation contrôlée</p><h2>Templates, IA et connecteur</h2></div>
+      <div className="configuration-toolbar">
+        <div className="tool-tabs" role="tablist" aria-label="Outils de configuration">
+          {([
+            ["shop", "Boutique"],
+            ["email", "Emails"],
+            ["byok", "Clé IA"],
+            ["connector", "Connecteur"],
+          ] as const).map(([tool, label]) => (
+            <button
+              aria-selected={activeTool === tool}
+              className={activeTool === tool ? "active" : ""}
+              key={tool}
+              role="tab"
+              type="button"
+              onClick={() => setActiveTool(tool)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         {shops.length ? (
-          <label className="shop-selector">Boutique<select value={selectedShopUuid} onChange={(event) => setSelectedShopUuid(event.target.value)}>{shops.map((shop) => <option key={shopUuid(shop)} value={shopUuid(shop)}>{shop.shop_id} · {shop.platform}</option>)}</select></label>
+          <label className="shop-selector">Boutique active<select value={selectedShopUuid} onChange={(event) => setSelectedShopUuid(event.target.value)}>{shops.map((shop) => <option key={shopUuid(shop)} value={shopUuid(shop)}>{shop.shop_id} · {shop.platform}</option>)}</select></label>
         ) : null}
       </div>
 
       {error ? <p className="config-error">{error}{error.includes("scope") ? " · Déconnectez puis reconnectez cette instance pour accepter les nouveaux droits." : ""}</p> : null}
       {notice ? <p className="config-notice">{notice}</p> : null}
-      <article className="configuration-block create-shop-block">
-        <div className="configuration-copy"><p className="eyebrow">Boutique</p><h3>Connecter une boutique</h3><p>La boutique reste la source de vérité. Le Cloud ne conserve que les projections minimales nécessaires aux agents.</p></div>
-        <div className="configuration-form">
-          <div className="form-row"><label>Identifiant boutique<input value={newShopId} onChange={(event) => setNewShopId(event.target.value)} placeholder="ma-boutique" maxLength={120} /></label><label>Plateforme<select value={newPlatform} onChange={(event) => setNewPlatform(event.target.value)}>{platforms.map((platform) => <option key={platform.platform_key} value={platform.platform_key}>{platform.display_name}</option>)}</select></label></div>
-          <label>URL publique<input type="url" value={newBaseUrl} onChange={(event) => setNewBaseUrl(event.target.value)} placeholder="https://boutique.example" /></label>
-          <div className="form-row"><label>Nom expéditeur<input value={newFromName} onChange={(event) => setNewFromName(event.target.value)} placeholder="Ma Boutique" /></label><label>Email de réponse<input type="email" value={newReplyTo} onChange={(event) => setNewReplyTo(event.target.value)} placeholder="contact@boutique.example" /></label></div>
-          <label>Email du domaine expéditeur<input type="email" value={newSenderEmail} onChange={(event) => setNewSenderEmail(event.target.value)} placeholder="bonjour@boutique.example" /></label>
-          <div className="form-row"><label>Logo de marque<input type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" onChange={(event) => selectLogo(event.target.files?.[0] || null)} /><span className="form-hint">{newLogoName || "1,4 Mo maximum"}</span></label><label>Validation email<select value={newApprovalMode} onChange={(event) => setNewApprovalMode(event.target.value as "automatic" | "manual")}><option value="automatic">Automatique</option><option value="manual">Manuelle</option></select></label></div>
-          <button className="button primary" type="button" disabled={busy !== null || !newShopId.trim() || !newPlatform || !newBaseUrl.trim() || !newSenderEmail.trim() || !newFromName.trim() || !newReplyTo.trim() || !newLogoDataUrl} onClick={() => void createShop()}>{busy === "create-shop" ? "Création…" : "Créer la boutique"}</button>
-        </div>
-      </article>
-      {!selectedShop ? <p className="empty-line">Créez votre première boutique avec le formulaire ci-dessus, puis configurez sa clé connecteur.</p> : (
-        <div className="configuration-stack">
-          <article className="configuration-block">
-            <div className="configuration-copy"><p className="eyebrow">Email</p><h3>Template versionné</h3><p>Le Cloud nettoie le HTML, contrôle les variables et conserve l’historique. Seule une version publiée est utilisée.</p></div>
-            <div className="configuration-form">
-              <div className="form-row"><label>Automatisation<select value={templateKey} onChange={(event) => setTemplateKey(event.target.value)}><option value="abandoned_cart">Panier abandonné</option><option value="product_recommendation">Recommandation produit</option><option value="email_marketing">Email marketing</option><option value="upsell_cross_sell">Upsell / cross-sell</option></select></label><label>Langue<input value={locale} onChange={(event) => setLocale(event.target.value)} maxLength={8} /></label></div>
-              <label>Objet<input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={200} /></label>
-              <label>Texte<textarea value={bodyText} onChange={(event) => setBodyText(event.target.value)} rows={4} /></label>
-              <label>HTML nettoyé côté Cloud<textarea value={bodyHtml} onChange={(event) => setBodyHtml(event.target.value)} rows={6} className="code-input" /></label>
-              <p className="form-hint">Variables autorisées : customer_first_name, shop_name, cta_url, cta_label, unsubscribe_url, coupon_code, discount_percent, cart_id, product_name.</p>
-              <button className="button primary" type="button" disabled={busy !== null} onClick={() => void createDraft()}>{busy === "template" ? "Enregistrement…" : "Créer un brouillon"}</button>
-            </div>
+
+      {activeTool === "shop" ? (
+        <article className="configuration-block tool-panel">
+          <div className="configuration-copy"><p className="eyebrow">Boutique</p><h2>Connecter une boutique</h2><p>La boutique reste la source de vérité. Le Cloud ne conserve que les projections minimales nécessaires aux agents.</p>{selectedShop ? <div className="selected-shop-note"><span>Boutique sélectionnée</span><strong>{selectedShop.shop_id}</strong><small>{selectedShop.platform}</small></div> : null}</div>
+          <div className="configuration-form">
+            <div className="form-row"><label>Identifiant boutique<input value={newShopId} onChange={(event) => setNewShopId(event.target.value)} placeholder="ma-boutique" maxLength={120} /></label><label>Plateforme<select value={newPlatform} onChange={(event) => setNewPlatform(event.target.value)}>{platforms.map((platform) => <option key={platform.platform_key} value={platform.platform_key}>{platform.display_name}</option>)}</select></label></div>
+            <label>URL publique<input type="url" value={newBaseUrl} onChange={(event) => setNewBaseUrl(event.target.value)} placeholder="https://boutique.example" /></label>
+            <div className="form-row"><label>Nom expéditeur<input value={newFromName} onChange={(event) => setNewFromName(event.target.value)} placeholder="Ma Boutique" /></label><label>Email de réponse<input type="email" value={newReplyTo} onChange={(event) => setNewReplyTo(event.target.value)} placeholder="contact@boutique.example" /></label></div>
+            <label>Email du domaine expéditeur<input type="email" value={newSenderEmail} onChange={(event) => setNewSenderEmail(event.target.value)} placeholder="bonjour@boutique.example" /></label>
+            <div className="form-row"><label>Logo de marque<input type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" onChange={(event) => selectLogo(event.target.files?.[0] || null)} /><span className="form-hint">{newLogoName || "1,4 Mo maximum"}</span></label><label>Validation email<select value={newApprovalMode} onChange={(event) => setNewApprovalMode(event.target.value as "automatic" | "manual")}><option value="automatic">Automatique</option><option value="manual">Manuelle</option></select></label></div>
+            <button className="button primary" type="button" disabled={busy !== null || !newShopId.trim() || !newPlatform || !newBaseUrl.trim() || !newSenderEmail.trim() || !newFromName.trim() || !newReplyTo.trim() || !newLogoDataUrl} onClick={() => void createShop()}>{busy === "create-shop" ? "Création…" : "Créer la boutique"}</button>
+          </div>
+        </article>
+      ) : null}
+
+      {activeTool !== "shop" && !selectedShop ? (
+        <div className="empty-tool"><p className="eyebrow">Boutique requise</p><h2>Créez d’abord votre boutique</h2><p>Les emails, la clé IA et le connecteur sont toujours rattachés à une boutique précise.</p><button className="button primary" type="button" onClick={() => setActiveTool("shop")}>Configurer la boutique</button></div>
+      ) : null}
+
+      {activeTool === "email" && selectedShop ? (
+        <article className="configuration-block tool-panel">
+          <div className="configuration-copy"><p className="eyebrow">Emails</p><h2>Template versionné</h2><p>Le Cloud nettoie le HTML, contrôle les variables et conserve l’historique. Seule une version publiée est utilisée.</p><div className="version-summary"><strong>{templates.length}</strong><span>versions enregistrées</span></div></div>
+          <div className="configuration-form">
+            <div className="form-row"><label>Automatisation<select value={templateKey} onChange={(event) => setTemplateKey(event.target.value)}><option value="abandoned_cart">Panier abandonné</option><option value="product_recommendation">Recommandation produit</option><option value="email_marketing">Email marketing</option><option value="upsell_cross_sell">Upsell / cross-sell</option></select></label><label>Langue<input value={locale} onChange={(event) => setLocale(event.target.value)} maxLength={8} /></label></div>
+            <label>Objet<input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={200} /></label>
+            <label>Texte<textarea value={bodyText} onChange={(event) => setBodyText(event.target.value)} rows={3} /></label>
+            <label>HTML nettoyé côté Cloud<textarea value={bodyHtml} onChange={(event) => setBodyHtml(event.target.value)} rows={5} className="code-input" /></label>
+            <p className="form-hint">Variables autorisées : customer_first_name, shop_name, cta_url, cta_label, unsubscribe_url, coupon_code, discount_percent, cart_id, product_name.</p>
+            <button className="button primary" type="button" disabled={busy !== null} onClick={() => void createDraft()}>{busy === "template" ? "Enregistrement…" : "Créer un brouillon"}</button>
             <div className="version-list">
-              {templates.slice(0, 8).map((template) => <div className="version-row" key={template.id}><div><strong>{template.template_key} · {template.locale}</strong><span>v{template.version} · {template.status}</span></div><div>{template.status === "draft" ? <button type="button" onClick={() => void publish(template, "publish")} disabled={busy !== null}>Publier</button> : <button type="button" onClick={() => void publish(template, "rollback")} disabled={busy !== null}>Restaurer</button>}</div></div>)}
+              {templates.slice(0, 5).map((template) => <div className="version-row" key={template.id}><div><strong>{template.template_key} · {template.locale}</strong><span>v{template.version} · {template.status}</span></div><div>{template.status === "draft" ? <button type="button" onClick={() => void publish(template, "publish")} disabled={busy !== null}>Publier</button> : <button type="button" onClick={() => void publish(template, "rollback")} disabled={busy !== null}>Restaurer</button>}</div></div>)}
             </div>
-          </article>
+          </div>
+        </article>
+      ) : null}
 
-          <article className="configuration-block">
-            <div className="configuration-copy"><p className="eyebrow">BYOK</p><h3>Votre clé OpenAI</h3><p>La clé est chiffrée dans le Cloud et n’est jamais renvoyée. Seuls son statut et ses quatre derniers caractères restent visibles.</p></div>
-            <div className="configuration-form compact-form">
-              <p className="secret-status">{byok?.configured ? `Configurée · …${byok.key_last4 || "????"} · test ${byok.test_status || "non exécuté"}` : "Aucune clé personnelle configurée"}</p>
-              <label>Nouvelle clé<input type="password" autoComplete="off" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="sk-…" /></label>
-              <div className="actions left"><button className="button primary" type="button" disabled={!apiKey.trim() || busy !== null} onClick={() => void saveByok()}>Chiffrer et enregistrer</button>{byok?.configured ? <button className="button danger" type="button" disabled={busy !== null} onClick={() => void revokeByok()}>Révoquer</button> : null}</div>
-            </div>
-          </article>
+      {activeTool === "byok" && selectedShop ? (
+        <article className="configuration-block tool-panel compact-tool">
+          <div className="configuration-copy"><p className="eyebrow">Clé IA personnelle</p><h2>Votre clé OpenAI</h2><p>La clé est chiffrée dans le Cloud et n’est jamais renvoyée. Seuls son statut et ses quatre derniers caractères restent visibles.</p></div>
+          <div className="configuration-form compact-form">
+            <p className="secret-status">{byok?.configured ? `Configurée · …${byok.key_last4 || "????"} · test ${byok.test_status || "non exécuté"}` : "Aucune clé personnelle configurée"}</p>
+            <label>Nouvelle clé<input type="password" autoComplete="off" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="sk-…" /></label>
+            <div className="actions left"><button className="button primary" type="button" disabled={!apiKey.trim() || busy !== null} onClick={() => void saveByok()}>Chiffrer et enregistrer</button>{byok?.configured ? <button className="button danger" type="button" disabled={busy !== null} onClick={() => void revokeByok()}>Révoquer</button> : null}</div>
+          </div>
+        </article>
+      ) : null}
 
-          <article className="configuration-block">
-            <div className="configuration-copy"><p className="eyebrow">Connecteur</p><h3>Clé dédiée à la boutique</h3><p>Cette clé signe les événements du module e-commerce. Elle n’autorise jamais l’accès au dashboard membre.</p></div>
-            <div className="configuration-form compact-form">
-              <label className="checkbox-line"><input type="checkbox" checked={dpaAccepted} onChange={(event) => setDpaAccepted(event.target.checked)} /><span>{DPA_LABEL}</span></label>
-              <div className="actions left"><button className="button primary" type="button" disabled={!dpaAccepted || busy !== null} onClick={() => void issueConnectorKey(selectedShop.has_active_api_key ? "rotate" : "create")}>{selectedShop.has_active_api_key ? "Faire une rotation" : "Créer la clé"}</button></div>
-              {connectorKey ? <div className="one-time-secret"><strong>Secret affiché une seule fois</strong><code>{connectorKey}</code></div> : null}
-            </div>
-          </article>
-        </div>
-      )}
+      {activeTool === "connector" && selectedShop ? (
+        <article className="configuration-block tool-panel compact-tool">
+          <div className="configuration-copy"><p className="eyebrow">Connecteur</p><h2>Clé dédiée à la boutique</h2><p>Cette clé signe les événements du module e-commerce. Elle n’autorise jamais l’accès au dashboard membre.</p></div>
+          <div className="configuration-form compact-form">
+            <label className="checkbox-line"><input type="checkbox" checked={dpaAccepted} onChange={(event) => setDpaAccepted(event.target.checked)} /><span>{DPA_LABEL}</span></label>
+            <div className="actions left"><button className="button primary" type="button" disabled={!dpaAccepted || busy !== null} onClick={() => void issueConnectorKey(selectedShop.has_active_api_key ? "rotate" : "create")}>{selectedShop.has_active_api_key ? "Faire une rotation" : "Créer la clé"}</button></div>
+            {connectorKey ? <div className="one-time-secret"><strong>Secret affiché une seule fois</strong><code>{connectorKey}</code></div> : null}
+          </div>
+        </article>
+      ) : null}
     </section>
   );
 }

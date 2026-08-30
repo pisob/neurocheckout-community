@@ -2,6 +2,17 @@
 
 All notable changes to NeuroCheckout Community are documented in this file.
 
+## Unreleased
+
+### Changed
+
+- Reworked the dashboard into five focused operational views instead of one
+  continuous page.
+- Aligned the complete interface with the NeuroCheckout dark-blue visual
+  system and blue action color.
+- Split shop, email-template, OpenAI BYOK and connector configuration into
+  dedicated tools with responsive navigation and reduced-motion support.
+
 ## 0.1.0-preview.1 - 2026-08-29
 
 Initial public technical preview.
