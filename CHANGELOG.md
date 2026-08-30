@@ -12,6 +12,8 @@ All notable changes to NeuroCheckout Community are documented in this file.
   system and blue action color.
 - Split shop, email-template, OpenAI BYOK and connector configuration into
   dedicated tools with responsive navigation and reduced-motion support.
+- Display Supervisor as the coordination layer above the seven currently
+  enabled specialist agents, while respecting Cloud runtime kill switches.
 
 ## 0.1.0-preview.1 - 2026-08-29
 

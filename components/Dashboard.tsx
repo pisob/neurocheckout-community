@@ -19,7 +19,20 @@ type Capabilities = {
     };
   };
   features: Record<string, boolean>;
-  agents: { available: string[]; coordination_enabled: boolean };
+  agents: {
+    available: string[];
+    disabled?: string[];
+    specialized_count?: number;
+    active_count?: number;
+    coordination_enabled: boolean;
+    supervisor?: {
+      agent_name: string;
+      display_name: string;
+      role: "coordination";
+      enabled: boolean;
+      description: string;
+    };
+  };
   dashboard: {
     current_version: string | null;
     minimum_version: string;
@@ -92,6 +105,9 @@ const AGENT_ROLES: Record<string, string> = {
   business_alerts_anomalies: "Surveillance",
 };
 
+const SUPPORT_AGENT = "contextual_support_order_aware";
+const SUPERVISOR_AGENT = "agent_supervisor";
+
 function displayFeature(value: string): string {
   return value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
 }
@@ -150,6 +166,16 @@ export default function Dashboard() {
   const emailRatio = emailLimit ? Math.min(100, Math.round((emailUsed / emailLimit) * 100)) : 0;
   const enabledFeatures = Object.entries(capabilities?.features || {}).filter(([, enabled]) => enabled);
   const viewCopy = VIEW_COPY[activeView];
+  const specializedAgents = (capabilities?.agents.available || []).filter(
+    (agent) => agent !== SUPPORT_AGENT || Boolean(capabilities?.agents.supervisor),
+  );
+  const supervisorEnabled = capabilities?.agents.supervisor?.enabled
+    ?? capabilities?.agents.coordination_enabled
+    ?? false;
+  const visibleAgents = supervisorEnabled
+    ? [SUPERVISOR_AGENT, ...specializedAgents]
+    : specializedAgents;
+  const activeAgentCount = capabilities?.agents.active_count ?? visibleAgents.length;
 
   const upgradeAction = capabilities?.upgrade.available ? (
     <a className="button secondary-blue" href="/api/upgrade" target="_blank" rel="noreferrer">
@@ -252,8 +278,8 @@ export default function Dashboard() {
                     </article>
                     <article className="metric">
                       <p>Agents</p>
-                      <strong>{capabilities.limits.active_agents ?? "∞"}</strong>
-                      <small>{capabilities.agents.coordination_enabled ? "coordonnés" : "individuels"}</small>
+                      <strong>{activeAgentCount || capabilities.limits.active_agents || "∞"}</strong>
+                      <small>{supervisorEnabled ? `1 supervisor + ${specializedAgents.length} spécialisés` : `${specializedAgents.length} spécialisés`}</small>
                     </article>
                     <article className="metric quota-metric">
                       <div><p>Emails</p><strong>{emailUsed}<em>/ {emailLimit ?? "∞"}</em></strong></div>
@@ -265,12 +291,12 @@ export default function Dashboard() {
 
                 <div className="overview-columns">
                   <section className="workspace-panel">
-                    <div className="panel-heading"><div><p className="eyebrow">Orchestration</p><h2>Réseau d’agents</h2></div><button type="button" onClick={() => selectView("agents")}>Voir les {capabilities.agents.available.length}</button></div>
+                    <div className="panel-heading"><div><p className="eyebrow">Orchestration</p><h2>Réseau d’agents</h2></div><button type="button" onClick={() => selectView("agents")}>Voir les {activeAgentCount}</button></div>
                     <div className="agent-preview-grid">
-                      {capabilities.agents.available.slice(0, 4).map((agent, index) => (
-                        <article key={agent} className="agent-preview">
+                      {visibleAgents.slice(0, 4).map((agent, index) => (
+                        <article key={agent} className={`agent-preview${agent === SUPERVISOR_AGENT ? " supervisor-preview" : ""}`}>
                           <span>{String(index + 1).padStart(2, "0")}</span>
-                          <div><strong>{AGENT_LABELS[agent] || displayFeature(agent)}</strong><small>{AGENT_ROLES[agent] || "Agent"}</small></div>
+                          <div><strong>{agent === SUPERVISOR_AGENT ? "Supervisor" : AGENT_LABELS[agent] || displayFeature(agent)}</strong><small>{agent === SUPERVISOR_AGENT ? "Coordination centrale" : AGENT_ROLES[agent] || "Agent"}</small></div>
                           <i aria-label="Actif" />
                         </article>
                       ))}
@@ -294,9 +320,20 @@ export default function Dashboard() {
 
             {activeView === "agents" ? (
               <section className="view-enter agents-view">
-                <div className="section-toolbar"><span>{capabilities.agents.available.length} agents actifs</span><span>Coordination {capabilities.agents.coordination_enabled ? "active" : "inactive"}</span></div>
+                <div className="section-toolbar"><span>{specializedAgents.length} agents spécialisés actifs</span><span>Supervisor {supervisorEnabled ? "actif" : "inactif"}</span></div>
+                {supervisorEnabled ? (
+                  <article className="supervisor-band">
+                    <div className="supervisor-index">S</div>
+                    <div>
+                      <p className="eyebrow">Couche de coordination</p>
+                      <h2>{capabilities.agents.supervisor?.display_name || "Supervisor"}</h2>
+                      <p>{capabilities.agents.supervisor?.description || "Coordonne les agents spécialisés et fiabilise leurs décisions."}</p>
+                    </div>
+                    <span className="status-pill"><span className="status-dot" />Actif</span>
+                  </article>
+                ) : null}
                 <div className="agent-matrix">
-                  {capabilities.agents.available.map((agent, index) => (
+                  {specializedAgents.map((agent, index) => (
                     <article key={agent} className="agent-cell">
                       <div className="agent-cell-top"><span>{String(index + 1).padStart(2, "0")}</span><i aria-label="Actif" /></div>
                       <h2>{AGENT_LABELS[agent] || displayFeature(agent)}</h2>
@@ -317,7 +354,7 @@ export default function Dashboard() {
                 </div>
                 <div className="usage-facts">
                   <div><span>Boutiques autorisées</span><strong>{capabilities.limits.shops ?? "∞"}</strong></div>
-                  <div><span>Agents disponibles</span><strong>{capabilities.limits.active_agents ?? "∞"}</strong></div>
+                  <div><span>Agents disponibles</span><strong>{activeAgentCount || capabilities.limits.active_agents || "∞"}</strong></div>
                   <div><span>Périmètre du quota</span><strong>{capabilities.limits.emails.scope || "Compte"}</strong></div>
                   <div><span>Statut abonnement</span><strong>{capabilities.subscription.status}</strong></div>
                 </div>
