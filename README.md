@@ -14,8 +14,8 @@ not release-ready.
 
 ## Requirements
 
-- a NeuroCheckout Cloud account with the Community plan active;
-- a Community installation registered in Cloud and its public client ID;
+- a NeuroCheckout Cloud account; the free Community plan does not require a
+  payment card;
 - Git;
 - Node.js 22 or newer;
 - npm 10 or newer;
@@ -32,12 +32,35 @@ node --version
 npm --version
 ```
 
+## Activate Community in NeuroCheckout Cloud
+
+Yes, the customer first uses the official NeuroCheckout website:
+
+1. Open [www.neurocheckout.com/register](https://www.neurocheckout.com/register)
+   to create an account, or [sign in](https://www.neurocheckout.com/login) with
+   an existing account. Complete email verification if requested.
+2. Open the [plan selection page](https://www.neurocheckout.com/onboarding/subscription).
+3. Select **Activate Community** or **Continue free with Community**. No payment
+   card is requested. Cloud activates the Community allowance for one store,
+   Supervisor plus seven enabled specialist agents, and 100 emails per account
+   over a rolling 24-hour window.
+4. After Cloud opens the member dashboard, go to
+   [Community installations](https://www.neurocheckout.com/dashboard/community).
+5. Enter an installation name and the exact callback URL:
+   - local computer: `http://localhost:3400/api/auth/callback`;
+   - public server: `https://community.example.com/api/auth/callback`.
+6. Select **Create installation**, then copy the displayed public Client ID.
+   It is not a secret and is the value requested by `npm run setup`.
+
+If the account already has an active trial or paid Cloud plan, do not replace
+it with the free plan. Go directly to **Community installations**: the
+self-hosted interface will use the existing Cloud plan, features and quotas.
+
 ## Recommended installation — without Docker
 
-1. Activate the Community plan in NeuroCheckout Cloud.
-2. In **Dashboard → Community installations**, register
-   `http://localhost:3400/api/auth/callback` for a local evaluation.
-3. Clone the repository and run the guided setup:
+1. Complete the Cloud activation and copy the public Client ID using the steps
+   above.
+2. Clone the repository and run the guided setup:
 
    ```bash
    git clone https://github.com/pisob/neurocheckout-community.git
@@ -49,19 +72,19 @@ npm --version
    private `.env.local`, generates the session secret and selects the correct
    cookie security for the callback URL.
 
-4. Install, diagnose and build the dashboard:
+3. Install, diagnose and build the dashboard:
 
    ```bash
    npm run install:native
    ```
 
-5. Start Community:
+4. Start Community:
 
    ```bash
    npm start
    ```
 
-6. Open `http://localhost:3400` and select **Connect to Cloud**.
+5. Open `http://localhost:3400` and select **Connect to Cloud**.
 
 `npm run doctor` can be repeated at any time. It validates Node.js, the local
 configuration, callback/cookie consistency, the production build and actual

@@ -6,8 +6,8 @@ quotas, delivery and sensitive processing.
 
 ## Requirements
 
-- a NeuroCheckout Cloud account with the Community plan active;
-- a Community installation registered in Cloud and its public client ID;
+- a NeuroCheckout Cloud account; the free Community plan does not require a
+  payment card;
 - Git;
 - Node.js 22 or newer and npm 10 or newer;
 - outbound HTTPS access to `www.neurocheckout.com`;
@@ -27,14 +27,29 @@ npm --version
 
 ## 1. Register the installation
 
-Open **NeuroCheckout Cloud → Community installations** and create an
-installation with its exact callback URL:
+1. Create an account at
+   [www.neurocheckout.com/register](https://www.neurocheckout.com/register), or
+   [sign in](https://www.neurocheckout.com/login). Verify the account email if
+   requested.
+2. Open the
+   [plan selection page](https://www.neurocheckout.com/onboarding/subscription)
+   and select **Activate Community** or **Continue free with Community**. No
+   payment card is required.
+3. Open
+   [NeuroCheckout Cloud → Community installations](https://www.neurocheckout.com/dashboard/community).
+4. Create an installation with its exact callback URL:
 
-- local evaluation: `http://localhost:3400/api/auth/callback`;
-- hosted installation: `https://community.example.com/api/auth/callback`.
+   - local evaluation: `http://localhost:3400/api/auth/callback`;
+   - hosted installation: `https://community.example.com/api/auth/callback`.
 
-Copy the public client ID. Community uses OAuth 2.0 Authorization Code with
-PKCE and therefore does not require a client secret.
+5. Copy the displayed public Client ID. Community uses OAuth 2.0 Authorization
+   Code with PKCE and therefore does not require a client secret.
+
+Community Free enables one store, Supervisor plus seven enabled specialist
+agents, and 100 emails per account over a rolling 24-hour window. If the
+account already has an active trial or paid Cloud plan, skip free-plan
+activation and go directly to **Community installations**. The self-hosted
+interface uses the existing Cloud plan and quotas.
 
 ## 2. Configure the dashboard automatically
 

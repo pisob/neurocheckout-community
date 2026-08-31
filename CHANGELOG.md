@@ -24,6 +24,8 @@ All notable changes to NeuroCheckout Community are documented in this file.
   runtime `.env.local` loading, Cloud diagnostics and a hardened systemd unit.
 - Make native prerequisites, Cloud access, ports and hosted HTTPS requirements
   explicit before the installation steps.
+- Document the complete Cloud account, free-plan activation, installation
+  registration and public Client ID workflow with direct official links.
 
 ## 0.1.0-preview.1 - 2026-08-29
 
