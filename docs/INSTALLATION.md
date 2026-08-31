@@ -8,9 +8,11 @@ quotas, delivery and sensitive processing.
 
 - a NeuroCheckout Cloud account with the Community plan active;
 - Git;
-- Docker Engine 24 or newer;
-- Docker Compose v2;
+- Node.js 22 or newer and npm 10 or newer;
 - an HTTPS reverse proxy for any non-local installation.
+
+Docker Engine 24 and Docker Compose v2 are optional alternatives. They are not
+required for the recommended native installation.
 
 ## 1. Register the installation
 
@@ -23,41 +25,90 @@ installation with its exact callback URL:
 Copy the public client ID. Community uses OAuth 2.0 Authorization Code with
 PKCE and therefore does not require a client secret.
 
-## 2. Configure the dashboard
+## 2. Configure the dashboard automatically
 
 From the repository root:
 
 ```bash
-cp .env.example .env.local
-openssl rand -base64 48
+npm run setup
 ```
 
-Edit `.env.local`:
+The assistant asks only for the public client ID and exact callback URL. It
+generates a strong session secret, writes `.env.local` with permission `0600`
+and never displays the secret.
+
+For an unattended installation, pass the two public values explicitly:
+
+```bash
+npm run setup -- \
+  --client-id=nc_public_client_id_from_cloud \
+  --redirect-uri=https://community.example.com/api/auth/callback
+```
+
+The resulting private file contains:
 
 ```dotenv
 NC_COMMUNITY_CLIENT_ID=nc_public_client_id_from_cloud
-NC_COMMUNITY_REDIRECT_URI=http://localhost:3400/api/auth/callback
+NC_COMMUNITY_REDIRECT_URI=https://community.example.com/api/auth/callback
 NC_CLOUD_API_BASE_URL=https://www.neurocheckout.com
 NC_CLOUD_AUTHORIZATION_URL=https://www.neurocheckout.com/community/authorize
 NC_CLOUD_UPGRADE_URL=https://www.neurocheckout.com/pricing
-NC_COMMUNITY_SESSION_SECRET=replace_with_the_generated_random_value
-NC_COMMUNITY_COOKIE_SECURE=false
+NC_COMMUNITY_SESSION_SECRET=automatically_generated_random_value
+NC_COMMUNITY_COOKIE_SECURE=true
 ```
 
-For a hosted installation, use the exact HTTPS callback and set
-`NC_COMMUNITY_COOKIE_SECURE=true`. Never commit `.env.local` or reuse the
-session secret between installations.
+For local HTTP, the assistant sets `NC_COMMUNITY_COOKIE_SECURE=false`. For a
+hosted HTTPS callback, it sets the value to `true`. Never commit `.env.local`
+or reuse the session secret between installations.
 
-## 3. Start with Docker Compose
+## 3. Install and start without Docker
 
 ```bash
-docker compose up --build -d
-docker compose ps
+npm run install:native
+npm start
+```
+
+`install:native` installs the locked dependencies, runs the Cloud diagnostic
+and creates the optimized standalone build. Community then listens only on
+`127.0.0.1:3400`.
+
+In another terminal, verify it:
+
+```bash
 curl --fail http://127.0.0.1:3400/api/health
 ```
 
-The service listens on host loopback only. Open `http://localhost:3400` on the
-same machine, or add an HTTPS reverse proxy for remote use.
+Open `http://localhost:3400` on the same machine, or add an HTTPS reverse proxy
+for remote use.
+
+To use another loopback port:
+
+```bash
+PORT=3500 npm start
+```
+
+The registered OAuth callback must use the same port.
+
+## 4. Keep Community running with systemd
+
+The repository includes `deploy/neurocheckout-community.service`. It expects
+the repository at `/opt/neurocheckout-community`, a Linux account named
+`neurocheckout`, and a system-wide npm executable at `/usr/bin/npm`.
+
+After adapting those three values if necessary:
+
+```bash
+sudo cp deploy/neurocheckout-community.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now neurocheckout-community
+sudo systemctl status neurocheckout-community
+```
+
+The unit starts only the Community interface, reads `.env.local` through the
+native launcher, restarts after a failure and does not expose port 3400 beyond
+the server loopback interface.
+
+## 5. Configure HTTPS
 
 Example Caddy configuration:
 
@@ -72,19 +123,38 @@ community.example.com {
 ```
 
 Register `https://community.example.com/api/auth/callback` in Cloud before
-starting the OAuth connection. The callback must match exactly.
+starting the OAuth connection. Run `npm run setup` again if the callback
+changes; it preserves the existing session secret.
 
-## 4. Validate the connection
+## 6. Validate the connection
+
+Before opening the browser, the diagnostic must pass:
+
+```bash
+npm run doctor
+```
 
 1. Select **Connect to Cloud**.
 2. Review and authorize the requested scopes in NeuroCheckout Cloud.
 3. Confirm that the overview shows the Cloud plan, quota, Supervisor and seven
    enabled specialist agents.
 4. Create a test shop, save an email-template draft and verify that no customer
-   data is stored by the Community container.
+   data is stored by the Community process.
 
 The contextual support agent is intentionally not displayed while its
 per-store personalization remains disabled.
+
+## Optional Docker installation
+
+Administrators who prefer a container can use the same `.env.local`:
+
+```bash
+docker compose up --build -d
+docker compose ps
+curl --fail http://127.0.0.1:3400/api/health
+```
+
+Do not run the native service and Docker Compose simultaneously on port 3400.
 
 ## Source-based development
 
@@ -93,16 +163,27 @@ npm ci
 npm run dev
 ```
 
-For a production-like local run:
+For a production-like local run, use the same native path as end users:
 
 ```bash
 npm run build
+npm run doctor
 npm run start
 ```
 
 ## Upgrade
 
-Back up `.env.local`, then:
+Back up `.env.local`. For a native installation:
+
+```bash
+git pull --ff-only
+npm ci
+npm run doctor
+npm run build
+sudo systemctl restart neurocheckout-community
+```
+
+For Docker:
 
 ```bash
 git pull --ff-only
@@ -116,7 +197,15 @@ disconnect and reconnect the installation after the container is updated.
 ## Revoke or uninstall
 
 First revoke the installation in **NeuroCheckout Cloud → Community
-installations**. Then stop and remove the local container and image:
+installations**. For a native systemd installation:
+
+```bash
+sudo systemctl disable --now neurocheckout-community
+sudo rm /etc/systemd/system/neurocheckout-community.service
+sudo systemctl daemon-reload
+```
+
+For Docker, stop and remove the local container and image:
 
 ```bash
 docker compose down
@@ -135,5 +224,9 @@ by deleting the Community container.
   keep the same session secret across container restarts.
 - **Cookie missing behind HTTPS:** set `NC_COMMUNITY_COOKIE_SECURE=true` and
   ensure the proxy forwards the HTTPS scheme.
-- **Cloud request rejected after an update:** refresh the image and reconnect
-  if the release added an OAuth scope or raised the minimum dashboard version.
+- **Cloud request rejected after an update:** update the native build or Docker
+  image, then reconnect if the release added an OAuth scope or raised the
+  minimum dashboard version.
+- **`npm start` reports a missing build:** run `npm run install:native` again.
+- **Doctor reports Cloud unreachable:** verify outbound HTTPS access to
+  `www.neurocheckout.com`; no inbound Cloud connection is required.

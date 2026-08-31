@@ -9,6 +9,7 @@ README.md
 SECURITY.md
 TRADEMARKS.md
 compose.yaml
+deploy/neurocheckout-community.service
 docs/INSTALLATION.md
 app/api/auth/callback/route.ts
 app/api/auth/logout/route.ts
@@ -42,6 +43,10 @@ package-lock.json
 package.json
 public-files.txt
 public/branding/neurocheckout-logo-300.png
+scripts/doctor.mjs
+scripts/env-file.mjs
+scripts/setup-community.mjs
 scripts/start-standalone.mjs
+scripts/test-native-setup.mjs
 tools/build-connector-release.sh
 tsconfig.json

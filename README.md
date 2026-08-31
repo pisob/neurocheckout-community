@@ -12,32 +12,54 @@ and authenticates through OAuth 2.0 Authorization Code with PKCE S256. The
 contextual support agent remains hidden while its per-store personalization is
 not release-ready.
 
-## Quick start with Docker
+## Recommended installation — without Docker
 
-Requirements: Git, Docker Engine and Docker Compose v2.
+Requirements: Git, Node.js 22 or newer and npm 10 or newer.
 
 1. Activate the Community plan in NeuroCheckout Cloud.
 2. In **Dashboard → Community installations**, register
    `http://localhost:3400/api/auth/callback` for a local evaluation.
-3. Prepare the local configuration:
+3. Clone the repository and run the guided setup:
 
    ```bash
-   cp .env.example .env.local
-   openssl rand -base64 48
+   git clone https://github.com/pisob/neurocheckout-community.git
+   cd neurocheckout-community
+   npm run setup
    ```
 
-4. Put the returned public client ID and generated session secret in
-   `.env.local`, then start the isolated dashboard:
+   Enter the public client ID returned by Cloud. The setup assistant creates a
+   private `.env.local`, generates the session secret and selects the correct
+   cookie security for the callback URL.
+
+4. Install, diagnose and build the dashboard:
 
    ```bash
-   docker compose up --build -d
-   docker compose ps
+   npm run install:native
    ```
 
-5. Open `http://localhost:3400` and select **Connect to Cloud**.
+5. Start Community:
 
-For HTTPS, reverse proxies, upgrades, uninstall and source-based development,
-follow the [complete installation guide](docs/INSTALLATION.md).
+   ```bash
+   npm start
+   ```
+
+6. Open `http://localhost:3400` and select **Connect to Cloud**.
+
+`npm run doctor` can be repeated at any time. It validates Node.js, the local
+configuration, callback/cookie consistency, the production build and actual
+reachability of NeuroCheckout Cloud without exposing credentials.
+
+## Optional Docker installation
+
+Docker remains available for administrators who prefer container isolation:
+
+```bash
+npm run setup
+docker compose up --build -d
+```
+
+For HTTPS, systemd, Docker, upgrades and uninstall, follow the
+[complete installation guide](docs/INSTALLATION.md).
 
 The dashboard requests only the scopes used by its current modules: profile,
 capabilities, shops, templates, BYOK and connector-key management. Reconnect an
@@ -67,16 +89,18 @@ existing installation after a release adds a new scope.
 ## Production
 
 Use HTTPS, set `NC_COMMUNITY_COOKIE_SECURE=true`, register the exact HTTPS
-callback and deploy behind a reverse proxy that limits request sizes. The
-provided Compose service binds only to `127.0.0.1` so the reverse proxy remains
-the public entry point. Never commit `.env.local`.
+callback and deploy behind a reverse proxy that limits request sizes. Both the
+native launcher and provided Compose service bind only to `127.0.0.1`, so the
+reverse proxy remains the public entry point. Never commit `.env.local`.
 
 Validate a release with:
 
 ```bash
+npm run test:native
 npm run typecheck
 npm run build
 npm run smoke:integration
+npm run doctor
 npm audit --omit=dev
 docker compose config
 docker build -t neurocheckout-community:local .

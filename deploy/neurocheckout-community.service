@@ -1,0 +1,27 @@
+[Unit]
+Description=NeuroCheckout Community dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=neurocheckout
+Group=neurocheckout
+WorkingDirectory=/opt/neurocheckout-community
+Environment=NODE_ENV=production
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=3400
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/neurocheckout-community/.next
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

@@ -2,6 +2,10 @@ import { existsSync, mkdirSync, symlinkSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { loadEnvironmentFile } from "./env-file.mjs";
+
+loadEnvironmentFile(".env.local");
+
 const root = process.cwd();
 const server = resolve(root, ".next/standalone/server.js");
 

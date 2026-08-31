@@ -41,11 +41,26 @@ jobs:
       - name: Check TypeScript
         run: npm run typecheck
 
+      - name: Test the native setup
+        run: npm run test:native
+
       - name: Build the production application
         run: npm run build
 
       - name: Smoke-test OAuth and Cloud proxy
         run: npm run smoke:integration
+
+      - name: Diagnose a native installation
+        run: npm run doctor
+        env:
+          NC_COMMUNITY_CLIENT_ID: nc_public_ci_fixture
+          NC_COMMUNITY_REDIRECT_URI: http://localhost:3400/api/auth/callback
+          NC_CLOUD_API_BASE_URL: https://www.neurocheckout.com
+          NC_CLOUD_AUTHORIZATION_URL: https://www.neurocheckout.com/community/authorize
+          NC_CLOUD_UPGRADE_URL: https://www.neurocheckout.com/pricing
+          NC_COMMUNITY_SESSION_SECRET: ci-only-session-secret-with-at-least-32-characters
+          NC_COMMUNITY_COOKIE_SECURE: "false"
+          NC_DOCTOR_SKIP_NETWORK: "true"
 
       - name: Build the self-hosted Docker image
         run: docker build --tag neurocheckout-community:ci .

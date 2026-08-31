@@ -2,11 +2,19 @@
   "name": "neurocheckout-community",
   "version": "0.1.0-preview.1",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "dev": "next dev -p 3400",
     "build": "next build",
     "start": "node scripts/start-standalone.mjs",
+    "setup": "node scripts/setup-community.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "install:native": "npm ci && npm run doctor && npm run build",
     "smoke:integration": "node scripts/smoke-oauth-proxy.mjs",
+    "test:native": "node scripts/test-native-setup.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

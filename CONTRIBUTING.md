@@ -5,9 +5,9 @@ Thank you for helping improve NeuroCheckout Community.
 1. Open an issue describing the user-facing problem and the proposed scope.
 2. Keep Cloud business logic, private endpoints, credentials and customer data out of this repository.
 3. Add or update tests for security-sensitive, OAuth and API-contract changes.
-4. Run `npm run typecheck`, `npm run build` and `npm run smoke:integration`
-   before submitting a pull request. Changes to packaging must also pass a
-   local Docker image build.
+4. Run `npm run typecheck`, `npm run test:native`, `npm run build`,
+   `npm run smoke:integration` and `npm run doctor` before submitting a pull
+   request. Changes to packaging must also pass a local Docker image build.
 5. Keep new Cloud calls behind Community's server-side BFF and request the narrowest OAuth scope.
 
 By contributing, you agree that your contribution is licensed under Apache-2.0. Security reports must follow `SECURITY.md` and must not be filed publicly.

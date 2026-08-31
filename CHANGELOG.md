@@ -20,6 +20,8 @@ All notable changes to NeuroCheckout Community are documented in this file.
   defaults and a complete installation, upgrade and uninstall guide.
 - Start local production builds through the generated Next.js standalone
   server instead of the incompatible `next start` command.
+- Add a guided, Docker-free installation with automatic secret generation,
+  runtime `.env.local` loading, Cloud diagnostics and a hardened systemd unit.
 
 ## 0.1.0-preview.1 - 2026-08-29
 
