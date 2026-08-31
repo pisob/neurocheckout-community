@@ -8,6 +8,8 @@ NOTICE
 README.md
 SECURITY.md
 TRADEMARKS.md
+compose.yaml
+docs/INSTALLATION.md
 app/api/auth/callback/route.ts
 app/api/auth/logout/route.ts
 app/api/auth/start/route.ts
@@ -24,6 +26,7 @@ app/api/upgrade/route.ts
 app/layout.tsx
 app/page.tsx
 app/styles.css
+app/icon.png
 components/CloudConfiguration.tsx
 components/Dashboard.tsx
 connectors/README.md
@@ -38,5 +41,7 @@ next.config.mjs
 package-lock.json
 package.json
 public-files.txt
+public/branding/neurocheckout-logo-300.png
+scripts/start-standalone.mjs
 tools/build-connector-release.sh
 tsconfig.json

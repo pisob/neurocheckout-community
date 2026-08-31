@@ -187,7 +187,13 @@ export default function Dashboard() {
     <main className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
+          <img
+            className="brand-logo"
+            src="/branding/neurocheckout-logo-300.png"
+            alt=""
+            width="40"
+            height="40"
+          />
           <div><strong>NeuroCheckout</strong><small>Community</small></div>
         </div>
 

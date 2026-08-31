@@ -1,0 +1,19 @@
+name: neurocheckout-community
+
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: neurocheckout-community:0.1.0-preview.1
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    ports:
+      - "127.0.0.1:${NC_COMMUNITY_PORT:-3400}:3400"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 768m

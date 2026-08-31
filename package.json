@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3400",
     "build": "next build",
-    "start": "next start -p 3400",
+    "start": "node scripts/start-standalone.mjs",
     "smoke:integration": "node scripts/smoke-oauth-proxy.mjs",
     "typecheck": "tsc --noEmit"
   },

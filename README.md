@@ -5,18 +5,39 @@
 > process and user experience as pre-stable until the first stable release.
 
 NeuroCheckout Community is the self-hosted, open-source member interface.
-Business decisions, the eight-agent orchestration, quotas, delivery and sensitive
-processing remain NeuroCheckout Cloud services. Community never embeds a Cloud
-service secret and authenticates through OAuth 2.0 Authorization Code with PKCE
-S256.
+Business decisions, Supervisor coordination, the seven currently enabled
+specialist agents, quotas, delivery and sensitive processing remain
+NeuroCheckout Cloud services. Community never embeds a Cloud service secret
+and authenticates through OAuth 2.0 Authorization Code with PKCE S256. The
+contextual support agent remains hidden while its per-store personalization is
+not release-ready.
 
-## Local setup
+## Quick start with Docker
 
-1. Activate the permanent Community plan in NeuroCheckout Cloud.
-2. In **Dashboard → Community installations**, register `http://localhost:3400/api/auth/callback`.
-3. Copy `.env.example` to `.env.local`, set the returned public client ID and generate a strong session secret.
-4. Run `npm ci`, then `npm run dev`.
+Requirements: Git, Docker Engine and Docker Compose v2.
+
+1. Activate the Community plan in NeuroCheckout Cloud.
+2. In **Dashboard → Community installations**, register
+   `http://localhost:3400/api/auth/callback` for a local evaluation.
+3. Prepare the local configuration:
+
+   ```bash
+   cp .env.example .env.local
+   openssl rand -base64 48
+   ```
+
+4. Put the returned public client ID and generated session secret in
+   `.env.local`, then start the isolated dashboard:
+
+   ```bash
+   docker compose up --build -d
+   docker compose ps
+   ```
+
 5. Open `http://localhost:3400` and select **Connect to Cloud**.
+
+For HTTPS, reverse proxies, upgrades, uninstall and source-based development,
+follow the [complete installation guide](docs/INSTALLATION.md).
 
 The dashboard requests only the scopes used by its current modules: profile,
 capabilities, shops, templates, BYOK and connector-key management. Reconnect an
@@ -24,7 +45,8 @@ existing installation after a release adds a new scope.
 
 ## Included modules
 
-- Cloud-calculated plan, quota, features and eight-agent availability;
+- Cloud-calculated plan, quota and feature availability;
+- Supervisor coordination and seven currently enabled specialist agents;
 - version compatibility and mandatory-update signal;
 - Cloud-authorized shop creation with sender identity, brand logo and approval mode;
 - per-shop sanitized, versioned email templates with publish and rollback;
@@ -44,15 +66,20 @@ existing installation after a release adds a new scope.
 
 ## Production
 
-Use HTTPS, set `NC_COMMUNITY_COOKIE_SECURE=true`, use an exact HTTPS callback, and
-deploy behind a reverse proxy that limits request sizes. Never commit `.env.local`.
+Use HTTPS, set `NC_COMMUNITY_COOKIE_SECURE=true`, register the exact HTTPS
+callback and deploy behind a reverse proxy that limits request sizes. The
+provided Compose service binds only to `127.0.0.1` so the reverse proxy remains
+the public entry point. Never commit `.env.local`.
 
 Validate a release with:
 
 ```bash
 npm run typecheck
 npm run build
+npm run smoke:integration
 npm audit --omit=dev
+docker compose config
+docker build -t neurocheckout-community:local .
 ```
 
 Connector packages are not declared released until

@@ -14,6 +14,12 @@ All notable changes to NeuroCheckout Community are documented in this file.
   dedicated tools with responsive navigation and reduced-motion support.
 - Display Supervisor as the coordination layer above the seven currently
   enabled specialist agents, while respecting Cloud runtime kill switches.
+- Use the official NeuroCheckout neural-node logo in the Community navigation
+  and browser icon.
+- Add a production-oriented Docker Compose quick start, official Cloud endpoint
+  defaults and a complete installation, upgrade and uninstall guide.
+- Start local production builds through the generated Next.js standalone
+  server instead of the incompatible `next start` command.
 
 ## 0.1.0-preview.1 - 2026-08-29
 

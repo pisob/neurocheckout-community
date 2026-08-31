@@ -47,5 +47,8 @@ jobs:
       - name: Smoke-test OAuth and Cloud proxy
         run: npm run smoke:integration
 
+      - name: Build the self-hosted Docker image
+        run: docker build --tag neurocheckout-community:ci .
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
