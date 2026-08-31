@@ -22,6 +22,8 @@ All notable changes to NeuroCheckout Community are documented in this file.
   server instead of the incompatible `next start` command.
 - Add a guided, Docker-free installation with automatic secret generation,
   runtime `.env.local` loading, Cloud diagnostics and a hardened systemd unit.
+- Make native prerequisites, Cloud access, ports and hosted HTTPS requirements
+  explicit before the installation steps.
 
 ## 0.1.0-preview.1 - 2026-08-29
 

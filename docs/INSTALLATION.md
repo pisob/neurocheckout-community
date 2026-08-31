@@ -7,12 +7,23 @@ quotas, delivery and sensitive processing.
 ## Requirements
 
 - a NeuroCheckout Cloud account with the Community plan active;
+- a Community installation registered in Cloud and its public client ID;
 - Git;
 - Node.js 22 or newer and npm 10 or newer;
+- outbound HTTPS access to `www.neurocheckout.com`;
+- an available loopback port, `3400` by default;
 - an HTTPS reverse proxy for any non-local installation.
 
 Docker Engine 24 and Docker Compose v2 are optional alternatives. They are not
 required for the recommended native installation.
+
+Verify the native requirements:
+
+```bash
+git --version
+node --version
+npm --version
+```
 
 ## 1. Register the installation
 

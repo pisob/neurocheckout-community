@@ -12,9 +12,27 @@ and authenticates through OAuth 2.0 Authorization Code with PKCE S256. The
 contextual support agent remains hidden while its per-store personalization is
 not release-ready.
 
-## Recommended installation — without Docker
+## Requirements
 
-Requirements: Git, Node.js 22 or newer and npm 10 or newer.
+- a NeuroCheckout Cloud account with the Community plan active;
+- a Community installation registered in Cloud and its public client ID;
+- Git;
+- Node.js 22 or newer;
+- npm 10 or newer;
+- outbound HTTPS access to `www.neurocheckout.com`;
+- local port `3400`, or another available loopback port;
+- for a public server: a domain name, HTTPS and a reverse proxy such as Caddy
+  or Nginx.
+
+Docker is not required. Check the native tools before installation:
+
+```bash
+git --version
+node --version
+npm --version
+```
+
+## Recommended installation — without Docker
 
 1. Activate the Community plan in NeuroCheckout Cloud.
 2. In **Dashboard → Community installations**, register
