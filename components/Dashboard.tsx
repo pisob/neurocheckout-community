@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import CloudConfiguration from "@/components/CloudConfiguration";
 import EmailApprovals from "@/components/EmailApprovals";
 import MemberMessages from "@/components/MemberMessages";
+import AgentPerformance from "@/components/AgentPerformance";
+import ConvertedOrders from "@/components/ConvertedOrders";
 import { useUiLanguage, type UiLanguage } from "@/lib/ui-language";
 
 type Capabilities = {
@@ -51,7 +53,7 @@ type Capabilities = {
   };
 };
 
-type DashboardView = "overview" | "agents" | "usage" | "email-approvals" | "messages" | "features" | "configuration";
+type DashboardView = "overview" | "agents" | "agent-performance" | "converted-orders" | "usage" | "email-approvals" | "messages" | "features" | "configuration";
 
 type ViewCopy = Record<DashboardView, { label: string; eyebrow: string; title: string; description: string }>;
 
@@ -59,6 +61,8 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
   en: {
     overview: { label: "Overview", eyebrow: "Operations center", title: "Installation status", description: "Quotas, agents and Cloud access in one control view." },
     agents: { label: "Agents", eyebrow: "Shared orchestration", title: "Available agents", description: "Active roles cooperate in the Cloud to make every decision more reliable." },
+    "agent-performance": { label: "Agent performance", eyebrow: "Measured contribution", title: "Agent performance", description: "Compare attributed value, engagement and operational impact for one store and period." },
+    "converted-orders": { label: "Converted orders", eyebrow: "Conversion evidence", title: "Latest converted orders", description: "Inspect the latest orders attributed by NeuroCheckout Cloud without exposing full customer contact data." },
     usage: { label: "Usage", eyebrow: "Community capacity", title: "Quotas and usage", description: "Track your email window and the limits applied by your plan." },
     "email-approvals": { label: "Email approvals", eyebrow: "Delivery control", title: "Emails to approve", description: "Review manual-approval emails before NeuroCheckout Cloud sends them." },
     messages: { label: "Messages", eyebrow: "Account notices", title: "Member messages", description: "Read quota, account and service notices issued for your workspace." },
@@ -68,6 +72,8 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
   fr: {
     overview: { label: "Vue d’ensemble", eyebrow: "Centre opérationnel", title: "État de votre installation", description: "Quotas, agents et accès Cloud réunis dans une vue de contrôle." },
     agents: { label: "Agents", eyebrow: "Orchestration partagée", title: "Agents disponibles", description: "Les rôles actifs coopèrent dans le Cloud pour fiabiliser chaque décision." },
+    "agent-performance": { label: "Performance des agents", eyebrow: "Contribution mesurée", title: "Performance des agents", description: "Comparez la valeur attribuée, l’engagement et l’impact opérationnel par boutique et période." },
+    "converted-orders": { label: "Commandes converties", eyebrow: "Preuves de conversion", title: "Dernières commandes converties", description: "Inspectez les commandes attribuées par NeuroCheckout Cloud sans exposer toutes les coordonnées client." },
     usage: { label: "Utilisation", eyebrow: "Capacité Community", title: "Quotas et consommation", description: "Suivez la fenêtre email et les limites appliquées par votre offre." },
     "email-approvals": { label: "Validations email", eyebrow: "Contrôle des envois", title: "Emails à approuver", description: "Vérifiez les emails en validation manuelle avant leur envoi par NeuroCheckout Cloud." },
     messages: { label: "Messages", eyebrow: "Notifications du compte", title: "Messages membre", description: "Consultez les alertes de quota, de compte et de service de votre espace." },
@@ -199,6 +205,8 @@ export default function Dashboard() {
     if (!capabilities) return view === "overview";
     if (view === "email-approvals") return capabilities.features.email_approvals === true;
     if (view === "messages") return capabilities.features.member_messages === true;
+    if (view === "agent-performance") return capabilities.features.agent_performance === true;
+    if (view === "converted-orders") return capabilities.features.converted_orders === true;
     return capabilities.features.member_dashboard !== false;
   });
 
@@ -407,6 +415,14 @@ export default function Dashboard() {
 
             {activeView === "email-approvals" && capabilities.features.email_approvals ? (
               <EmailApprovals language={language} />
+            ) : null}
+
+            {activeView === "agent-performance" && capabilities.features.agent_performance ? (
+              <AgentPerformance language={language} supervisorEnabled={supervisorEnabled} />
+            ) : null}
+
+            {activeView === "converted-orders" && capabilities.features.converted_orders ? (
+              <ConvertedOrders language={language} />
             ) : null}
 
             {activeView === "messages" && capabilities.features.member_messages ? (
