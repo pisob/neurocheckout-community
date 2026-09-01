@@ -39,8 +39,23 @@ type EmailPreview = {
   urgency: string;
 };
 
+type LocaleOption = {
+  code: string;
+  label: string;
+};
+
+const BUILTIN_LOCALES: LocaleOption[] = [
+  { code: "en", label: "English" },
+  { code: "fr", label: "Français" },
+  { code: "de", label: "Deutsch" },
+  { code: "es", label: "Español" },
+  { code: "it", label: "Italiano" },
+];
+const CUSTOM_LOCALES_STORAGE_KEY = "neurocheckout-community-custom-locales-v1";
+const LOCALE_CODE_PATTERN = /^[a-z]{2}(?:-[A-Z]{2})?$/;
+
 const DEFAULT_EMAIL_PROFILE: EmailProfile = {
-  locale: "fr",
+  locale: "en",
   tone: "friendly",
   address_style: "neutral",
   message_length: "standard",
@@ -71,6 +86,11 @@ function detail(payload: unknown, fallback: string): string {
   return fallback;
 }
 
+function normalizeLocaleCode(value: string): string {
+  const [language, region] = value.trim().replaceAll("_", "-").split("-", 2);
+  return `${(language || "").toLowerCase()}${region ? `-${region.toUpperCase()}` : ""}`;
+}
+
 export default function CloudConfiguration() {
   const [shops, setShops] = useState<Shop[]>([]);
   const [platforms, setPlatforms] = useState<Platform[]>([]);
@@ -78,6 +98,10 @@ export default function CloudConfiguration() {
   const [byok, setByok] = useState<ByokStatus | null>(null);
   const [templateKey, setTemplateKey] = useState("abandoned_cart");
   const [emailProfile, setEmailProfile] = useState<EmailProfile>(DEFAULT_EMAIL_PROFILE);
+  const [customLocales, setCustomLocales] = useState<LocaleOption[]>([]);
+  const [showLocaleAdder, setShowLocaleAdder] = useState(false);
+  const [newLocaleCode, setNewLocaleCode] = useState("");
+  const [newLocaleLabel, setNewLocaleLabel] = useState("");
   const [requiredTermsInput, setRequiredTermsInput] = useState("");
   const [forbiddenTermsInput, setForbiddenTermsInput] = useState("");
   const [previews, setPreviews] = useState<EmailPreview[]>([]);
@@ -102,6 +126,16 @@ export default function CloudConfiguration() {
     () => shops.find((shop) => shopUuid(shop) === selectedShopUuid) || null,
     [selectedShopUuid, shops],
   );
+
+  const localeOptions = useMemo(() => {
+    const options = [...BUILTIN_LOCALES, ...customLocales];
+    if (!options.some((option) => option.code === emailProfile.locale)) {
+      options.push({ code: emailProfile.locale, label: emailProfile.locale });
+    }
+    return options.filter(
+      (option, index) => options.findIndex((candidate) => candidate.code === option.code) === index,
+    );
+  }, [customLocales, emailProfile.locale]);
 
   const readJson = async (response: Response) => response.json().catch(() => ({}));
 
@@ -130,11 +164,12 @@ export default function CloudConfiguration() {
     setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
   };
 
-  const loadShopConfiguration = async (uuid: string) => {
+  const loadShopConfiguration = async (uuid: string, locale = "en") => {
     if (!uuid) return;
     setError(null);
+    const normalizedLocale = normalizeLocaleCode(locale);
     const [profileResponse, byokResponse] = await Promise.all([
-      fetch(`/api/cloud/email-profile?shop_uuid=${encodeURIComponent(uuid)}&locale=${encodeURIComponent(emailProfile.locale)}`, { cache: "no-store" }),
+      fetch(`/api/cloud/email-profile?shop_uuid=${encodeURIComponent(uuid)}&locale=${encodeURIComponent(normalizedLocale)}`, { cache: "no-store" }),
       fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(uuid)}&provider=openai`, { cache: "no-store" }),
     ]);
     const profilePayload = (await readJson(profileResponse)) as { item?: EmailProfile };
@@ -153,8 +188,66 @@ export default function CloudConfiguration() {
   }, []);
 
   useEffect(() => {
-    void loadShopConfiguration(selectedShopUuid).catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Configuration indisponible"));
+    try {
+      const stored = window.localStorage.getItem(CUSTOM_LOCALES_STORAGE_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(parsed)) return;
+      const validLocales = parsed
+        .map((item): LocaleOption | null => {
+          if (!item || typeof item !== "object") return null;
+          const candidate = item as Partial<LocaleOption>;
+          const code = normalizeLocaleCode(String(candidate.code || ""));
+          const label = String(candidate.label || "").trim().slice(0, 48);
+          return LOCALE_CODE_PATTERN.test(code) && label ? { code, label } : null;
+        })
+        .filter((item): item is LocaleOption => item !== null)
+        .slice(0, 30);
+      setCustomLocales(validLocales);
+    } catch {
+      window.localStorage.removeItem(CUSTOM_LOCALES_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadShopConfiguration(selectedShopUuid, "en").catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Configuration indisponible"));
   }, [selectedShopUuid]);
+
+  const selectEmailLocale = async (locale: string) => {
+    if (!selectedShopUuid) return;
+    setBusy("email-locale");
+    setNotice(null);
+    try {
+      await loadShopConfiguration(selectedShopUuid, locale);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Langue indisponible");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const addEmailLocale = async () => {
+    const code = normalizeLocaleCode(newLocaleCode);
+    const label = newLocaleLabel.trim().slice(0, 48);
+    setError(null);
+    if (!LOCALE_CODE_PATTERN.test(code)) {
+      setError("Code langue invalide. Utilisez par exemple pt ou pt-BR.");
+      return;
+    }
+    if (!label) {
+      setError("Indiquez le nom visible de la langue.");
+      return;
+    }
+    const knownLocale = localeOptions.find((option) => option.code === code);
+    if (!knownLocale) {
+      const nextLocales = [...customLocales, { code, label }].slice(0, 30);
+      setCustomLocales(nextLocales);
+      window.localStorage.setItem(CUSTOM_LOCALES_STORAGE_KEY, JSON.stringify(nextLocales));
+    }
+    setNewLocaleCode("");
+    setNewLocaleLabel("");
+    setShowLocaleAdder(false);
+    await selectEmailLocale(code);
+  };
 
   const saveEmailProfile = async () => {
     setBusy("email-profile");
@@ -387,7 +480,24 @@ export default function CloudConfiguration() {
             <div className="email-rules-copy"><p className="eyebrow">Cadre éditorial</p><h3>Règles de la boutique</h3><p>Ces préférences permettent d’aligner les propositions sur votre marque.</p><div className="privacy-note"><strong>Données protégées</strong><span>Votre clé personnelle est chiffrée dans le Cloud. Les aperçus utilisent uniquement le contexte minimal nécessaire et ne déclenchent aucun envoi client.</span></div></div>
             <div className="configuration-form email-rules-form">
               <label>Automatisation à prévisualiser<select value={templateKey} onChange={(event) => setTemplateKey(event.target.value)}><option value="abandoned_cart">Panier abandonné</option><option value="product_recommendation">Recommandation produit</option><option value="email_marketing">Email marketing</option><option value="upsell_cross_sell">Upsell / cross-sell</option></select></label>
-              <div className="form-row"><label>Langue<select value={emailProfile.locale} onChange={(event) => setEmailProfile((current) => ({ ...current, locale: event.target.value }))}><option value="fr">Français</option><option value="en">English</option><option value="de">Deutsch</option><option value="es">Español</option><option value="it">Italiano</option></select></label><label>Ton<select value={emailProfile.tone} onChange={(event) => setEmailProfile((current) => ({ ...current, tone: event.target.value as EmailProfile["tone"] }))}><option value="friendly">Chaleureux</option><option value="premium">Premium</option><option value="minimal">Minimal</option><option value="urgent">Urgent, sans pression artificielle</option></select></label></div>
+              <div className="form-row">
+                <label>Langue
+                  <div className="locale-picker">
+                    <select value={emailProfile.locale} disabled={busy !== null} onChange={(event) => void selectEmailLocale(event.target.value)}>
+                      {localeOptions.map((option) => <option key={option.code} value={option.code}>{option.label} · {option.code}</option>)}
+                    </select>
+                    <button className="locale-add-trigger" type="button" onClick={() => setShowLocaleAdder((current) => !current)}>+ Ajouter une langue absente</button>
+                  </div>
+                </label>
+                <label>Ton<select value={emailProfile.tone} onChange={(event) => setEmailProfile((current) => ({ ...current, tone: event.target.value as EmailProfile["tone"] }))}><option value="friendly">Chaleureux</option><option value="premium">Premium</option><option value="minimal">Minimal</option><option value="urgent">Urgent, sans pression artificielle</option></select></label>
+              </div>
+              {showLocaleAdder ? (
+                <div className="locale-adder" aria-label="Ajouter une langue">
+                  <label>Code langue<input value={newLocaleCode} onChange={(event) => setNewLocaleCode(event.target.value)} placeholder="pt-BR" maxLength={5} /></label>
+                  <label>Nom affiché<input value={newLocaleLabel} onChange={(event) => setNewLocaleLabel(event.target.value)} placeholder="Português (Brasil)" maxLength={48} /></label>
+                  <div className="locale-adder-actions"><button className="button secondary-blue" type="button" disabled={busy !== null} onClick={() => void addEmailLocale()}>Ajouter</button><button className="locale-cancel" type="button" onClick={() => setShowLocaleAdder(false)}>Annuler</button></div>
+                </div>
+              ) : null}
               <div className="form-row"><label>Adresse au client<select value={emailProfile.address_style} onChange={(event) => setEmailProfile((current) => ({ ...current, address_style: event.target.value as EmailProfile["address_style"] }))}><option value="neutral">Neutre</option><option value="formal">Vouvoiement</option><option value="informal">Tutoiement</option></select></label><label>Longueur<select value={emailProfile.message_length} onChange={(event) => setEmailProfile((current) => ({ ...current, message_length: event.target.value as EmailProfile["message_length"] }))}><option value="short">Courte</option><option value="standard">Standard</option></select></label></div>
               <div className="form-row"><label>Promotions<select value={emailProfile.discount_policy} onChange={(event) => setEmailProfile((current) => ({ ...current, discount_policy: event.target.value as EmailProfile["discount_policy"] }))}><option value="confirmed_only">Uniquement si confirmées</option><option value="never">Jamais mentionner</option></select></label><label>Validation avant envoi<select value={emailProfile.approval_mode} onChange={(event) => setEmailProfile((current) => ({ ...current, approval_mode: event.target.value as EmailProfile["approval_mode"] }))}><option value="automatic">Automatique</option><option value="manual">Manuelle</option></select></label></div>
               <label>Expressions obligatoires<input value={requiredTermsInput} onChange={(event) => setRequiredTermsInput(event.target.value)} placeholder="livraison offerte, fabriqué en France" /><span className="form-hint">Séparez les expressions par une virgule. Maximum 12.</span></label>

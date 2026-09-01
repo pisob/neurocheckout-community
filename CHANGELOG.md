@@ -6,6 +6,8 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ### Changed
 
+- Default new email editorial profiles to English and allow merchants to add
+  missing locale codes that remain available in the language selector.
 - Replace the single-template email editor with controlled brand and editorial
   rules and a three-direction preview powered by the shop's encrypted OpenAI
   key. Cloud orchestration details remain private.

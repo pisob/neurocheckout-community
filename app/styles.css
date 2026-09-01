@@ -226,6 +226,12 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .privacy-note strong { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
 .privacy-note span { color: var(--muted); font-size: 10px; line-height: 1.55; }
 .email-rules-form { gap: 15px; }
+.locale-picker { display: grid; gap: 6px; }
+.locale-add-trigger, .locale-cancel { width: max-content; border: 0; background: transparent; padding: 1px 0; color: var(--cyan); font-size: 10px; font-weight: 750; }
+.locale-add-trigger:hover, .locale-cancel:hover { color: white; }
+.locale-adder { display: grid; grid-template-columns: minmax(105px, .38fr) minmax(180px, 1fr) auto; align-items: end; gap: 11px; border-left: 2px solid var(--blue); background: linear-gradient(90deg, rgb(40 119 243 / 8%), transparent 78%); padding: 12px 14px; }
+.locale-adder-actions { display: flex; align-items: center; gap: 11px; min-height: 36px; }
+.locale-adder-actions .button { padding: 10px 16px; }
 .inline-link { width: max-content; border: 0; background: transparent; padding: 2px 0; color: var(--cyan); font-size: 10px; font-weight: 700; }
 .email-preview-section { display: grid; grid-template-columns: minmax(210px, .45fr) minmax(0, 1.55fr); gap: 36px; border-top: 1px solid var(--line); padding: 30px 0 8px; }
 .email-preview-list { border-top: 1px solid var(--line); }
@@ -270,6 +276,8 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
   .email-control-intro { align-items: flex-start; flex-direction: column; }
   .email-rules-layout, .email-preview-section { grid-template-columns: 1fr; gap: 22px; }
   .email-rules-form { border-top: 1px solid var(--line); padding-top: 22px; }
+  .locale-adder { grid-template-columns: minmax(105px, .38fr) minmax(180px, 1fr); }
+  .locale-adder-actions { grid-column: 1 / -1; }
 }
 
 @media (max-width: 520px) {
@@ -282,6 +290,8 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
   .agent-cell:nth-child(-n + 2) { border-top: 0; }
   .agent-cell:first-child { border-top: 1px solid var(--line); }
   .form-row { grid-template-columns: 1fr; }
+  .locale-adder { grid-template-columns: 1fr; }
+  .locale-adder-actions { grid-column: auto; }
   .upgrade-line, .usage-upgrade { align-items: flex-start; flex-direction: column; }
   .tool-tabs { display: grid; grid-template-columns: repeat(2, 1fr); }
 }
