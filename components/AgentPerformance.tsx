@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import AgentNetwork from "@/components/AgentNetwork";
 import type { UiLanguage } from "@/lib/ui-language";
 
 type Shop = {
@@ -193,50 +194,56 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
             <div><span>{ui("Estimated net ROI", "ROI net estimé")}</span><strong>{formatMetric(summary.roi_profit_net, 2)}x</strong></div>
           </div>
 
-          {supervisorEnabled ? (
-            <div className="supervisor-line"><span className="supervisor-mark">S</span><div><strong>Supervisor</strong><small>{ui("Coordinates the active specialists; its value is reflected across their results.", "Coordonne les spécialistes actifs ; sa valeur est reflétée dans leurs résultats.")}</small></div><i>{ui("Coordinating", "Coordination active")}</i></div>
-          ) : null}
-
           {payload.items.length === 0 ? (
             <div className="operational-state"><p className="eyebrow">{ui("No signal", "Aucun signal")}</p><h2>{ui("No agent metric is available for this period", "Aucune métrique agent n’est disponible sur cette période")}</h2></div>
           ) : (
-            <div className="analytics-split">
-              <div className="agent-performance-list">
-                <div className="analytics-list-head"><span>{ui("Agent", "Agent")}</span><span>{ui("Business value", "Valeur métier")}</span><span>{ui("Engagement", "Engagement")}</span></div>
-                {payload.items.map((item, index) => (
-                  <button className={selected?.agent_name === item.agent_name ? "active" : ""} key={item.agent_name} type="button" onClick={() => setSelectedAgent(item.agent_name)}>
-                    <span className="analytics-index">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="analytics-agent-name"><strong>{LABELS[language][item.agent_name] || readableMetric(item.agent_name)}</strong><small>{item.mode === "conversion" ? ui("Conversion", "Conversion") : ui("Operations", "Pilotage")}</small></span>
-                    <span><strong>{item.mode === "conversion" ? formatMoney(item.attributed_revenue ?? item.assisted_revenue, currency) : formatMetric(item.impact_value)}</strong><small>{item.mode === "conversion" ? ui("attributed", "attribué") : readableMetric(item.impact_label)}</small></span>
-                    <span><strong>{item.open_rate === null || item.open_rate === undefined ? "—" : `${formatMetric(item.open_rate)}%`}</strong><small>{ui("open rate", "ouverture")}</small></span>
-                  </button>
-                ))}
-              </div>
+            <>
+              <AgentNetwork
+                currency={currency}
+                items={payload.items}
+                language={language}
+                onSelectAgent={setSelectedAgent}
+                selectedAgent={selectedAgent}
+                supervisorEnabled={supervisorEnabled}
+              />
+              <div className="analytics-split">
+                <div className="agent-performance-list">
+                  <div className="analytics-list-head"><span>{ui("Agent", "Agent")}</span><span>{ui("Business value", "Valeur métier")}</span><span>{ui("Engagement", "Engagement")}</span></div>
+                  {payload.items.map((item, index) => (
+                    <button className={selected?.agent_name === item.agent_name ? "active" : ""} key={item.agent_name} type="button" onClick={() => setSelectedAgent(item.agent_name)}>
+                      <span className="analytics-index">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="analytics-agent-name"><strong>{LABELS[language][item.agent_name] || readableMetric(item.agent_name)}</strong><small>{item.mode === "conversion" ? ui("Conversion", "Conversion") : ui("Operations", "Pilotage")}</small></span>
+                      <span><strong>{item.mode === "conversion" ? formatMoney(item.attributed_revenue ?? item.assisted_revenue, currency) : formatMetric(item.impact_value)}</strong><small>{item.mode === "conversion" ? ui("attributed", "attribué") : readableMetric(item.impact_label)}</small></span>
+                      <span><strong>{item.open_rate === null || item.open_rate === undefined ? "—" : `${formatMetric(item.open_rate)}%`}</strong><small>{ui("open rate", "ouverture")}</small></span>
+                    </button>
+                  ))}
+                </div>
 
-              {selected ? (
-                <aside className="analytics-inspector">
-                  <p className="eyebrow">{selected.mode === "conversion" ? ui("Conversion agent", "Agent de conversion") : ui("Operational agent", "Agent de pilotage")}</p>
-                  <h2>{LABELS[language][selected.agent_name] || readableMetric(selected.agent_name)}</h2>
-                  <code>{selected.agent_name}</code>
-                  <dl>
-                    {selected.mode === "conversion" ? (
-                      <>
-                        <div><dt>{ui("Attributed revenue", "Revenu attribué")}</dt><dd>{formatMoney(selected.attributed_revenue, currency)}</dd></div>
-                        <div><dt>{ui("Assisted revenue", "Revenu assisté")}</dt><dd>{formatMoney(selected.assisted_revenue, currency)}</dd></div>
-                        <div><dt>{ui("Estimated net profit", "Profit net estimé")}</dt><dd>{formatMoney(selected.net_profit_estimated, currency)}</dd></div>
-                        <div><dt>{ui("Click rate", "Taux de clic")}</dt><dd>{selected.click_rate === null || selected.click_rate === undefined ? "—" : `${formatMetric(selected.click_rate)}%`}</dd></div>
-                      </>
-                    ) : (
-                      <>
-                        <div><dt>{readableMetric(selected.impact_label) || ui("Impact", "Impact")}</dt><dd>{formatMetric(selected.impact_value)}{selected.impact_unit === "percent" ? "%" : ""}</dd></div>
-                        <div><dt>{readableMetric(selected.ops_label) || ui("Operations", "Opérations")}</dt><dd>{formatMetric(selected.ops_value)}{selected.ops_unit === "percent" ? "%" : ""}</dd></div>
-                      </>
-                    )}
-                  </dl>
-                  <div className="confidence-line"><span>{ui("Data confidence", "Confiance des données")}</span><strong>{selected.roi_confidence_level ? readableMetric(selected.roi_confidence_level) : ui("Operational", "Opérationnelle")}</strong></div>
-                </aside>
-              ) : null}
-            </div>
+                {selected ? (
+                  <aside className="analytics-inspector">
+                    <p className="eyebrow">{selected.mode === "conversion" ? ui("Conversion agent", "Agent de conversion") : ui("Operational agent", "Agent de pilotage")}</p>
+                    <h2>{LABELS[language][selected.agent_name] || readableMetric(selected.agent_name)}</h2>
+                    <code>{selected.agent_name}</code>
+                    <dl>
+                      {selected.mode === "conversion" ? (
+                        <>
+                          <div><dt>{ui("Attributed revenue", "Revenu attribué")}</dt><dd>{formatMoney(selected.attributed_revenue, currency)}</dd></div>
+                          <div><dt>{ui("Assisted revenue", "Revenu assisté")}</dt><dd>{formatMoney(selected.assisted_revenue, currency)}</dd></div>
+                          <div><dt>{ui("Estimated net profit", "Profit net estimé")}</dt><dd>{formatMoney(selected.net_profit_estimated, currency)}</dd></div>
+                          <div><dt>{ui("Click rate", "Taux de clic")}</dt><dd>{selected.click_rate === null || selected.click_rate === undefined ? "—" : `${formatMetric(selected.click_rate)}%`}</dd></div>
+                        </>
+                      ) : (
+                        <>
+                          <div><dt>{readableMetric(selected.impact_label) || ui("Impact", "Impact")}</dt><dd>{formatMetric(selected.impact_value)}{selected.impact_unit === "percent" ? "%" : ""}</dd></div>
+                          <div><dt>{readableMetric(selected.ops_label) || ui("Operations", "Opérations")}</dt><dd>{formatMetric(selected.ops_value)}{selected.ops_unit === "percent" ? "%" : ""}</dd></div>
+                        </>
+                      )}
+                    </dl>
+                    <div className="confidence-line"><span>{ui("Data confidence", "Confiance des données")}</span><strong>{selected.roi_confidence_level ? readableMetric(selected.roi_confidence_level) : ui("Operational", "Opérationnelle")}</strong></div>
+                  </aside>
+                ) : null}
+              </div>
+            </>
           )}
         </>
       ) : null}
