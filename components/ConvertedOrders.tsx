@@ -17,6 +17,27 @@ type ConvertedOrder = {
 };
 type ConvertedPayload = { shop: Shop; count: number; items: ConvertedOrder[]; detail?: string };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeConvertedPayload(value: unknown): ConvertedPayload | null {
+  if (!isRecord(value) || !isRecord(value.shop) || !Array.isArray(value.items)) return null;
+  const items = value.items
+    .filter(isRecord)
+    .map((item) => ({
+      ...item,
+      influence_agent_names: Array.isArray(item.influence_agent_names) ? item.influence_agent_names.map(String) : [],
+      agent_value_distribution: Array.isArray(item.agent_value_distribution) ? item.agent_value_distribution : [],
+      customer: isRecord(item.customer) ? item.customer : {},
+    })) as ConvertedOrder[];
+  return {
+    ...(value as Omit<ConvertedPayload, "items" | "count">),
+    count: typeof value.count === "number" ? value.count : items.length,
+    items,
+  };
+}
+
 const AGENT_LABELS: Record<UiLanguage, Record<string, string>> = {
   en: { abandoned_cart: "Abandoned cart recovery", contextual_product_recommendation: "Personalized recommendations", intelligent_email_marketing: "Email orchestration", customer_preference_proactive: "Proactive product advisor", upsell_cross_sell_dynamic: "Upsell and cross-sell" },
   fr: { abandoned_cart: "Relance panier abandonné", contextual_product_recommendation: "Recommandations personnalisées", intelligent_email_marketing: "Orchestration email", customer_preference_proactive: "Conseiller produit proactif", upsell_cross_sell_dynamic: "Upsell et cross-sell" },
@@ -58,11 +79,16 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
     try {
       const query = new URLSearchParams({ shop_uuid: selectedShopUuid, limit: String(limit) });
       const response = await fetch(`/api/cloud/converted-orders?${query.toString()}`, { cache: "no-store" });
-      const body = await response.json().catch(() => ({})) as ConvertedPayload;
+      const rawBody: unknown = await response.json().catch(() => ({}));
+      const body = normalizeConvertedPayload(rawBody);
       if (!response.ok) {
         if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant analytics access.", "Reconnectez cette installation une fois pour autoriser les statistiques."));
-        throw new Error(String(body?.detail || ui("Converted orders unavailable.", "Commandes converties indisponibles.")));
+        const detail = isRecord(rawBody) ? String(rawBody.detail || "") : "";
+        throw new Error(detail === "cloud_response_invalid"
+          ? ui("Cloud access is not yet open for this analytics route.", "L’accès Cloud n’est pas encore ouvert pour cette route statistique.")
+          : String(detail || ui("Converted orders unavailable.", "Commandes converties indisponibles.")));
       }
+      if (!body) throw new Error(ui("Cloud returned an invalid converted-order response.", "Le Cloud a renvoyé une réponse de commandes converties invalide."));
       setPayload(body);
       setSelectedIndex(0);
     } catch (loadError) {
@@ -110,7 +136,7 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
                   <button className={selectedIndex === index ? "active" : ""} key={`${item.order_id || item.cart_id || "conversion"}-${index}`} type="button" onClick={() => setSelectedIndex(index)}>
                     <span className="analytics-index">{String(index + 1).padStart(2, "0")}</span>
                     <span><strong>{item.order_id || ui("Order without reference", "Commande sans référence")}</strong><small>{formatDate(item.converted_at)}</small></span>
-                    <span><strong>{item.customer.display_name || ui("Customer", "Client")}</strong><small>{item.customer.email_masked || ui("Protected", "Protégé")}</small></span>
+                    <span><strong>{ui("Protected customer", "Client protégé")}</strong><small>{item.customer.email_masked || ui("Protected", "Protégé")}</small></span>
                     <span><strong>{formatMoney(item.order_total, currency)}</strong><small>{AGENT_LABELS[language][String(item.attribution_agent_name || "")] || readable(item.attribution_agent_name)}</small></span>
                   </button>
                 ))}
@@ -123,7 +149,7 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
                   <time>{formatDate(selected.converted_at)}</time>
                   <strong className="conversion-value">{formatMoney(selected.order_total, currency)}</strong>
                   <dl>
-                    <div><dt>{ui("Customer", "Client")}</dt><dd>{selected.customer.display_name || "—"}<small>{selected.customer.email_masked || ui("Contact protected", "Contact protégé")}</small></dd></div>
+                    <div><dt>{ui("Customer", "Client")}</dt><dd>{ui("Protected customer", "Client protégé")}<small>{selected.customer.email_masked || ui("Contact protected", "Contact protégé")}</small></dd></div>
                     <div><dt>{ui("Cart reference", "Référence panier")}</dt><dd>{selected.cart_id || "—"}</dd></div>
                     <div><dt>{ui("Primary attribution", "Attribution principale")}</dt><dd>{AGENT_LABELS[language][String(selected.attribution_agent_name || "")] || readable(selected.attribution_agent_name) || "—"}</dd></div>
                   </dl>

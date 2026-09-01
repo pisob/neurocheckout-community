@@ -44,6 +44,20 @@ type PerformancePayload = {
   detail?: string;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizePerformancePayload(value: unknown): PerformancePayload | null {
+  if (!isRecord(value) || !isRecord(value.shop) || !isRecord(value.period) || !isRecord(value.summary) || !Array.isArray(value.items)) {
+    return null;
+  }
+  const items = value.items.filter(
+    (item): item is PerformanceItem => isRecord(item) && typeof item.agent_name === "string",
+  );
+  return { ...value, items } as PerformancePayload;
+}
+
 const LABELS: Record<UiLanguage, Record<string, string>> = {
   en: {
     abandoned_cart: "Abandoned cart recovery",
@@ -117,11 +131,16 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
     try {
       const query = new URLSearchParams({ shop_uuid: selectedShopUuid, days: String(days) });
       const response = await fetch(`/api/cloud/agent-performance?${query.toString()}`, { cache: "no-store" });
-      const body = await response.json().catch(() => ({})) as PerformancePayload;
+      const rawBody: unknown = await response.json().catch(() => ({}));
+      const body = normalizePerformancePayload(rawBody);
       if (!response.ok) {
         if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant analytics access.", "Reconnectez cette installation une fois pour autoriser les statistiques."));
-        throw new Error(String(body?.detail || ui("Performance unavailable.", "Performances indisponibles.")));
+        const detail = isRecord(rawBody) ? String(rawBody.detail || "") : "";
+        throw new Error(detail === "cloud_response_invalid"
+          ? ui("Cloud access is not yet open for this analytics route.", "L’accès Cloud n’est pas encore ouvert pour cette route statistique.")
+          : String(detail || ui("Performance unavailable.", "Performances indisponibles.")));
       }
+      if (!body) throw new Error(ui("Cloud returned an invalid performance response.", "Le Cloud a renvoyé une réponse de performance invalide."));
       setPayload(body);
       setSelectedAgent((current) => body.items.some((item) => item.agent_name === current) ? current : body.items[0]?.agent_name || "");
     } catch (loadError) {

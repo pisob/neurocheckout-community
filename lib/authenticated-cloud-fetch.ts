@@ -50,7 +50,30 @@ export async function authenticatedCloudFetch(
       refreshed = true;
       cloudResponse = await send(session.access_token);
     }
-    const payload = await cloudResponse.json().catch(() => ({ detail: "cloud_response_invalid" }));
+    if (cloudResponse.status === 204) {
+      const response = new NextResponse(null, { status: 204 });
+      if (refreshed) response.cookies.set(COMMUNITY_SESSION_COOKIE, sealSession(session), sessionCookieOptions());
+      return response;
+    }
+
+    const contentType = String(cloudResponse.headers.get("content-type") || "").toLowerCase();
+    const responseText = await cloudResponse.text();
+    let payload: unknown;
+    try {
+      payload = JSON.parse(responseText);
+    } catch {
+      payload = null;
+    }
+
+    if (!contentType.includes("application/json") || payload === null) {
+      const response = NextResponse.json(
+        { detail: "cloud_response_invalid" },
+        { status: 502 },
+      );
+      if (refreshed) response.cookies.set(COMMUNITY_SESSION_COOKIE, sealSession(session), sessionCookieOptions());
+      return response;
+    }
+
     const response = NextResponse.json(payload, { status: cloudResponse.status });
     if (refreshed) response.cookies.set(COMMUNITY_SESSION_COOKIE, sealSession(session), sessionCookieOptions());
     if (cloudResponse.status === 401) response.cookies.delete(COMMUNITY_SESSION_COOKIE);
