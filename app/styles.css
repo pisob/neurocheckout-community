@@ -245,6 +245,7 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .community-network-path { fill: none; stroke: url(#community-path-blue); stroke-linecap: round; stroke-width: 1.2; opacity: .7; filter: drop-shadow(0 0 4px rgb(46 176 255 / 34%)); }
 .community-network-path.path-shadow { stroke: rgb(40 119 243 / 9%); stroke-width: 6; filter: blur(6px); }
 .community-network-flow-dot { filter: drop-shadow(0 0 8px currentColor); }
+.community-network-flow-dot.return-signal { filter: drop-shadow(0 0 6px rgb(156 207 255 / 58%)); }
 .community-supervisor-core { position: absolute; z-index: 3; top: 50%; left: 24%; display: grid; width: 148px; height: 148px; place-items: center; align-content: center; border: 1px solid rgb(98 200 255 / 58%); background: linear-gradient(145deg, #154c7c, #071d31 68%); box-shadow: inset 0 0 34px rgb(36 110 240 / 26%), 0 0 0 10px rgb(40 119 243 / 5%), 0 0 48px rgb(35 150 255 / 26%); clip-path: polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0 50%); transform: translate(-50%, -50%); animation: network-core-breathe 10s ease-in-out infinite; }
 .community-supervisor-core::before, .community-supervisor-core::after { position: absolute; content: ""; }
 .community-supervisor-core::before { inset: 11px; border: 1px solid rgb(98 200 255 / 16%); clip-path: inherit; }

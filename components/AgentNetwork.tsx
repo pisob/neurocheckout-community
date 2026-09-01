@@ -52,6 +52,16 @@ const PATHS = [
 ];
 
 const DURATIONS = ["32s", "37s", "29s", "35s", "38s", "33s", "36s"];
+const RETURN_PATHS = [
+  "M570 105 C388 105 352 300 240 300",
+  "M800 105 C520 105 388 300 240 300",
+  "M570 260 C410 260 365 300 240 300",
+  "M800 260 C554 260 410 300 240 300",
+  "M570 415 C410 415 365 300 240 300",
+  "M800 415 C554 415 410 300 240 300",
+  "M685 522 C475 522 405 300 240 300",
+];
+const RETURN_DURATIONS = ["38s", "34s", "40s", "37s", "35s", "41s", "39s"];
 
 const LABELS: Record<UiLanguage, Record<string, string>> = {
   en: {
@@ -134,6 +144,10 @@ export default function AgentNetwork({
               <path className="community-network-path" d={path} pathLength="1" />
               <circle className="community-network-flow-dot" r="4.4" fill={index === 4 ? "#44e3a9" : index === 5 ? "#ffd15b" : "#61d7ff"}>
                 <animateMotion begin={`${index * -4.7}s`} dur={DURATIONS[index]} repeatCount="indefinite" path={path} />
+              </circle>
+              <circle className="community-network-flow-dot return-signal" r="3.2" fill="#9ccfff">
+                <animate attributeName="opacity" dur={RETURN_DURATIONS[index]} keyTimes="0;0.16;0.78;1" repeatCount="indefinite" values="0;0.58;0.58;0" />
+                <animateMotion begin={`${-8 - index * 3.9}s`} dur={RETURN_DURATIONS[index]} repeatCount="indefinite" path={RETURN_PATHS[index]} />
               </circle>
             </g>
           ))}
