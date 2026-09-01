@@ -88,12 +88,6 @@ function formatMoney(value: number | null | undefined, currency?: string | null)
   return formatMetric(value, 2);
 }
 
-function impact(item: NetworkAgent, currency?: string | null): string {
-  if (item.mode === "conversion") return formatMoney(item.attributed_revenue ?? item.assisted_revenue, currency);
-  const suffix = item.impact_unit === "percent" ? "%" : "";
-  return `${formatMetric(item.impact_value)}${suffix}`;
-}
-
 export default function AgentNetwork({
   items,
   language,
@@ -173,10 +167,12 @@ export default function AgentNetwork({
                 <small>{LABELS[language][agent.name]}</small>
                 <em><i />{ui("Active", "Actif")}</em>
               </span>
-              <span className="community-agent-impact">
-                <small>{item.mode === "conversion" ? ui("Revenue impact", "Impact revenu") : ui("Operational impact", "Impact opérationnel")}</small>
-                <strong>{impact(item, currency)}</strong>
-              </span>
+              {item.mode === "conversion" ? (
+                <span className="community-agent-impact">
+                  <small>{ui("Revenue impact", "Impact revenu")}</small>
+                  <strong>{formatMoney(item.attributed_revenue ?? item.assisted_revenue, currency)}</strong>
+                </span>
+              ) : null}
             </button>
           );
         })}
