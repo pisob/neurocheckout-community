@@ -32,26 +32,26 @@ type AgentDefinition = {
 };
 
 const AGENTS: AgentDefinition[] = [
-  { name: "business_alerts_anomalies", code: "B-A-A", avatar: "/agents/aba-avatar.webp", index: "07", left: "19%", top: "19%" },
-  { name: "customer_preference_proactive", code: "P-A-D", avatar: "/agents/rpc-avatar.webp", index: "01", left: "50%", top: "24%" },
-  { name: "abandoned_cart", code: "A-C-R", avatar: "/agents/pai-avatar.webp", index: "02", left: "80%", top: "20%" },
-  { name: "contextual_product_recommendation", code: "P-P-R", avatar: "/agents/rpc-avatar.webp", index: "03", left: "86%", top: "51%" },
-  { name: "upsell_cross_sell_dynamic", code: "U-C-D", avatar: "/agents/ucd-avatar.webp", index: "04", left: "73%", top: "75%" },
-  { name: "automatic_customer_segmentation", code: "A-C-S", avatar: "/agents/sca-avatar.webp", index: "05", left: "31%", top: "74%" },
-  { name: "intelligent_email_marketing", code: "E-M-O", avatar: "/agents/emi-avatar.webp", index: "06", left: "12%", top: "52%" },
+  { name: "business_alerts_anomalies", code: "B-A-A", avatar: "/agents/aba-avatar.webp", index: "07", left: "57%", top: "17.5%" },
+  { name: "customer_preference_proactive", code: "P-A-D", avatar: "/agents/rpc-avatar.webp", index: "01", left: "80%", top: "17.5%" },
+  { name: "abandoned_cart", code: "A-C-R", avatar: "/agents/pai-avatar.webp", index: "02", left: "57%", top: "43.5%" },
+  { name: "contextual_product_recommendation", code: "P-P-R", avatar: "/agents/rpc-avatar.webp", index: "03", left: "80%", top: "43.5%" },
+  { name: "upsell_cross_sell_dynamic", code: "U-C-D", avatar: "/agents/ucd-avatar.webp", index: "04", left: "57%", top: "69.5%" },
+  { name: "automatic_customer_segmentation", code: "A-C-S", avatar: "/agents/sca-avatar.webp", index: "05", left: "80%", top: "69.5%" },
+  { name: "intelligent_email_marketing", code: "E-M-O", avatar: "/agents/emi-avatar.webp", index: "06", left: "68.5%", top: "87%" },
 ];
 
 const PATHS = [
-  "M500 304 C420 246 358 184 240 146",
-  "M500 304 C500 230 503 122 503 58",
-  "M500 304 C608 235 684 158 785 146",
-  "M500 304 C627 308 746 296 858 302",
-  "M500 304 C592 376 646 434 721 468",
-  "M500 304 C417 391 374 445 309 477",
-  "M500 304 C376 306 259 311 125 318",
+  "M240 300 C352 300 388 105 570 105",
+  "M240 300 C388 300 520 105 800 105",
+  "M240 300 C365 300 410 260 570 260",
+  "M240 300 C410 300 554 260 800 260",
+  "M240 300 C365 300 410 415 570 415",
+  "M240 300 C410 300 554 415 800 415",
+  "M240 300 C405 300 475 522 685 522",
 ];
 
-const DURATIONS = ["10.8s", "12.4s", "9.6s", "13.2s", "11.4s", "14.8s", "12.9s"];
+const DURATIONS = ["32s", "37s", "29s", "35s", "38s", "33s", "36s"];
 
 const LABELS: Record<UiLanguage, Record<string, string>> = {
   en: {
@@ -105,7 +105,7 @@ export default function AgentNetwork({
       <header className="community-network-header">
         <div>
           <p>{ui("Live orchestration map", "Carte d’orchestration active")}</p>
-          <h2>{ui(`Neural network · ${visibleAgents.length} active agents`, `Réseau neuronal · ${visibleAgents.length} agents actifs`)}</h2>
+          <h2>{ui(`Neural coordination · ${visibleAgents.length} active agents`, `Coordination neuronale · ${visibleAgents.length} agents actifs`)}</h2>
         </div>
         <span className="community-network-status"><i />{ui("Cloud coordinated", "Coordonné par le Cloud")}</span>
       </header>
@@ -125,15 +125,15 @@ export default function AgentNetwork({
               <stop offset="1" stopColor="#2877f3" stopOpacity=".15" />
             </linearGradient>
           </defs>
-          <circle cx="500" cy="304" r="182" fill="url(#community-core-glow)" opacity=".42" />
-          <circle className="community-network-orbit" cx="500" cy="304" r="126" />
-          <circle className="community-network-orbit orbit-secondary" cx="500" cy="304" r="190" />
+          <circle cx="240" cy="300" r="190" fill="url(#community-core-glow)" opacity=".32" />
+          <path className="community-network-spine" d="M430 72 L430 528" />
+          {[105, 260, 415, 522].map((cy) => <circle className="community-network-spine-node" cx="430" cy={cy} key={cy} r="3.5" />)}
           {PATHS.map((path, index) => (
             <g key={path}>
               <path className="community-network-path path-shadow" d={path} />
               <path className="community-network-path" d={path} pathLength="1" />
               <circle className="community-network-flow-dot" r="4.4" fill={index === 4 ? "#44e3a9" : index === 5 ? "#ffd15b" : "#61d7ff"}>
-                <animateMotion dur={DURATIONS[index]} repeatCount="indefinite" path={path} />
+                <animateMotion begin={`${index * -4.7}s`} dur={DURATIONS[index]} repeatCount="indefinite" path={path} />
               </circle>
             </g>
           ))}
