@@ -53,6 +53,10 @@ h1 { margin: 7px 0 0; font-size: clamp(28px, 3vw, 42px); line-height: 1.04; lett
 h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; letter-spacing: -.03em; }
 .view-description { max-width: 650px; margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .topbar-actions { display: flex; align-items: center; gap: 12px; padding-top: 4px; }
+.language-switch { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; padding: 2px; background: var(--surface-soft); }
+.language-switch button { min-width: 34px; border: 0; border-radius: 5px; background: transparent; padding: 7px 8px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; transition: background .18s ease, color .18s ease; }
+.language-switch button:hover { color: white; }
+.language-switch button.active { background: var(--blue); color: white; box-shadow: 0 5px 16px rgb(40 119 243 / 20%); }
 .cloud-status { display: inline-flex; align-items: center; gap: 8px; color: var(--muted-strong); font-size: 11px; white-space: nowrap; }
 .cloud-status .status-dot, .status-pill .status-dot { margin: 0; }
 

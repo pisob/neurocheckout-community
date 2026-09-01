@@ -6,6 +6,8 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ### Changed
 
+- Make English the default Community interface language, with an EN/FR switch
+  that remembers the operator's explicit choice independently from email language.
 - Default new email editorial profiles to English and allow merchants to add
   missing locale codes that remain available in the language selector.
 - Replace the single-template email editor with controlled brand and editorial
