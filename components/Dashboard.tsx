@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import CloudConfiguration from "@/components/CloudConfiguration";
+import EmailApprovals from "@/components/EmailApprovals";
+import MemberMessages from "@/components/MemberMessages";
 import { useUiLanguage, type UiLanguage } from "@/lib/ui-language";
 
 type Capabilities = {
@@ -49,7 +51,7 @@ type Capabilities = {
   };
 };
 
-type DashboardView = "overview" | "agents" | "usage" | "features" | "configuration";
+type DashboardView = "overview" | "agents" | "usage" | "email-approvals" | "messages" | "features" | "configuration";
 
 type ViewCopy = Record<DashboardView, { label: string; eyebrow: string; title: string; description: string }>;
 
@@ -58,6 +60,8 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
     overview: { label: "Overview", eyebrow: "Operations center", title: "Installation status", description: "Quotas, agents and Cloud access in one control view." },
     agents: { label: "Agents", eyebrow: "Shared orchestration", title: "Available agents", description: "Active roles cooperate in the Cloud to make every decision more reliable." },
     usage: { label: "Usage", eyebrow: "Community capacity", title: "Quotas and usage", description: "Track your email window and the limits applied by your plan." },
+    "email-approvals": { label: "Email approvals", eyebrow: "Delivery control", title: "Emails to approve", description: "Review manual-approval emails before NeuroCheckout Cloud sends them." },
+    messages: { label: "Messages", eyebrow: "Account notices", title: "Member messages", description: "Read quota, account and service notices issued for your workspace." },
     features: { label: "Features", eyebrow: "Cloud-calculated access", title: "Available features", description: "Access is recalculated server-side whenever your plan changes." },
     configuration: { label: "Configuration", eyebrow: "Controlled customization", title: "Store, email and connector", description: "Configure only the tool you need from a focused workspace." },
   },
@@ -65,6 +69,8 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
     overview: { label: "Vue d’ensemble", eyebrow: "Centre opérationnel", title: "État de votre installation", description: "Quotas, agents et accès Cloud réunis dans une vue de contrôle." },
     agents: { label: "Agents", eyebrow: "Orchestration partagée", title: "Agents disponibles", description: "Les rôles actifs coopèrent dans le Cloud pour fiabiliser chaque décision." },
     usage: { label: "Utilisation", eyebrow: "Capacité Community", title: "Quotas et consommation", description: "Suivez la fenêtre email et les limites appliquées par votre offre." },
+    "email-approvals": { label: "Validations email", eyebrow: "Contrôle des envois", title: "Emails à approuver", description: "Vérifiez les emails en validation manuelle avant leur envoi par NeuroCheckout Cloud." },
+    messages: { label: "Messages", eyebrow: "Notifications du compte", title: "Messages membre", description: "Consultez les alertes de quota, de compte et de service de votre espace." },
     features: { label: "Fonctionnalités", eyebrow: "Droits calculés par le Cloud", title: "Fonctionnalités disponibles", description: "Les accès sont recalculés côté serveur à chaque changement d’offre." },
     configuration: { label: "Configuration", eyebrow: "Personnalisation contrôlée", title: "Boutique, emails et connecteur", description: "Configurez uniquement l’outil dont vous avez besoin, sans parcourir une longue page." },
   },
@@ -189,6 +195,20 @@ export default function Dashboard() {
     ? [SUPERVISOR_AGENT, ...specializedAgents]
     : specializedAgents;
   const activeAgentCount = capabilities?.agents.active_count ?? visibleAgents.length;
+  const navigationViews = (Object.keys(VIEW_COPY.en) as DashboardView[]).filter((view) => {
+    if (!capabilities) return view === "overview";
+    if (view === "email-approvals") return capabilities.features.email_approvals === true;
+    if (view === "messages") return capabilities.features.member_messages === true;
+    return capabilities.features.member_dashboard !== false;
+  });
+
+  useEffect(() => {
+    if ((status === "disconnected" || status === "error") && activeView !== "overview") {
+      selectView("overview");
+      return;
+    }
+    if (capabilities && !navigationViews.includes(activeView)) selectView("overview");
+  }, [activeView, capabilities, status]);
 
   const upgradeAction = capabilities?.upgrade.available ? (
     <a className="button secondary-blue" href="/api/upgrade" target="_blank" rel="noreferrer">
@@ -211,7 +231,7 @@ export default function Dashboard() {
         </div>
 
         <nav aria-label={ui("Main navigation", "Navigation principale")}>
-          {(Object.keys(VIEW_COPY.en) as DashboardView[]).map((view, index) => (
+          {navigationViews.map((view, index) => (
             <button
               className={`nav-link${activeView === view ? " active" : ""}`}
               key={view}
@@ -383,6 +403,14 @@ export default function Dashboard() {
                 </div>
                 {capabilities.upgrade.available ? <div className="usage-upgrade"><p>{ui("Higher limits are activated automatically after subscription.", "Les limites supérieures sont activées automatiquement après souscription.")}</p>{upgradeAction}</div> : null}
               </section>
+            ) : null}
+
+            {activeView === "email-approvals" && capabilities.features.email_approvals ? (
+              <EmailApprovals language={language} />
+            ) : null}
+
+            {activeView === "messages" && capabilities.features.member_messages ? (
+              <MemberMessages language={language} />
             ) : null}
 
             {activeView === "features" ? (
