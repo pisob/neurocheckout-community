@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     authorizationUrl.searchParams.set("code_challenge_method", "S256");
     authorizationUrl.searchParams.set(
       "scope",
-      "openid profile capabilities:read account:read shops:read shops:write templates:read templates:write byok:read byok:write connectors:write emails:read emails:write analytics:read",
+      "openid profile capabilities:read account:read shops:read shops:write templates:read templates:write byok:read byok:write connectors:write emails:read emails:write analytics:read analytics:write",
     );
     authorizationUrl.searchParams.set("state", state);
 

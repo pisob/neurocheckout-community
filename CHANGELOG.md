@@ -21,6 +21,8 @@ All notable changes to NeuroCheckout Community are documented in this file.
   dedicated tools with responsive navigation and reduced-motion support.
 - Display Supervisor as the coordination layer above the seven currently
   enabled specialist agents, while respecting Cloud runtime kill switches.
+- Add Cloud-synchronized optimization recommendations and a scoped Supervisor
+  automation control to the agent-performance workspace.
 - Use the official NeuroCheckout neural-node logo in the Community navigation
   and browser icon.
 - Add a production-oriented Docker Compose quick start, official Cloud endpoint

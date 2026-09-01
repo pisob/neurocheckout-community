@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AgentNetwork from "@/components/AgentNetwork";
+import OptimizationRecommendations from "@/components/OptimizationRecommendations";
 import type { UiLanguage } from "@/lib/ui-language";
 
 type Shop = {
@@ -206,6 +207,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
                 selectedAgent={selectedAgent}
                 supervisorEnabled={supervisorEnabled}
               />
+              <OptimizationRecommendations days={days} language={language} shopUuid={selectedShopUuid} />
               <div className="analytics-split">
                 <div className="agent-performance-list">
                   <div className="analytics-list-head"><span>{ui("Agent", "Agent")}</span><span>{ui("Business value", "Valeur métier")}</span><span>{ui("Engagement", "Engagement")}</span></div>
