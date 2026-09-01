@@ -164,8 +164,8 @@ npm run doctor
 2. Review and authorize the requested scopes in NeuroCheckout Cloud.
 3. Confirm that the overview shows the Cloud plan, quota, Supervisor and seven
    enabled specialist agents.
-4. Create a test shop, save an email-template draft and verify that no customer
-   data is stored by the Community process.
+4. Create a test shop, configure its editorial email rules and generate a
+   preview with a shop-owned OpenAI key. A preview never sends a customer email.
 
 The contextual support agent is intentionally not displayed while its
 per-store personalization remains disabled.

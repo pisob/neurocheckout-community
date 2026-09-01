@@ -6,6 +6,9 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ### Changed
 
+- Replace the single-template email editor with controlled brand and editorial
+  rules and a three-direction preview powered by the shop's encrypted OpenAI
+  key. Cloud orchestration details remain private.
 - Reworked the dashboard into five focused operational views instead of one
   continuous page.
 - Aligned the complete interface with the NeuroCheckout dark-blue visual

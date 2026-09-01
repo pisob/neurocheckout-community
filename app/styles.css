@@ -214,6 +214,27 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .empty-tool h2 { margin-top: 9px; }
 .empty-tool > p:not(.eyebrow) { max-width: 430px; margin: 13px 0 20px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 
+.email-control-panel { padding: 30px 0 10px; }
+.email-control-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; padding-bottom: 26px; }
+.email-control-intro > div:first-child { max-width: 690px; }
+.email-control-intro h2 { margin-top: 9px; }
+.email-control-intro p:not(.eyebrow) { margin: 13px 0 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.email-rules-layout { display: grid; grid-template-columns: minmax(230px, .64fr) minmax(0, 1.35fr); gap: clamp(28px, 5vw, 70px); padding: 32px 0; }
+.email-rules-copy h3, .email-preview-section h3 { margin: 9px 0 0; font-size: 22px; letter-spacing: -.025em; }
+.email-rules-copy > p:not(.eyebrow) { margin: 13px 0 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+.privacy-note { display: grid; gap: 7px; margin-top: 28px; border-left: 2px solid var(--blue); padding: 4px 0 4px 14px; }
+.privacy-note strong { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.privacy-note span { color: var(--muted); font-size: 10px; line-height: 1.55; }
+.email-rules-form { gap: 15px; }
+.inline-link { width: max-content; border: 0; background: transparent; padding: 2px 0; color: var(--cyan); font-size: 10px; font-weight: 700; }
+.email-preview-section { display: grid; grid-template-columns: minmax(210px, .45fr) minmax(0, 1.55fr); gap: 36px; border-top: 1px solid var(--line); padding: 30px 0 8px; }
+.email-preview-list { border-top: 1px solid var(--line); }
+.email-preview-list article { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 13px; border-bottom: 1px solid var(--line); padding: 17px 0; }
+.email-preview-list article > span { color: var(--cyan); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; }
+.email-preview-list strong { font-size: 12px; }
+.email-preview-list p { margin: 8px 0 0; color: var(--muted-strong); font-size: 10px; line-height: 1.6; white-space: pre-line; }
+.email-preview-list small { display: block; margin-top: 10px; color: #6787a0; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
+
 @media (max-width: 1080px) {
   .agent-matrix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .agent-cell:nth-child(-n + 4) { border-top: 0; }
@@ -246,6 +267,9 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
   .shop-selector select { width: 100%; }
   .configuration-block { grid-template-columns: 1fr; gap: 22px; }
   .configuration-form { border-top: 1px solid var(--line); border-left: 0; padding-top: 22px; padding-left: 0; }
+  .email-control-intro { align-items: flex-start; flex-direction: column; }
+  .email-rules-layout, .email-preview-section { grid-template-columns: 1fr; gap: 22px; }
+  .email-rules-form { border-top: 1px solid var(--line); padding-top: 22px; }
 }
 
 @media (max-width: 520px) {

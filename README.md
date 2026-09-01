@@ -112,10 +112,24 @@ existing installation after a release adds a new scope.
 - Supervisor coordination and seven currently enabled specialist agents;
 - version compatibility and mandatory-update signal;
 - Cloud-authorized shop creation with sender identity, brand logo and approval mode;
-- per-shop sanitized, versioned email templates with publish and rollback;
+- per-shop brand and editorial rules for AI-assisted email generation;
+- three AI-assisted previews for reviewing the configured editorial direction;
 - encrypted OpenAI BYOK configuration; raw keys never return to this app;
 - per-shop connector-key creation or rotation with explicit DPA acceptance;
 - seamless paid upgrade while continuing to use this same interface.
+
+## Configure your email style
+
+Community does not ask the merchant to write one fixed abandoned-cart or
+recommendation email. In **Configuration → Emails**, the merchant defines a
+reusable editorial frame: language, tone, formal or informal address, length,
+discount policy, approval mode, required or forbidden expressions, and an
+optional signature.
+
+With a personal OpenAI key configured for the shop, the dashboard can produce
+three previews so the merchant can review the selected direction. A preview
+does not send a customer email. Email orchestration and delivery decisions stay
+inside NeuroCheckout Cloud and are not part of this public repository.
 
 ## Security boundary
 

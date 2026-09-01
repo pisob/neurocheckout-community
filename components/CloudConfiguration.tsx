@@ -11,22 +11,44 @@ type Shop = {
   has_active_api_key?: boolean;
 };
 
-type Template = {
-  id: string;
-  template_key: string;
-  locale: string;
-  version: number;
-  status: "draft" | "published" | "archived";
-  subject_template: string;
-  body_text_template: string;
-};
-
 type ByokStatus = {
   configured?: boolean;
   provider?: string;
   key_last4?: string | null;
   test_status?: string | null;
   mode_choice?: string | null;
+};
+
+type EmailProfile = {
+  locale: string;
+  tone: "friendly" | "premium" | "minimal" | "urgent";
+  address_style: "neutral" | "formal" | "informal";
+  message_length: "short" | "standard";
+  discount_policy: "never" | "confirmed_only";
+  approval_mode: "automatic" | "manual";
+  required_terms: string[];
+  forbidden_terms: string[];
+  signature: string;
+};
+
+type EmailPreview = {
+  subject: string;
+  body_text: string;
+  primary_cta: string;
+  tone: string;
+  urgency: string;
+};
+
+const DEFAULT_EMAIL_PROFILE: EmailProfile = {
+  locale: "fr",
+  tone: "friendly",
+  address_style: "neutral",
+  message_length: "standard",
+  discount_policy: "confirmed_only",
+  approval_mode: "automatic",
+  required_terms: [],
+  forbidden_terms: [],
+  signature: "",
 };
 
 type Platform = {
@@ -53,13 +75,12 @@ export default function CloudConfiguration() {
   const [shops, setShops] = useState<Shop[]>([]);
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [selectedShopUuid, setSelectedShopUuid] = useState("");
-  const [templates, setTemplates] = useState<Template[]>([]);
   const [byok, setByok] = useState<ByokStatus | null>(null);
   const [templateKey, setTemplateKey] = useState("abandoned_cart");
-  const [locale, setLocale] = useState("fr");
-  const [subject, setSubject] = useState("Votre panier vous attend chez {{ shop_name }}");
-  const [bodyText, setBodyText] = useState("Bonjour {{ customer_first_name }}, votre sélection est toujours disponible. {{ cta_url }}");
-  const [bodyHtml, setBodyHtml] = useState("<p>Bonjour <strong>{{ customer_first_name }}</strong>,</p><p>Votre sélection est toujours disponible.</p><p><a href=\"{{ cta_url }}\">{{ cta_label }}</a></p>");
+  const [emailProfile, setEmailProfile] = useState<EmailProfile>(DEFAULT_EMAIL_PROFILE);
+  const [requiredTermsInput, setRequiredTermsInput] = useState("");
+  const [forbiddenTermsInput, setForbiddenTermsInput] = useState("");
+  const [previews, setPreviews] = useState<EmailPreview[]>([]);
   const [apiKey, setApiKey] = useState("");
   const [connectorKey, setConnectorKey] = useState<string | null>(null);
   const [dpaAccepted, setDpaAccepted] = useState(false);
@@ -84,6 +105,12 @@ export default function CloudConfiguration() {
 
   const readJson = async (response: Response) => response.json().catch(() => ({}));
 
+  const terms = (value: string) => value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+
   const loadShops = async () => {
     setError(null);
     const [response, platformResponse] = await Promise.all([
@@ -106,15 +133,18 @@ export default function CloudConfiguration() {
   const loadShopConfiguration = async (uuid: string) => {
     if (!uuid) return;
     setError(null);
-    const [templateResponse, byokResponse] = await Promise.all([
-      fetch(`/api/cloud/templates?shop_uuid=${encodeURIComponent(uuid)}`, { cache: "no-store" }),
+    const [profileResponse, byokResponse] = await Promise.all([
+      fetch(`/api/cloud/email-profile?shop_uuid=${encodeURIComponent(uuid)}&locale=${encodeURIComponent(emailProfile.locale)}`, { cache: "no-store" }),
       fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(uuid)}&provider=openai`, { cache: "no-store" }),
     ]);
-    const templatePayload = (await readJson(templateResponse)) as { items?: Template[] };
+    const profilePayload = (await readJson(profileResponse)) as { item?: EmailProfile };
     const byokPayload = (await readJson(byokResponse)) as ByokStatus;
-    if (!templateResponse.ok) throw new Error(detail(templatePayload, "Templates indisponibles"));
+    if (!profileResponse.ok || !profilePayload.item) throw new Error(detail(profilePayload, "Réglages email indisponibles"));
     if (!byokResponse.ok) throw new Error(detail(byokPayload, "Statut BYOK indisponible"));
-    setTemplates(Array.isArray(templatePayload.items) ? templatePayload.items : []);
+    setEmailProfile(profilePayload.item);
+    setRequiredTermsInput((profilePayload.item.required_terms || []).join(", "));
+    setForbiddenTermsInput((profilePayload.item.forbidden_terms || []).join(", "));
+    setPreviews([]);
     setByok(byokPayload);
   };
 
@@ -126,45 +156,64 @@ export default function CloudConfiguration() {
     void loadShopConfiguration(selectedShopUuid).catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Configuration indisponible"));
   }, [selectedShopUuid]);
 
-  const createDraft = async () => {
-    setBusy("template");
+  const saveEmailProfile = async () => {
+    setBusy("email-profile");
     setError(null);
     setNotice(null);
     try {
-      const response = await fetch("/api/cloud/templates", {
-        method: "POST",
+      const response = await fetch(`/api/cloud/email-profile?shop_uuid=${encodeURIComponent(selectedShopUuid)}&locale=${encodeURIComponent(emailProfile.locale)}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          shop_uuid: selectedShopUuid,
-          template_key: templateKey,
-          locale,
-          subject_template: subject,
-          body_text_template: bodyText,
-          body_html_template: bodyHtml,
+          ...emailProfile,
+          required_terms: terms(requiredTermsInput),
+          forbidden_terms: terms(forbiddenTermsInput),
         }),
       });
-      const payload = (await readJson(response)) as { item?: Template };
-      if (!response.ok || !payload.item) throw new Error(detail(payload, "Brouillon refusé"));
-      setTemplates((current) => [payload.item as Template, ...current]);
-      setNotice(`Brouillon v${payload.item.version} créé. Publiez-le pour l’utiliser lors des prochains envois.`);
+      const payload = (await readJson(response)) as { item?: EmailProfile };
+      if (!response.ok || !payload.item) throw new Error(detail(payload, "Réglages refusés"));
+      setEmailProfile(payload.item);
+      setRequiredTermsInput(payload.item.required_terms.join(", "));
+      setForbiddenTermsInput(payload.item.forbidden_terms.join(", "));
+      setPreviews([]);
+      setNotice("Règles éditoriales enregistrées pour cette boutique.");
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Brouillon refusé");
+      setError(saveError instanceof Error ? saveError.message : "Réglages refusés");
     } finally {
       setBusy(null);
     }
   };
 
-  const publish = async (template: Template, action: "publish" | "rollback") => {
-    setBusy(template.id);
+  const generatePreview = async () => {
+    setBusy("email-preview");
     setError(null);
+    setNotice(null);
     try {
-      const response = await fetch(`/api/cloud/templates/${encodeURIComponent(template.id)}/${action}`, { method: "POST" });
-      const payload = (await readJson(response)) as { item?: Template };
-      if (!response.ok || !payload.item) throw new Error(detail(payload, "Publication refusée"));
-      await loadShopConfiguration(selectedShopUuid);
-      setNotice(action === "publish" ? `Version ${payload.item.version} publiée.` : `Retour arrière publié en version ${payload.item.version}.`);
-    } catch (publishError) {
-      setError(publishError instanceof Error ? publishError.message : "Publication refusée");
+      const profileResponse = await fetch(`/api/cloud/email-profile?shop_uuid=${encodeURIComponent(selectedShopUuid)}&locale=${encodeURIComponent(emailProfile.locale)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...emailProfile,
+          required_terms: terms(requiredTermsInput),
+          forbidden_terms: terms(forbiddenTermsInput),
+        }),
+      });
+      const profilePayload = (await readJson(profileResponse)) as { item?: EmailProfile };
+      if (!profileResponse.ok || !profilePayload.item) throw new Error(detail(profilePayload, "Réglages refusés"));
+      setEmailProfile(profilePayload.item);
+      setRequiredTermsInput(profilePayload.item.required_terms.join(", "));
+      setForbiddenTermsInput(profilePayload.item.forbidden_terms.join(", "));
+      const response = await fetch(`/api/cloud/email-preview?shop_uuid=${encodeURIComponent(selectedShopUuid)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template_key: templateKey, locale: emailProfile.locale }),
+      });
+      const payload = (await readJson(response)) as { items?: EmailPreview[] };
+      if (!response.ok || !Array.isArray(payload.items)) throw new Error(detail(payload, "Prévisualisation indisponible"));
+      setPreviews(payload.items);
+      setNotice("Règles enregistrées. Les aperçus sont uniquement destinés à votre validation et aucun email client n’a été envoyé.");
+    } catch (previewError) {
+      setError(previewError instanceof Error ? previewError.message : "Prévisualisation indisponible");
     } finally {
       setBusy(null);
     }
@@ -329,19 +378,27 @@ export default function CloudConfiguration() {
       ) : null}
 
       {activeTool === "email" && selectedShop ? (
-        <article className="configuration-block tool-panel">
-          <div className="configuration-copy"><p className="eyebrow">Emails</p><h2>Template versionné</h2><p>Le Cloud nettoie le HTML, contrôle les variables et conserve l’historique. Seule une version publiée est utilisée.</p><div className="version-summary"><strong>{templates.length}</strong><span>versions enregistrées</span></div></div>
-          <div className="configuration-form">
-            <div className="form-row"><label>Automatisation<select value={templateKey} onChange={(event) => setTemplateKey(event.target.value)}><option value="abandoned_cart">Panier abandonné</option><option value="product_recommendation">Recommandation produit</option><option value="email_marketing">Email marketing</option><option value="upsell_cross_sell">Upsell / cross-sell</option></select></label><label>Langue<input value={locale} onChange={(event) => setLocale(event.target.value)} maxLength={8} /></label></div>
-            <label>Objet<input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={200} /></label>
-            <label>Texte<textarea value={bodyText} onChange={(event) => setBodyText(event.target.value)} rows={3} /></label>
-            <label>HTML nettoyé côté Cloud<textarea value={bodyHtml} onChange={(event) => setBodyHtml(event.target.value)} rows={5} className="code-input" /></label>
-            <p className="form-hint">Variables autorisées : customer_first_name, shop_name, cta_url, cta_label, unsubscribe_url, coupon_code, discount_percent, cart_id, product_name.</p>
-            <button className="button primary" type="button" disabled={busy !== null} onClick={() => void createDraft()}>{busy === "template" ? "Enregistrement…" : "Créer un brouillon"}</button>
-            <div className="version-list">
-              {templates.slice(0, 5).map((template) => <div className="version-row" key={template.id}><div><strong>{template.template_key} · {template.locale}</strong><span>v{template.version} · {template.status}</span></div><div>{template.status === "draft" ? <button type="button" onClick={() => void publish(template, "publish")} disabled={busy !== null}>Publier</button> : <button type="button" onClick={() => void publish(template, "rollback")} disabled={busy !== null}>Restaurer</button>}</div></div>)}
+        <article className="email-control-panel tool-panel">
+          <header className="email-control-intro">
+            <div><p className="eyebrow">Emails pilotés</p><h2>Votre marque guide, les agents rédigent</h2><p>Définissez un cadre éditorial réutilisable pour guider le ton et la présentation de vos emails, sans imposer un message unique.</p></div>
+          </header>
+
+          <div className="email-rules-layout">
+            <div className="email-rules-copy"><p className="eyebrow">Cadre éditorial</p><h3>Règles de la boutique</h3><p>Ces préférences permettent d’aligner les propositions sur votre marque.</p><div className="privacy-note"><strong>Données protégées</strong><span>Votre clé personnelle est chiffrée dans le Cloud. Les aperçus utilisent uniquement le contexte minimal nécessaire et ne déclenchent aucun envoi client.</span></div></div>
+            <div className="configuration-form email-rules-form">
+              <label>Automatisation à prévisualiser<select value={templateKey} onChange={(event) => setTemplateKey(event.target.value)}><option value="abandoned_cart">Panier abandonné</option><option value="product_recommendation">Recommandation produit</option><option value="email_marketing">Email marketing</option><option value="upsell_cross_sell">Upsell / cross-sell</option></select></label>
+              <div className="form-row"><label>Langue<select value={emailProfile.locale} onChange={(event) => setEmailProfile((current) => ({ ...current, locale: event.target.value }))}><option value="fr">Français</option><option value="en">English</option><option value="de">Deutsch</option><option value="es">Español</option><option value="it">Italiano</option></select></label><label>Ton<select value={emailProfile.tone} onChange={(event) => setEmailProfile((current) => ({ ...current, tone: event.target.value as EmailProfile["tone"] }))}><option value="friendly">Chaleureux</option><option value="premium">Premium</option><option value="minimal">Minimal</option><option value="urgent">Urgent, sans pression artificielle</option></select></label></div>
+              <div className="form-row"><label>Adresse au client<select value={emailProfile.address_style} onChange={(event) => setEmailProfile((current) => ({ ...current, address_style: event.target.value as EmailProfile["address_style"] }))}><option value="neutral">Neutre</option><option value="formal">Vouvoiement</option><option value="informal">Tutoiement</option></select></label><label>Longueur<select value={emailProfile.message_length} onChange={(event) => setEmailProfile((current) => ({ ...current, message_length: event.target.value as EmailProfile["message_length"] }))}><option value="short">Courte</option><option value="standard">Standard</option></select></label></div>
+              <div className="form-row"><label>Promotions<select value={emailProfile.discount_policy} onChange={(event) => setEmailProfile((current) => ({ ...current, discount_policy: event.target.value as EmailProfile["discount_policy"] }))}><option value="confirmed_only">Uniquement si confirmées</option><option value="never">Jamais mentionner</option></select></label><label>Validation avant envoi<select value={emailProfile.approval_mode} onChange={(event) => setEmailProfile((current) => ({ ...current, approval_mode: event.target.value as EmailProfile["approval_mode"] }))}><option value="automatic">Automatique</option><option value="manual">Manuelle</option></select></label></div>
+              <label>Expressions obligatoires<input value={requiredTermsInput} onChange={(event) => setRequiredTermsInput(event.target.value)} placeholder="livraison offerte, fabriqué en France" /><span className="form-hint">Séparez les expressions par une virgule. Maximum 12.</span></label>
+              <label>Expressions interdites<input value={forbiddenTermsInput} onChange={(event) => setForbiddenTermsInput(event.target.value)} placeholder="gratuit, dernière chance" /></label>
+              <label>Signature facultative<textarea value={emailProfile.signature} onChange={(event) => setEmailProfile((current) => ({ ...current, signature: event.target.value }))} rows={3} maxLength={500} placeholder="L’équipe de votre boutique" /></label>
+              <div className="actions left"><button className="button primary" type="button" disabled={busy !== null} onClick={() => void saveEmailProfile()}>{busy === "email-profile" ? "Enregistrement…" : "Enregistrer les règles"}</button><button className="button secondary-blue" type="button" disabled={busy !== null || !byok?.configured} onClick={() => void generatePreview()}>{busy === "email-preview" ? "Génération…" : "Prévisualiser 3 variantes"}</button></div>
+              {!byok?.configured ? <button className="inline-link" type="button" onClick={() => setActiveTool("byok")}>Configurer la clé OpenAI pour activer la prévisualisation →</button> : null}
             </div>
           </div>
+
+          {previews.length ? <section className="email-preview-section"><div><p className="eyebrow">Aperçu sans enregistrement</p><h3>Trois directions possibles</h3></div><div className="email-preview-list">{previews.map((preview, index) => <article key={`${preview.subject}-${index}`}><span>0{index + 1}</span><div><strong>{preview.subject}</strong><p>{preview.body_text}</p><small>{preview.primary_cta} · {preview.tone} · urgence {preview.urgency}</small></div></article>)}</div></section> : null}
         </article>
       ) : null}
 
