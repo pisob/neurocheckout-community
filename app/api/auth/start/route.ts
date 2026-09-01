@@ -25,9 +25,18 @@ export async function GET(request: NextRequest) {
     authorizationUrl.searchParams.set("redirect_uri", communityRedirectUri());
     authorizationUrl.searchParams.set("code_challenge", challenge);
     authorizationUrl.searchParams.set("code_challenge_method", "S256");
+    const scopes = [
+      "openid", "profile", "capabilities:read", "account:read",
+      "shops:read", "shops:write", "templates:read", "templates:write",
+      "byok:read", "byok:write", "connectors:write", "emails:read",
+      "emails:write", "analytics:read",
+    ];
+    // The write scope stays on staging until the matching private Cloud route
+    // is promoted. This keeps current production installations compatible.
+    if (authorizationUrl.hostname === "staging.neurocheckout.com") scopes.push("analytics:write");
     authorizationUrl.searchParams.set(
       "scope",
-      "openid profile capabilities:read account:read shops:read shops:write templates:read templates:write byok:read byok:write connectors:write emails:read emails:write analytics:read analytics:write",
+      scopes.join(" "),
     );
     authorizationUrl.searchParams.set("state", state);
 
