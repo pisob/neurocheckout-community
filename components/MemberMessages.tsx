@@ -37,7 +37,14 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
             "Reconnectez cette installation une fois pour autoriser les messages membre.",
           ));
         }
-        throw new Error(String(payload?.detail || ui("Unable to load messages.", "Impossible de charger les messages.")));
+        const detail = String(payload?.detail || "");
+        if (detail === "cloud_response_invalid") {
+          throw new Error(ui(
+            "The Cloud message service returned an invalid response. Please retry in a moment.",
+            "Le service de messages Cloud a renvoyé une réponse invalide. Réessayez dans un instant.",
+          ));
+        }
+        throw new Error(detail || ui("Unable to load messages.", "Impossible de charger les messages."));
       }
       const nextItems = Array.isArray(payload?.items) ? payload.items as MemberMessage[] : [];
       setItems(nextItems);
@@ -72,8 +79,21 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
   const openMessage = async (item: MemberMessage) => {
     setSelectedId(item.id);
     if (!item.unread) return;
+    setError("");
     setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, unread: false } : candidate));
-    await fetch(`/api/cloud/notifications/${encodeURIComponent(item.id)}/read`, { method: "POST", cache: "no-store" }).catch(() => undefined);
+    try {
+      const response = await fetch(`/api/cloud/notifications/${encodeURIComponent(item.id)}/read`, { method: "POST", cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(String(payload?.detail || ui("Unable to mark this message as read.", "Impossible de marquer ce message comme lu.")));
+      }
+      if (payload?.id === item.id) {
+        setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, ...payload, unread: false } : candidate));
+      }
+    } catch (readError) {
+      setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, unread: true } : candidate));
+      setError(readError instanceof Error ? readError.message : ui("Unable to mark this message as read.", "Impossible de marquer ce message comme lu."));
+    }
   };
 
   return (
@@ -86,7 +106,7 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
       {error ? <p className="config-error" role="alert">{error}</p> : null}
       {loading ? (
         <div className="operational-state"><span className="loader" /><p>{ui("Loading your messages…", "Chargement de vos messages…")}</p></div>
-      ) : items.length === 0 ? (
+      ) : error && items.length === 0 ? null : items.length === 0 ? (
         <div className="operational-state">
           <p className="eyebrow">{ui("No alert", "Aucune alerte")}</p>
           <h2>{ui("Your message center is clear", "Votre centre de messages est vide")}</h2>

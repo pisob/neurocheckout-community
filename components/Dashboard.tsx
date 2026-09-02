@@ -6,6 +6,7 @@ import EmailApprovals from "@/components/EmailApprovals";
 import MemberMessages from "@/components/MemberMessages";
 import AgentPerformance from "@/components/AgentPerformance";
 import ConvertedOrders from "@/components/ConvertedOrders";
+import { agentAvatar, SUPERVISOR_AVATAR } from "@/lib/agent-visuals";
 import { useUiLanguage, type UiLanguage } from "@/lib/ui-language";
 
 type Capabilities = {
@@ -346,7 +347,10 @@ export default function Dashboard() {
                     <div className="agent-preview-grid">
                       {visibleAgents.slice(0, 4).map((agent, index) => (
                         <article key={agent} className={`agent-preview${agent === SUPERVISOR_AGENT ? " supervisor-preview" : ""}`}>
-                          <span>{String(index + 1).padStart(2, "0")}</span>
+                          <span className="agent-preview-avatar">
+                            <img src={agentAvatar(agent)} alt="" width="38" height="38" />
+                            <small>{String(index + 1).padStart(2, "0")}</small>
+                          </span>
                           <div><strong>{agent === SUPERVISOR_AGENT ? "Supervisor" : AGENT_LABELS[language][agent] || displayFeature(agent)}</strong><small>{agent === SUPERVISOR_AGENT ? ui("Central coordination", "Coordination centrale") : AGENT_ROLES[language][agent] || "Agent"}</small></div>
                           <i aria-label={ui("Active", "Actif")} />
                         </article>
@@ -374,7 +378,9 @@ export default function Dashboard() {
                 <div className="section-toolbar"><span>{specializedAgents.length} {ui("active specialist agents", "agents spécialisés actifs")}</span><span>Supervisor {supervisorEnabled ? ui("active", "actif") : ui("inactive", "inactif")}</span></div>
                 {supervisorEnabled ? (
                   <article className="supervisor-band">
-                    <div className="supervisor-index">S</div>
+                    <div className="supervisor-avatar">
+                      <img src={SUPERVISOR_AVATAR} alt="" width="58" height="58" />
+                    </div>
                     <div>
                       <p className="eyebrow">{ui("Coordination layer", "Couche de coordination")}</p>
                       <h2>{capabilities.agents.supervisor?.display_name || "Supervisor"}</h2>
@@ -387,8 +393,13 @@ export default function Dashboard() {
                   {specializedAgents.map((agent, index) => (
                     <article key={agent} className="agent-cell">
                       <div className="agent-cell-top"><span>{String(index + 1).padStart(2, "0")}</span><i aria-label={ui("Active", "Actif")} /></div>
-                      <h2>{AGENT_LABELS[language][agent] || displayFeature(agent)}</h2>
-                      <p>{AGENT_ROLES[language][agent] || ui("Specialist agent", "Agent spécialisé")}</p>
+                      <div className="agent-cell-identity">
+                        <img src={agentAvatar(agent)} alt="" width="62" height="62" />
+                        <div>
+                          <h2>{AGENT_LABELS[language][agent] || displayFeature(agent)}</h2>
+                          <p>{AGENT_ROLES[language][agent] || ui("Specialist agent", "Agent spécialisé")}</p>
+                        </div>
+                      </div>
                       <code>{agent}</code>
                     </article>
                   ))}

@@ -11,7 +11,10 @@ export async function POST(
   const { notificationId } = await context.params;
   return authenticatedCloudFetch(
     request,
-    `/api/v1/member/notifications/${encodeURIComponent(notificationId)}/read`,
-    { method: "POST" },
+    "/api/v1/member/notifications/mark-read",
+    {
+      method: "POST",
+      body: JSON.stringify({ notification_id: notificationId }),
+    },
   );
 }

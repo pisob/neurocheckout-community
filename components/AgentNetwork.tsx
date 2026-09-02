@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 
+import { agentAvatar } from "@/lib/agent-visuals";
 import type { UiLanguage } from "@/lib/ui-language";
 
 type NetworkAgent = {
@@ -25,20 +26,19 @@ type AgentNetworkProps = {
 type AgentDefinition = {
   name: string;
   code: string;
-  avatar: string;
   index: string;
   left: string;
   top: string;
 };
 
 const AGENTS: AgentDefinition[] = [
-  { name: "business_alerts_anomalies", code: "B-A-A", avatar: "/agents/aba-avatar.webp", index: "07", left: "57%", top: "17.5%" },
-  { name: "customer_preference_proactive", code: "P-A-D", avatar: "/agents/rpc-avatar.webp", index: "01", left: "80%", top: "17.5%" },
-  { name: "abandoned_cart", code: "A-C-R", avatar: "/agents/pai-avatar.webp", index: "02", left: "57%", top: "43.5%" },
-  { name: "contextual_product_recommendation", code: "P-P-R", avatar: "/agents/rpc-avatar.webp", index: "03", left: "80%", top: "43.5%" },
-  { name: "upsell_cross_sell_dynamic", code: "U-C-D", avatar: "/agents/ucd-avatar.webp", index: "04", left: "57%", top: "69.5%" },
-  { name: "automatic_customer_segmentation", code: "A-C-S", avatar: "/agents/sca-avatar.webp", index: "05", left: "80%", top: "69.5%" },
-  { name: "intelligent_email_marketing", code: "E-M-O", avatar: "/agents/emi-avatar.webp", index: "06", left: "68.5%", top: "87%" },
+  { name: "business_alerts_anomalies", code: "B-A-A", index: "07", left: "57%", top: "17.5%" },
+  { name: "customer_preference_proactive", code: "P-A-D", index: "01", left: "80%", top: "17.5%" },
+  { name: "abandoned_cart", code: "A-C-R", index: "02", left: "57%", top: "43.5%" },
+  { name: "contextual_product_recommendation", code: "P-P-R", index: "03", left: "80%", top: "43.5%" },
+  { name: "upsell_cross_sell_dynamic", code: "U-C-D", index: "04", left: "57%", top: "69.5%" },
+  { name: "automatic_customer_segmentation", code: "A-C-S", index: "05", left: "80%", top: "69.5%" },
+  { name: "intelligent_email_marketing", code: "E-M-O", index: "06", left: "68.5%", top: "87%" },
 ];
 
 const PATHS = [
@@ -173,7 +173,7 @@ export default function AgentNetwork({
               aria-pressed={selectedAgent === agent.name}
             >
               <span className="community-agent-avatar">
-                <img src={agent.avatar} alt="" width="54" height="54" />
+                <img src={agentAvatar(agent.name)} alt="" width="54" height="54" />
                 <i>{agent.index}</i>
               </span>
               <span className="community-agent-copy">
