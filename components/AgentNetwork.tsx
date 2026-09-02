@@ -155,7 +155,9 @@ export default function AgentNetwork({
 
         {supervisorEnabled ? (
           <div className="community-supervisor-core">
-            <span>S</span>
+            <span className="community-supervisor-avatar">
+              <img src="/branding/neurocheckout-logo-300.png" alt="" width="56" height="56" />
+            </span>
             <strong>Supervisor</strong>
             <small>{ui("Central coordinator", "Coordinateur central")}</small>
           </div>
