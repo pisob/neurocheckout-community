@@ -78,7 +78,7 @@ function formatMoney(value: number | null | undefined, currency?: string | null)
     : Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-export default function ConvertedOrders({ language }: { language: UiLanguage }) {
+export default function ConvertedOrders({ language, recentEmailsEnabled }: { language: UiLanguage; recentEmailsEnabled: boolean }) {
   const ui = (english: string, french: string) => language === "fr" ? french : english;
   const [shops, setShops] = useState<Shop[]>([]);
   const [selectedShopUuid, setSelectedShopUuid] = useState("");
@@ -126,7 +126,7 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
   }, [language, limit, selectedShopUuid]);
 
   const loadRecentEmails = useCallback(async () => {
-    if (!selectedShopUuid) { setEmailPayload(null); setEmailLoading(false); return; }
+    if (!recentEmailsEnabled || !selectedShopUuid) { setEmailPayload(null); setEmailLoading(false); return; }
     setEmailLoading(true);
     setEmailError("");
     try {
@@ -147,7 +147,7 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
       setEmailPayload(null);
       setEmailError(loadError instanceof Error ? loadError.message : ui("Recent emails unavailable.", "Emails récents indisponibles."));
     } finally { setEmailLoading(false); }
-  }, [language, selectedShopUuid]);
+  }, [language, recentEmailsEnabled, selectedShopUuid]);
 
   useEffect(() => { void loadShops().catch((loadError) => { setError(loadError instanceof Error ? loadError.message : ui("Stores unavailable.", "Boutiques indisponibles.")); setLoading(false); setEmailLoading(false); }); }, [loadShops]);
   useEffect(() => { void loadOrders(); }, [loadOrders]);
@@ -222,7 +222,7 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
         )
       ) : null}
 
-      {selectedShopUuid ? (
+      {recentEmailsEnabled && selectedShopUuid ? (
         <section className="email-activity" aria-labelledby="recent-email-heading">
           <header>
             <div>

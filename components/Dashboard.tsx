@@ -422,7 +422,7 @@ export default function Dashboard() {
             ) : null}
 
             {activeView === "converted-orders" && capabilities.features.converted_orders ? (
-              <ConvertedOrders language={language} />
+              <ConvertedOrders language={language} recentEmailsEnabled={capabilities.features.recent_emails === true} />
             ) : null}
 
             {activeView === "messages" && capabilities.features.member_messages ? (
