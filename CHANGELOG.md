@@ -6,19 +6,22 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ### Changed
 
+- Support encrypted OpenAI and Anthropic BYOK keys with an explicit active AI
+  provider per shop; NeuroCheckout platform credentials are never exposed or
+  substituted in Community generation.
 - Add a privacy-safe journal of the latest 10 emails sent to the Orders & emails view.
 - Make English the default Community interface language, with an EN/FR switch
   that remembers the operator's explicit choice independently from email language.
 - Default new email editorial profiles to English and allow merchants to add
   missing locale codes that remain available in the language selector.
 - Replace the single-template email editor with controlled brand and editorial
-  rules and a three-direction preview powered by the shop's encrypted OpenAI
-  key. Cloud orchestration details remain private.
+  rules and a three-direction preview powered by the shop's selected encrypted
+  AI provider key. Cloud orchestration details remain private.
 - Reworked the dashboard into five focused operational views instead of one
   continuous page.
 - Aligned the complete interface with the NeuroCheckout dark-blue visual
   system and blue action color.
-- Split shop, email-template, OpenAI BYOK and connector configuration into
+- Split shop, email-template, AI-provider BYOK and connector configuration into
   dedicated tools with responsive navigation and reduced-motion support.
 - Display Supervisor as the coordination layer above the seven currently
   enabled specialist agents, while respecting Cloud runtime kill switches.

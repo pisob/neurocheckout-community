@@ -114,7 +114,8 @@ existing installation after a release adds a new scope.
 - Cloud-authorized shop creation with sender identity, brand logo and approval mode;
 - per-shop brand and editorial rules for AI-assisted email generation;
 - three AI-assisted previews for reviewing the configured editorial direction;
-- encrypted OpenAI BYOK configuration; raw keys never return to this app;
+- encrypted OpenAI or Anthropic BYOK configuration, with one active provider
+  per shop; raw keys never return to this app;
 - per-shop connector-key creation or rotation with explicit DPA acceptance;
 - seamless paid upgrade while continuing to use this same interface.
 
@@ -126,10 +127,12 @@ reusable editorial frame: language, tone, formal or informal address, length,
 discount policy, approval mode, required or forbidden expressions, and an
 optional signature.
 
-With a personal OpenAI key configured for the shop, the dashboard can produce
-three previews so the merchant can review the selected direction. A preview
-does not send a customer email. Email orchestration and delivery decisions stay
-inside NeuroCheckout Cloud and are not part of this public repository.
+With a personal OpenAI or Anthropic key configured for the shop, the dashboard
+can produce three previews so the merchant can review the selected direction.
+The merchant can keep both provider keys configured and explicitly select which
+one is active. A preview does not send a customer email. Email orchestration and
+delivery decisions stay inside NeuroCheckout Cloud and are not part of this
+public repository.
 
 ## Security boundary
 

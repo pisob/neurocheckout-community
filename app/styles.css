@@ -413,6 +413,7 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .config-error { border-color: var(--danger); background: rgb(255 123 134 / 8%); color: #ffb2b9; }
 .config-notice { border-color: var(--cyan); background: rgb(98 200 255 / 7%); color: #bee9ff; }
 .secret-status { margin: 0; border-left: 2px solid var(--cyan); background: rgb(98 200 255 / 5%); padding: 11px 13px; color: #b9dcef; font-size: 11px; }
+.secret-status.active { border-color: var(--blue); background: rgb(40 119 243 / 10%); color: #d7ecff; }
 .checkbox-line { display: grid !important; grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: 10px !important; font-weight: 500 !important; line-height: 1.55; }
 .checkbox-line input { width: 16px; margin-top: 2px; accent-color: var(--blue); }
 .one-time-secret { border: 1px solid rgb(244 198 109 / 35%); background: rgb(244 198 109 / 7%); padding: 14px; }

@@ -165,7 +165,9 @@ npm run doctor
 3. Confirm that the overview shows the Cloud plan, quota, Supervisor and seven
    enabled specialist agents.
 4. Create a test shop, configure its editorial email rules and generate a
-   preview with a shop-owned OpenAI key. A preview never sends a customer email.
+   preview with a shop-owned OpenAI or Anthropic key. Choose the provider under
+   **Configuration → AI key**; only the selected provider is used for that
+   shop. A preview never sends a customer email.
 
 The contextual support agent is intentionally not displayed while its
 per-store personalization remains disabled.

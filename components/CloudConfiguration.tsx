@@ -15,9 +15,19 @@ type Shop = {
 type ByokStatus = {
   configured?: boolean;
   provider?: string;
+  active?: boolean;
+  active_provider?: string | null;
+  available_providers?: string[];
   key_last4?: string | null;
   test_status?: string | null;
   mode_choice?: string | null;
+};
+
+type AiProvider = "openai" | "anthropic";
+
+const AI_PROVIDERS: Record<AiProvider, { label: string; placeholder: string }> = {
+  openai: { label: "OpenAI", placeholder: "sk-…" },
+  anthropic: { label: "Anthropic", placeholder: "sk-ant-…" },
 };
 
 type EmailProfile = {
@@ -97,6 +107,7 @@ export default function CloudConfiguration() {
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [selectedShopUuid, setSelectedShopUuid] = useState("");
   const [byok, setByok] = useState<ByokStatus | null>(null);
+  const [aiProvider, setAiProvider] = useState<AiProvider>("openai");
   const [templateKey, setTemplateKey] = useState("abandoned_cart");
   const [emailProfile, setEmailProfile] = useState<EmailProfile>(DEFAULT_EMAIL_PROFILE);
   const [customLocales, setCustomLocales] = useState<LocaleOption[]>([]);
@@ -127,6 +138,11 @@ export default function CloudConfiguration() {
     () => shops.find((shop) => shopUuid(shop) === selectedShopUuid) || null,
     [selectedShopUuid, shops],
   );
+  const providerDetails = AI_PROVIDERS[aiProvider];
+  const hasActiveByok = Boolean(byok?.active_provider);
+  const activeProviderLabel = byok?.active_provider
+    ? AI_PROVIDERS[byok.active_provider as AiProvider]?.label || byok.active_provider
+    : null;
 
   const localeOptions = useMemo(() => {
     const options = [...BUILTIN_LOCALES, ...customLocales];
@@ -165,23 +181,33 @@ export default function CloudConfiguration() {
     setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
   };
 
-  const loadShopConfiguration = async (uuid: string, locale = "en") => {
+  const loadEmailProfile = async (uuid: string, locale = "en") => {
     if (!uuid) return;
-    setError(null);
     const normalizedLocale = normalizeLocaleCode(locale);
-    const [profileResponse, byokResponse] = await Promise.all([
-      fetch(`/api/cloud/email-profile?shop_uuid=${encodeURIComponent(uuid)}&locale=${encodeURIComponent(normalizedLocale)}`, { cache: "no-store" }),
-      fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(uuid)}&provider=openai`, { cache: "no-store" }),
-    ]);
+    const profileResponse = await fetch(`/api/cloud/email-profile?shop_uuid=${encodeURIComponent(uuid)}&locale=${encodeURIComponent(normalizedLocale)}`, { cache: "no-store" });
     const profilePayload = (await readJson(profileResponse)) as { item?: EmailProfile };
-    const byokPayload = (await readJson(byokResponse)) as ByokStatus;
     if (!profileResponse.ok || !profilePayload.item) throw new Error(detail(profilePayload, ui("Email settings unavailable", "Réglages email indisponibles")));
-    if (!byokResponse.ok) throw new Error(detail(byokPayload, ui("BYOK status unavailable", "Statut BYOK indisponible")));
     setEmailProfile(profilePayload.item);
     setRequiredTermsInput((profilePayload.item.required_terms || []).join(", "));
     setForbiddenTermsInput((profilePayload.item.forbidden_terms || []).join(", "));
     setPreviews([]);
+  };
+
+  const loadByokStatus = async (uuid: string, provider: AiProvider) => {
+    if (!uuid) return;
+    const byokResponse = await fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(uuid)}&provider=${encodeURIComponent(provider)}`, { cache: "no-store" });
+    const byokPayload = (await readJson(byokResponse)) as ByokStatus;
+    if (!byokResponse.ok) throw new Error(detail(byokPayload, ui("BYOK status unavailable", "Statut BYOK indisponible")));
     setByok(byokPayload);
+  };
+
+  const loadShopConfiguration = async (uuid: string, locale = "en", provider: AiProvider = aiProvider) => {
+    if (!uuid) return;
+    setError(null);
+    await Promise.all([
+      loadEmailProfile(uuid, locale),
+      loadByokStatus(uuid, provider),
+    ]);
   };
 
   useEffect(() => {
@@ -218,7 +244,7 @@ export default function CloudConfiguration() {
     setBusy("email-locale");
     setNotice(null);
     try {
-      await loadShopConfiguration(selectedShopUuid, locale);
+      await loadEmailProfile(selectedShopUuid, locale);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : ui("Language unavailable", "Langue indisponible"));
     } finally {
@@ -316,17 +342,18 @@ export default function CloudConfiguration() {
   const saveByok = async () => {
     setBusy("byok");
     setError(null);
+    setNotice(null);
     try {
-      const response = await fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(selectedShopUuid)}&provider=openai`, {
+      const response = await fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(selectedShopUuid)}&provider=${encodeURIComponent(aiProvider)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_key: apiKey, provider: "openai", test_after_save: true }),
+        body: JSON.stringify({ api_key: apiKey, provider: aiProvider, test_after_save: true }),
       });
       const payload = (await readJson(response)) as ByokStatus;
       if (!response.ok) throw new Error(detail(payload, ui("Key rejected", "Clé refusée")));
       setApiKey("");
       setByok(payload);
-      setNotice(`${ui("OpenAI key encrypted and saved", "Clé OpenAI chiffrée et enregistrée")}${payload.key_last4 ? ` · …${payload.key_last4}` : ""}.`);
+      setNotice(`${providerDetails.label} · ${ui("key encrypted, saved and selected", "clé chiffrée, enregistrée et sélectionnée")}${payload.key_last4 ? ` · …${payload.key_last4}` : ""}.`);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : ui("Key rejected", "Clé refusée"));
     } finally {
@@ -337,14 +364,54 @@ export default function CloudConfiguration() {
   const revokeByok = async () => {
     setBusy("byok");
     setError(null);
-    const response = await fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(selectedShopUuid)}&provider=openai`, { method: "DELETE" });
-    const payload = (await readJson(response)) as ByokStatus;
-    if (!response.ok) setError(detail(payload, ui("Revocation rejected", "Révocation refusée")));
-    else {
-      setByok(payload);
-      setNotice(ui("OpenAI key revoked immediately.", "Clé OpenAI révoquée immédiatement."));
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(selectedShopUuid)}&provider=${encodeURIComponent(aiProvider)}`, { method: "DELETE" });
+      const payload = (await readJson(response)) as ByokStatus;
+      if (!response.ok) throw new Error(detail(payload, ui("Revocation rejected", "Révocation refusée")));
+      await loadByokStatus(selectedShopUuid, aiProvider);
+      setNotice(`${providerDetails.label} · ${ui("key revoked immediately", "clé révoquée immédiatement")}.`);
+    } catch (revokeError) {
+      setError(revokeError instanceof Error ? revokeError.message : ui("Revocation rejected", "Révocation refusée"));
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
+  };
+
+  const selectAiProvider = async (provider: AiProvider) => {
+    setAiProvider(provider);
+    setApiKey("");
+    setBusy("byok-status");
+    setError(null);
+    setNotice(null);
+    try {
+      await loadByokStatus(selectedShopUuid, provider);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : ui("BYOK status unavailable", "Statut BYOK indisponible"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const activateByok = async () => {
+    setBusy("byok");
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/cloud/byok/mode?shop_uuid=${encodeURIComponent(selectedShopUuid)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: aiProvider, mode: "byok" }),
+      });
+      const payload = await readJson(response);
+      if (!response.ok) throw new Error(detail(payload, ui("Provider selection rejected", "Sélection du fournisseur refusée")));
+      await loadByokStatus(selectedShopUuid, aiProvider);
+      setNotice(`${providerDetails.label} · ${ui("active provider for this store", "fournisseur actif pour cette boutique")}.`);
+    } catch (activateError) {
+      setError(activateError instanceof Error ? activateError.message : ui("Provider selection rejected", "Sélection du fournisseur refusée"));
+    } finally {
+      setBusy(null);
+    }
   };
 
   const issueConnectorKey = async (operation: "create" | "rotate") => {
@@ -504,8 +571,8 @@ export default function CloudConfiguration() {
               <label>{ui("Required phrases", "Expressions obligatoires")}<input value={requiredTermsInput} onChange={(event) => setRequiredTermsInput(event.target.value)} placeholder={ui("free delivery, made in Europe", "livraison offerte, fabriqué en France")} /><span className="form-hint">{ui("Separate phrases with commas. Maximum 12.", "Séparez les expressions par une virgule. Maximum 12.")}</span></label>
               <label>{ui("Forbidden phrases", "Expressions interdites")}<input value={forbiddenTermsInput} onChange={(event) => setForbiddenTermsInput(event.target.value)} placeholder={ui("free, last chance", "gratuit, dernière chance")} /></label>
               <label>{ui("Optional signature", "Signature facultative")}<textarea value={emailProfile.signature} onChange={(event) => setEmailProfile((current) => ({ ...current, signature: event.target.value }))} rows={3} maxLength={500} placeholder={ui("Your store team", "L’équipe de votre boutique")} /></label>
-              <div className="actions left"><button className="button primary" type="button" disabled={busy !== null} onClick={() => void saveEmailProfile()}>{busy === "email-profile" ? ui("Saving…", "Enregistrement…") : ui("Save rules", "Enregistrer les règles")}</button><button className="button secondary-blue" type="button" disabled={busy !== null || !byok?.configured} onClick={() => void generatePreview()}>{busy === "email-preview" ? ui("Generating…", "Génération…") : ui("Preview 3 variants", "Prévisualiser 3 variantes")}</button></div>
-              {!byok?.configured ? <button className="inline-link" type="button" onClick={() => setActiveTool("byok")}>{ui("Configure your OpenAI key to enable previews", "Configurer la clé OpenAI pour activer la prévisualisation")} →</button> : null}
+              <div className="actions left"><button className="button primary" type="button" disabled={busy !== null} onClick={() => void saveEmailProfile()}>{busy === "email-profile" ? ui("Saving…", "Enregistrement…") : ui("Save rules", "Enregistrer les règles")}</button><button className="button secondary-blue" type="button" disabled={busy !== null || !hasActiveByok} onClick={() => void generatePreview()}>{busy === "email-preview" ? ui("Generating…", "Génération…") : ui("Preview 3 variants", "Prévisualiser 3 variantes")}</button></div>
+              {!hasActiveByok ? <button className="inline-link" type="button" onClick={() => setActiveTool("byok")}>{ui("Configure an AI provider key to enable previews", "Configurer la clé d’un fournisseur IA pour activer la prévisualisation")} →</button> : null}
             </div>
           </div>
 
@@ -515,11 +582,13 @@ export default function CloudConfiguration() {
 
       {activeTool === "byok" && selectedShop ? (
         <article className="configuration-block tool-panel compact-tool">
-          <div className="configuration-copy"><p className="eyebrow">{ui("Personal AI key", "Clé IA personnelle")}</p><h2>{ui("Your OpenAI key", "Votre clé OpenAI")}</h2><p>{ui("The key is encrypted in Cloud and never returned. Only its status and last four characters remain visible.", "La clé est chiffrée dans le Cloud et n’est jamais renvoyée. Seuls son statut et ses quatre derniers caractères restent visibles.")}</p></div>
+          <div className="configuration-copy"><p className="eyebrow">{ui("Bring your own AI", "Votre propre fournisseur IA")}</p><h2>{ui("Choose your AI provider", "Choisissez votre fournisseur IA")}</h2><p>{ui("OpenAI and Anthropic are supported. The selected store uses one active provider at a time. Its key is encrypted in Cloud and never returned.", "OpenAI et Anthropic sont pris en charge. La boutique sélectionnée utilise un seul fournisseur actif à la fois. Sa clé est chiffrée dans le Cloud et n’est jamais renvoyée.")}</p>{activeProviderLabel ? <div className="selected-shop-note"><span>{ui("Active provider", "Fournisseur actif")}</span><strong>{activeProviderLabel}</strong><small>{ui("Used for the next AI generation", "Utilisé pour la prochaine génération IA")}</small></div> : null}</div>
           <div className="configuration-form compact-form">
-            <p className="secret-status">{byok?.configured ? `${ui("Configured", "Configurée")} · …${byok.key_last4 || "????"} · ${ui("test", "test")} ${byok.test_status || ui("not run", "non exécuté")}` : ui("No personal key configured", "Aucune clé personnelle configurée")}</p>
-            <label>{ui("New key", "Nouvelle clé")}<input type="password" autoComplete="off" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="sk-…" /></label>
-            <div className="actions left"><button className="button primary" type="button" disabled={!apiKey.trim() || busy !== null} onClick={() => void saveByok()}>{ui("Encrypt and save", "Chiffrer et enregistrer")}</button>{byok?.configured ? <button className="button danger" type="button" disabled={busy !== null} onClick={() => void revokeByok()}>{ui("Revoke", "Révoquer")}</button> : null}</div>
+            <label>{ui("AI provider", "Fournisseur IA")}<select value={aiProvider} disabled={busy !== null} onChange={(event) => void selectAiProvider(event.target.value as AiProvider)}><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select></label>
+            <p className={`secret-status${byok?.active ? " active" : ""}`}>{byok?.configured ? `${providerDetails.label} · ${ui("configured", "configuré")} · …${byok.key_last4 || "????"} · ${ui("test", "test")} ${byok.test_status || ui("not run", "non exécuté")} · ${byok.active ? ui("active", "actif") : ui("inactive", "inactif")}` : `${providerDetails.label} · ${ui("no personal key configured", "aucune clé personnelle configurée")}`}</p>
+            <label>{ui("New provider key", "Nouvelle clé fournisseur")}<input type="password" autoComplete="off" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={providerDetails.placeholder} /></label>
+            <span className="form-hint">{ui("Saving a key tests it and makes this provider active for the selected store.", "L’enregistrement teste la clé et rend ce fournisseur actif pour la boutique sélectionnée.")}</span>
+            <div className="actions left"><button className="button primary" type="button" disabled={!apiKey.trim() || busy !== null} onClick={() => void saveByok()}>{busy === "byok" ? ui("Securing…", "Sécurisation…") : ui("Encrypt, test and select", "Chiffrer, tester et sélectionner")}</button>{byok?.configured && !byok.active ? <button className="button secondary-blue" type="button" disabled={busy !== null} onClick={() => void activateByok()}>{ui("Use this provider", "Utiliser ce fournisseur")}</button> : null}{byok?.configured ? <button className="button danger" type="button" disabled={busy !== null} onClick={() => void revokeByok()}>{ui("Revoke", "Révoquer")}</button> : null}</div>
           </div>
         </article>
       ) : null}
