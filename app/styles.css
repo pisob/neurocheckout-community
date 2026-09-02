@@ -350,6 +350,25 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .influence-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 26px; }
 .influence-list > span { width: 100%; margin-bottom: 5px; color: var(--muted); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }
 .influence-list i { border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 8px; color: var(--muted-strong); font-size: 8px; font-style: normal; }
+.email-activity { border-bottom: 1px solid var(--line); }
+.email-activity > header { display: flex; min-height: 132px; align-items: center; justify-content: space-between; gap: 28px; border-bottom: 1px solid var(--line); padding: 26px 24px; }
+.email-activity > header h2 { margin-top: 8px; font-size: 23px; }
+.email-activity > header div > p:last-child { margin: 9px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.email-activity > header > span { border-left: 1px solid var(--line); padding: 12px 0 12px 28px; color: var(--cyan); font-size: 20px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+.email-activity-state { display: flex; min-height: 92px; align-items: center; gap: 12px; padding: 22px 24px; color: var(--muted); font-size: 10px; }
+.email-activity-error { margin: 0; border-left: 2px solid #ff6885; background: rgb(255 86 119 / 7%); padding: 15px 24px; color: #ff9caf; font-size: 10px; }
+.email-ledger-head { display: grid; grid-template-columns: minmax(280px, 1.4fr) minmax(170px, .75fr) 110px 170px; gap: 18px; min-height: 42px; align-items: center; border-bottom: 1px solid var(--line); padding: 0 24px 0 70px; color: #577994; font-size: 8px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.email-ledger > article { display: grid; grid-template-columns: 28px minmax(280px, 1.4fr) minmax(170px, .75fr) 110px 170px; align-items: center; gap: 18px; min-height: 72px; border-bottom: 1px solid var(--line); padding: 12px 24px; transition: background .18s ease; }
+.email-ledger > article:last-child { border-bottom: 0; }
+.email-ledger > article:hover { background: linear-gradient(90deg, rgb(40 119 243 / 11%), rgb(40 119 243 / 1%)); }
+.email-ledger article div { min-width: 0; }
+.email-ledger article div strong, .email-ledger article div small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.email-ledger article div strong { color: var(--text); font-size: 10px; }
+.email-ledger article div small { margin-top: 6px; color: var(--muted); font-size: 8px; }
+.email-ledger time { color: var(--muted-strong); font-size: 9px; }
+.email-status { width: fit-content; border: 1px solid rgb(98 200 255 / 26%); border-radius: 999px; background: rgb(44 198 244 / 7%); padding: 6px 9px; color: #9edfff; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.email-status.opened, .email-status.clicked, .email-status.converted { border-color: rgb(52 226 166 / 30%); background: rgb(52 226 166 / 8%); color: #62e0b7; }
+.email-status.bounced { border-color: rgb(255 103 132 / 35%); background: rgb(255 103 132 / 8%); color: #ff8ca2; }
 
 .configuration-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
 .tool-tabs { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -487,6 +506,10 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
   .optimization-list dl { grid-column: 1 / -1; }
   .conversion-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .conversion-summary > p { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+  .email-ledger-head { grid-template-columns: minmax(240px, 1fr) minmax(145px, .65fr) 100px; padding-left: 65px; }
+  .email-ledger-head span:last-child { display: none; }
+  .email-ledger > article { grid-template-columns: 25px minmax(240px, 1fr) minmax(145px, .65fr) 100px; }
+  .email-ledger > article time { display: none; }
 }
 
 @media (max-width: 520px) {
@@ -518,6 +541,12 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
   .conversion-summary { grid-template-columns: 1fr; }
   .conversion-summary > div { border-right: 0; border-bottom: 1px solid var(--line); }
   .conversion-summary > p { grid-column: auto; }
+  .email-activity > header { align-items: flex-start; padding: 22px 16px; }
+  .email-activity > header > span { padding-left: 16px; font-size: 16px; }
+  .email-ledger-head { grid-template-columns: minmax(150px, 1fr) 82px; padding: 0 14px 0 50px; }
+  .email-ledger-head span:nth-child(2), .email-ledger-head span:last-child { display: none; }
+  .email-ledger > article { grid-template-columns: 22px minmax(150px, 1fr) 82px; gap: 10px; padding: 11px 14px; }
+  .email-ledger > article div:nth-child(3), .email-ledger > article time { display: none; }
   .approval-facts { grid-template-columns: 1fr; }
   .approval-preview > header, .message-detail > header, .approval-actions { align-items: flex-start; flex-direction: column; }
   .community-network-header { align-items: flex-start; flex-direction: column; }

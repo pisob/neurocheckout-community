@@ -16,6 +16,15 @@ type ConvertedOrder = {
   customer: { display_name?: string | null; email_masked?: string | null };
 };
 type ConvertedPayload = { shop: Shop; count: number; items: ConvertedOrder[]; detail?: string };
+type RecentEmail = {
+  sent_at?: string | null;
+  subject?: string | null;
+  agent_name?: string | null;
+  automation?: string | null;
+  status?: string | null;
+  customer: { email_masked?: string | null };
+};
+type RecentEmailPayload = { shop: Shop; limit: number; count: number; items: RecentEmail[]; detail?: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -33,6 +42,22 @@ function normalizeConvertedPayload(value: unknown): ConvertedPayload | null {
     })) as ConvertedOrder[];
   return {
     ...(value as Omit<ConvertedPayload, "items" | "count">),
+    count: typeof value.count === "number" ? value.count : items.length,
+    items,
+  };
+}
+
+function normalizeRecentEmailPayload(value: unknown): RecentEmailPayload | null {
+  if (!isRecord(value) || !isRecord(value.shop) || !Array.isArray(value.items)) return null;
+  const items = value.items
+    .filter(isRecord)
+    .map((item) => ({
+      ...item,
+      customer: isRecord(item.customer) ? item.customer : {},
+    })) as RecentEmail[];
+  return {
+    ...(value as Omit<RecentEmailPayload, "items" | "count" | "limit">),
+    limit: typeof value.limit === "number" ? value.limit : 10,
     count: typeof value.count === "number" ? value.count : items.length,
     items,
   };
@@ -59,9 +84,12 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
   const [selectedShopUuid, setSelectedShopUuid] = useState("");
   const [limit, setLimit] = useState(30);
   const [payload, setPayload] = useState<ConvertedPayload | null>(null);
+  const [emailPayload, setEmailPayload] = useState<RecentEmailPayload | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [emailLoading, setEmailLoading] = useState(true);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const loadShops = useCallback(async () => {
     const response = await fetch("/api/cloud/shops", { cache: "no-store" });
@@ -97,8 +125,33 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
     } finally { setLoading(false); }
   }, [language, limit, selectedShopUuid]);
 
-  useEffect(() => { void loadShops().catch((loadError) => { setError(loadError instanceof Error ? loadError.message : ui("Stores unavailable.", "Boutiques indisponibles.")); setLoading(false); }); }, [loadShops]);
+  const loadRecentEmails = useCallback(async () => {
+    if (!selectedShopUuid) { setEmailPayload(null); setEmailLoading(false); return; }
+    setEmailLoading(true);
+    setEmailError("");
+    try {
+      const query = new URLSearchParams({ shop_uuid: selectedShopUuid, limit: "10" });
+      const response = await fetch(`/api/cloud/recent-emails?${query.toString()}`, { cache: "no-store" });
+      const rawBody: unknown = await response.json().catch(() => ({}));
+      const body = normalizeRecentEmailPayload(rawBody);
+      if (!response.ok) {
+        if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant analytics access.", "Reconnectez cette installation une fois pour autoriser les statistiques."));
+        const detail = isRecord(rawBody) ? String(rawBody.detail || "") : "";
+        throw new Error(detail === "cloud_response_invalid"
+          ? ui("Cloud access is not yet open for the email activity route.", "L’accès Cloud n’est pas encore ouvert pour l’activité email.")
+          : String(detail || ui("Recent emails unavailable.", "Emails récents indisponibles.")));
+      }
+      if (!body) throw new Error(ui("Cloud returned an invalid email activity response.", "Le Cloud a renvoyé une réponse d’activité email invalide."));
+      setEmailPayload(body);
+    } catch (loadError) {
+      setEmailPayload(null);
+      setEmailError(loadError instanceof Error ? loadError.message : ui("Recent emails unavailable.", "Emails récents indisponibles."));
+    } finally { setEmailLoading(false); }
+  }, [language, selectedShopUuid]);
+
+  useEffect(() => { void loadShops().catch((loadError) => { setError(loadError instanceof Error ? loadError.message : ui("Stores unavailable.", "Boutiques indisponibles.")); setLoading(false); setEmailLoading(false); }); }, [loadShops]);
   useEffect(() => { void loadOrders(); }, [loadOrders]);
+  useEffect(() => { void loadRecentEmails(); }, [loadRecentEmails]);
 
   const selected = payload?.items[selectedIndex] || null;
   const totalValue = useMemo(() => (payload?.items || []).reduce((sum, item) => sum + Number(item.order_total || 0), 0), [payload]);
@@ -108,6 +161,14 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
     return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString(language === "fr" ? "fr-FR" : "en-US", { dateStyle: "medium", timeStyle: "short" });
   };
   const currency = payload?.shop.currency_code;
+  const emailStatus = (status?: string | null) => {
+    const labels: Record<string, string> = {
+      sent: ui("Sent", "Envoyé"), delivered: ui("Delivered", "Livré"), opened: ui("Opened", "Ouvert"),
+      clicked: ui("Clicked", "Cliqué"), converted: ui("Converted", "Converti"), bounced: ui("Bounced", "Rejeté"),
+    };
+    return labels[String(status || "sent").toLowerCase()] || readable(status);
+  };
+  const refreshEvidence = () => { void loadOrders(); void loadRecentEmails(); };
 
   return (
     <section className="view-enter analytics-view converted-view">
@@ -116,7 +177,7 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
           <label>{ui("Store", "Boutique")}<select value={selectedShopUuid} onChange={(event) => setSelectedShopUuid(event.target.value)}>{shops.map((shop) => <option key={shopUuid(shop)} value={shopUuid(shop)}>{shop.shop_id} · {shop.platform || "store"}</option>)}</select></label>
           <label>{ui("History", "Historique")}<select value={limit} onChange={(event) => setLimit(Number(event.target.value))}><option value={15}>{ui("Latest 15", "15 dernières")}</option><option value={30}>{ui("Latest 30", "30 dernières")}</option><option value={60}>{ui("Latest 60", "60 dernières")}</option></select></label>
         </div>
-        <button className="text-action" type="button" onClick={() => void loadOrders()}>{ui("Refresh", "Actualiser")}</button>
+        <button className="text-action" type="button" onClick={refreshEvidence}>{ui("Refresh", "Actualiser")}</button>
       </div>
 
       {error ? <p className="config-error" role="alert">{error}</p> : null}
@@ -159,6 +220,39 @@ export default function ConvertedOrders({ language }: { language: UiLanguage }) 
             </div>
           </>
         )
+      ) : null}
+
+      {selectedShopUuid ? (
+        <section className="email-activity" aria-labelledby="recent-email-heading">
+          <header>
+            <div>
+              <p className="eyebrow">{ui("Delivery evidence", "Preuves d’envoi")}</p>
+              <h2 id="recent-email-heading">{ui("Latest 10 emails sent", "10 derniers emails envoyés")}</h2>
+              <p>{ui("A privacy-safe operational record from NeuroCheckout Cloud.", "Un journal opérationnel minimisé par NeuroCheckout Cloud.")}</p>
+            </div>
+            <span>{emailPayload?.count ?? 0} / 10</span>
+          </header>
+
+          {emailError ? <p className="email-activity-error" role="alert">{emailError}</p> : null}
+          {emailLoading ? <div className="email-activity-state"><span className="loader" /><p>{ui("Loading sent emails…", "Chargement des emails envoyés…")}</p></div> : null}
+          {!emailLoading && !emailError && emailPayload?.items.length === 0 ? (
+            <div className="email-activity-state"><p>{ui("No customer email has been sent for this store yet.", "Aucun email client n’a encore été envoyé pour cette boutique.")}</p></div>
+          ) : null}
+          {!emailLoading && emailPayload && emailPayload.items.length > 0 ? (
+            <div className="email-ledger">
+              <div className="email-ledger-head"><span>{ui("Message", "Message")}</span><span>{ui("Recipient", "Destinataire")}</span><span>{ui("Status", "Statut")}</span><span>{ui("Sent", "Envoi")}</span></div>
+              {emailPayload.items.slice(0, 10).map((item, index) => (
+                <article key={`${item.sent_at || "email"}-${index}`}>
+                  <span className="analytics-index">{String(index + 1).padStart(2, "0")}</span>
+                  <div><strong>{item.subject || ui("Email without subject", "Email sans objet")}</strong><small>{AGENT_LABELS[language][String(item.agent_name || "")] || readable(item.agent_name || item.automation)}</small></div>
+                  <div><strong>{item.customer.email_masked || ui("Protected", "Protégé")}</strong><small>{ui("Contact minimized", "Contact minimisé")}</small></div>
+                  <span className={`email-status ${String(item.status || "sent").toLowerCase()}`}>{emailStatus(item.status)}</span>
+                  <time>{formatDate(item.sent_at)}</time>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </section>
       ) : null}
     </section>
   );

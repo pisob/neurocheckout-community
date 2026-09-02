@@ -6,6 +6,7 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ### Changed
 
+- Add a privacy-safe journal of the latest 10 emails sent to the Orders & emails view.
 - Make English the default Community interface language, with an EN/FR switch
   that remembers the operator's explicit choice independently from email language.
 - Default new email editorial profiles to English and allow merchants to add
