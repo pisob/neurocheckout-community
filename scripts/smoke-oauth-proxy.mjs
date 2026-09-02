@@ -11,7 +11,7 @@ const cookies = new Map();
 const observed = {
   tokenExchange: false,
   capabilities: false,
-  shopCreation: false,
+  shopList: false,
 };
 
 function json(response, status, payload) {
@@ -38,7 +38,7 @@ const cloud = createServer(async (request, response) => {
       access_token: "smoke-access-token",
       refresh_token: "smoke-refresh-token",
       expires_in: 900,
-      scope: "openid capabilities:read shops:write",
+      scope: "openid capabilities:read shops:read",
     });
   }
 
@@ -53,11 +53,11 @@ const cloud = createServer(async (request, response) => {
     });
   }
 
-  if (request.method === "POST" && request.url === "/api/v1/member/shops/create") {
-    const body = JSON.parse(await requestBody(request));
-    assert.deepEqual(body, { name: "Smoke Shop", platform: "woocommerce" });
-    observed.shopCreation = true;
-    return json(response, 201, { id: "shop_smoke", ...body });
+  if (request.method === "GET" && request.url === "/api/v1/member/shops") {
+    observed.shopList = true;
+    return json(response, 200, {
+      items: [{ shop_uuid: "33333333-3333-4333-8333-333333333333", shop_id: "shop_smoke", platform: "woocommerce" }],
+    });
   }
 
   return json(response, 404, { detail: "not_found" });
@@ -167,18 +167,17 @@ try {
   assert.equal(capabilities.status, 200);
   assert.equal((await capabilities.json()).quotas.email.limit, 100);
 
-  const shop = await communityFetch("/api/cloud/shops", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: "Smoke Shop", platform: "woocommerce" }),
-  });
-  assert.equal(shop.status, 201);
-  assert.equal((await shop.json()).id, "shop_smoke");
+  const shops = await communityFetch("/api/cloud/shops");
+  assert.equal(shops.status, 200);
+  assert.equal((await shops.json()).items[0].shop_id, "shop_smoke");
+
+  const createShop = await communityFetch("/api/cloud/shops", { method: "POST" });
+  assert.equal(createShop.status, 405);
 
   assert.deepEqual(observed, {
     tokenExchange: true,
     capabilities: true,
-    shopCreation: true,
+    shopList: true,
   });
   console.log("OAuth PKCE, encrypted session and Cloud proxy smoke test passed.");
 } catch (error) {

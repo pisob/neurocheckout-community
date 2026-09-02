@@ -35,14 +35,16 @@ npm --version
    [plan selection page](https://www.neurocheckout.com/onboarding/subscription)
    and select **Activate Community** or **Continue free with Community**. No
    payment card is required.
-3. Open
+3. In the Cloud member dashboard, create or connect the store that this
+   installation will manage.
+4. Open
    [NeuroCheckout Cloud → Community installations](https://www.neurocheckout.com/dashboard/community).
-4. Create an installation with its exact callback URL:
+5. Select that store and create an installation with its exact callback URL:
 
    - local evaluation: `http://localhost:3400/api/auth/callback`;
    - hosted installation: `https://community.example.com/api/auth/callback`.
 
-5. Copy the displayed public Client ID. Community uses OAuth 2.0 Authorization
+6. Copy the displayed public Client ID. Community uses OAuth 2.0 Authorization
    Code with PKCE and therefore does not require a client secret.
 
 Community Free enables one store, Supervisor plus seven enabled specialist
@@ -50,6 +52,10 @@ agents, and 100 emails per account over a rolling 24-hour window. If the
 account already has an active trial or paid Cloud plan, skip free-plan
 activation and go directly to **Community installations**. The self-hosted
 interface uses the existing Cloud plan and quotas.
+
+One active store can be assigned to only one active Community installation.
+An account can keep at most two active installations. Revoke an existing
+installation in Cloud before replacing it for the same store.
 
 ## 2. Configure the dashboard automatically
 
@@ -164,8 +170,9 @@ npm run doctor
 2. Review and authorize the requested scopes in NeuroCheckout Cloud.
 3. Confirm that the overview shows the Cloud plan, quota, Supervisor and seven
    enabled specialist agents.
-4. Create a test shop, configure its editorial email rules and generate a
-   preview with a shop-owned OpenAI or Anthropic key. Choose the provider under
+4. Confirm that Configuration displays only the store selected during Cloud
+   registration. Configure its editorial email rules and generate a preview
+   with a shop-owned OpenAI or Anthropic key. Choose the provider under
    **Configuration → AI key**; only the selected provider is used for that
    shop. A preview never sends a customer email.
 

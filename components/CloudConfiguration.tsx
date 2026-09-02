@@ -77,12 +77,6 @@ const DEFAULT_EMAIL_PROFILE: EmailProfile = {
   signature: "",
 };
 
-type Platform = {
-  platform_key: string;
-  display_name: string;
-  create_shop_enabled: boolean;
-};
-
 function shopUuid(shop: Shop): string {
   return String(shop.shop_uuid || shop.id || shop.canonical_shop_id || "").trim();
 }
@@ -104,7 +98,6 @@ export default function CloudConfiguration() {
   const { language } = useUiLanguage();
   const ui = (english: string, french: string) => language === "fr" ? french : english;
   const [shops, setShops] = useState<Shop[]>([]);
-  const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [selectedShopUuid, setSelectedShopUuid] = useState("");
   const [byok, setByok] = useState<ByokStatus | null>(null);
   const [aiProvider, setAiProvider] = useState<AiProvider>("openai");
@@ -120,15 +113,6 @@ export default function CloudConfiguration() {
   const [apiKey, setApiKey] = useState("");
   const [connectorKey, setConnectorKey] = useState<string | null>(null);
   const [dpaAccepted, setDpaAccepted] = useState(false);
-  const [newShopId, setNewShopId] = useState("");
-  const [newPlatform, setNewPlatform] = useState("");
-  const [newBaseUrl, setNewBaseUrl] = useState("");
-  const [newSenderEmail, setNewSenderEmail] = useState("");
-  const [newFromName, setNewFromName] = useState("");
-  const [newReplyTo, setNewReplyTo] = useState("");
-  const [newLogoDataUrl, setNewLogoDataUrl] = useState("");
-  const [newLogoName, setNewLogoName] = useState("");
-  const [newApprovalMode, setNewApprovalMode] = useState<"automatic" | "manual">("automatic");
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -164,20 +148,11 @@ export default function CloudConfiguration() {
 
   const loadShops = async () => {
     setError(null);
-    const [response, platformResponse] = await Promise.all([
-      fetch("/api/cloud/shops", { cache: "no-store" }),
-      fetch("/api/cloud/platforms", { cache: "no-store" }),
-    ]);
+    const response = await fetch("/api/cloud/shops", { cache: "no-store" });
     const payload = (await readJson(response)) as { items?: Shop[] };
-    const platformPayload = (await readJson(platformResponse)) as { items?: Platform[] };
     if (!response.ok) throw new Error(detail(payload, ui("Stores unavailable", "Boutiques indisponibles")));
     const items = Array.isArray(payload.items) ? payload.items : [];
-    const platformItems = platformResponse.ok && Array.isArray(platformPayload.items)
-      ? platformPayload.items.filter((item) => item.create_shop_enabled)
-      : [];
     setShops(items);
-    setPlatforms(platformItems);
-    setNewPlatform((current) => current || platformItems[0]?.platform_key || "");
     setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
   };
 
@@ -436,60 +411,6 @@ export default function CloudConfiguration() {
     }
   };
 
-  const selectLogo = (file: File | null) => {
-    setError(null);
-    if (!file) return;
-    if (!/^image\/(png|jpeg|gif|webp|svg\+xml)$/i.test(file.type) || file.size > 1_400_000) {
-      setError(ui("Invalid logo: use PNG, JPEG, GIF, WebP or SVG, up to 1.4 MB.", "Logo invalide : utilisez PNG, JPEG, GIF, WebP ou SVG, 1,4 Mo maximum."));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setNewLogoDataUrl(String(reader.result || ""));
-      setNewLogoName(file.name);
-    };
-    reader.onerror = () => setError(ui("Unable to read the logo file.", "Lecture du logo impossible."));
-    reader.readAsDataURL(file);
-  };
-
-  const createShop = async () => {
-    setBusy("create-shop");
-    setError(null);
-    setNotice(null);
-    try {
-      const response = await fetch("/api/cloud/shops", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          shop_id: newShopId,
-          platform: newPlatform,
-          shop_base_url: newBaseUrl,
-          sender_email: newSenderEmail,
-          email_from_name: newFromName,
-          email_reply_to: newReplyTo,
-          brand_logo_url: newLogoDataUrl,
-          email_approval_mode: newApprovalMode,
-        }),
-      });
-      const payload = (await readJson(response)) as { shop_uuid?: string };
-      if (!response.ok) throw new Error(detail(payload, ui("Store creation rejected", "Création de la boutique refusée")));
-      setNewShopId("");
-      setNewBaseUrl("");
-      setNewSenderEmail("");
-      setNewFromName("");
-      setNewReplyTo("");
-      setNewLogoDataUrl("");
-      setNewLogoName("");
-      await loadShops();
-      if (payload.shop_uuid) setSelectedShopUuid(payload.shop_uuid);
-      setNotice(ui("Store created. Configure the DNS records provided by Cloud before sending email.", "Boutique créée. Configurez les enregistrements DNS indiqués par le Cloud avant vos envois."));
-    } catch (createError) {
-      setError(createError instanceof Error ? createError.message : ui("Store creation rejected", "Création de la boutique refusée"));
-    } finally {
-      setBusy(null);
-    }
-  };
-
   return (
     <section id="configuration" className="configuration-section">
       <div className="configuration-toolbar">
@@ -522,20 +443,16 @@ export default function CloudConfiguration() {
 
       {activeTool === "shop" ? (
         <article className="configuration-block tool-panel">
-          <div className="configuration-copy"><p className="eyebrow">{ui("Store", "Boutique")}</p><h2>{ui("Connect a store", "Connecter une boutique")}</h2><p>{ui("Your store remains the source of truth. Cloud keeps only the minimal projections required by the agents.", "La boutique reste la source de vérité. Le Cloud ne conserve que les projections minimales nécessaires aux agents.")}</p>{selectedShop ? <div className="selected-shop-note"><span>{ui("Selected store", "Boutique sélectionnée")}</span><strong>{selectedShop.shop_id}</strong><small>{selectedShop.platform}</small></div> : null}</div>
+          <div className="configuration-copy"><p className="eyebrow">{ui("Store binding", "Rattachement boutique")}</p><h2>{ui("One installation, one store", "Une installation, une boutique")}</h2><p>{ui("The store is selected in NeuroCheckout Cloud when this Community installation is registered. It remains the source of truth and cannot be created or replaced from this public interface.", "La boutique est sélectionnée dans NeuroCheckout Cloud lors de l’enregistrement de cette installation Community. Elle reste la source de vérité et ne peut pas être créée ou remplacée depuis cette interface publique.")}</p></div>
           <div className="configuration-form">
-            <div className="form-row"><label>{ui("Store identifier", "Identifiant boutique")}<input value={newShopId} onChange={(event) => setNewShopId(event.target.value)} placeholder="my-store" maxLength={120} /></label><label>{ui("Platform", "Plateforme")}<select value={newPlatform} onChange={(event) => setNewPlatform(event.target.value)}>{platforms.map((platform) => <option key={platform.platform_key} value={platform.platform_key}>{platform.display_name}</option>)}</select></label></div>
-            <label>{ui("Public URL", "URL publique")}<input type="url" value={newBaseUrl} onChange={(event) => setNewBaseUrl(event.target.value)} placeholder="https://store.example" /></label>
-            <div className="form-row"><label>{ui("Sender name", "Nom expéditeur")}<input value={newFromName} onChange={(event) => setNewFromName(event.target.value)} placeholder={ui("My Store", "Ma Boutique")} /></label><label>{ui("Reply-to email", "Email de réponse")}<input type="email" value={newReplyTo} onChange={(event) => setNewReplyTo(event.target.value)} placeholder="contact@store.example" /></label></div>
-            <label>{ui("Sender domain email", "Email du domaine expéditeur")}<input type="email" value={newSenderEmail} onChange={(event) => setNewSenderEmail(event.target.value)} placeholder="hello@store.example" /></label>
-            <div className="form-row"><label>{ui("Brand logo", "Logo de marque")}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" onChange={(event) => selectLogo(event.target.files?.[0] || null)} /><span className="form-hint">{newLogoName || ui("1.4 MB maximum", "1,4 Mo maximum")}</span></label><label>{ui("Email approval", "Validation email")}<select value={newApprovalMode} onChange={(event) => setNewApprovalMode(event.target.value as "automatic" | "manual")}><option value="automatic">{ui("Automatic", "Automatique")}</option><option value="manual">{ui("Manual", "Manuelle")}</option></select></label></div>
-            <button className="button primary" type="button" disabled={busy !== null || !newShopId.trim() || !newPlatform || !newBaseUrl.trim() || !newSenderEmail.trim() || !newFromName.trim() || !newReplyTo.trim() || !newLogoDataUrl} onClick={() => void createShop()}>{busy === "create-shop" ? ui("Creating…", "Création…") : ui("Create store", "Créer la boutique")}</button>
+            {selectedShop ? <div className="selected-shop-note"><span>{ui("Store assigned by Cloud", "Boutique attribuée par le Cloud")}</span><strong>{selectedShop.shop_id}</strong><small>{selectedShop.platform}</small></div> : <div className="privacy-note"><strong>{ui("No store assigned", "Aucune boutique attribuée")}</strong><span>{ui("Open Community installations in NeuroCheckout Cloud, revoke this installation, then create it again and select the intended store.", "Ouvrez Installations Community dans NeuroCheckout Cloud, révoquez cette installation, puis recréez-la en sélectionnant la boutique souhaitée.")}</span></div>}
+            <p className="form-hint">{ui("Security rule: one active Community installation per store, with at most two active installations per account.", "Règle de sécurité : une installation Community active par boutique, avec au maximum deux installations actives par compte.")}</p>
           </div>
         </article>
       ) : null}
 
       {activeTool !== "shop" && !selectedShop ? (
-        <div className="empty-tool"><p className="eyebrow">{ui("Store required", "Boutique requise")}</p><h2>{ui("Create your store first", "Créez d’abord votre boutique")}</h2><p>{ui("Emails, the AI key and the connector are always linked to one specific store.", "Les emails, la clé IA et le connecteur sont toujours rattachés à une boutique précise.")}</p><button className="button primary" type="button" onClick={() => setActiveTool("shop")}>{ui("Configure store", "Configurer la boutique")}</button></div>
+        <div className="empty-tool"><p className="eyebrow">{ui("Store required", "Boutique requise")}</p><h2>{ui("Assign the installation in Cloud", "Attribuez l’installation dans le Cloud")}</h2><p>{ui("Emails, the AI key and the connector are always restricted to the single store selected during registration.", "Les emails, la clé IA et le connecteur sont toujours limités à l’unique boutique sélectionnée lors de l’enregistrement.")}</p><button className="button primary" type="button" onClick={() => setActiveTool("shop")}>{ui("View binding instructions", "Voir les instructions de rattachement")}</button></div>
       ) : null}
 
       {activeTool === "email" && selectedShop ? (

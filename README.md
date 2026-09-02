@@ -44,13 +44,19 @@ Yes, the customer first uses the official NeuroCheckout website:
    card is requested. Cloud activates the Community allowance for one store,
    Supervisor plus seven enabled specialist agents, and 100 emails per account
    over a rolling 24-hour window.
-4. After Cloud opens the member dashboard, go to
+4. In the Cloud member dashboard, create or connect the store that this
+   installation will manage. Store creation remains a Cloud operation.
+5. Go to
    [Community installations](https://www.neurocheckout.com/dashboard/community).
-5. Enter an installation name and the exact callback URL:
+6. Select the store, then enter an installation name and the exact callback URL:
    - local computer: `http://localhost:3400/api/auth/callback`;
    - public server: `https://community.example.com/api/auth/callback`.
-6. Select **Create installation**, then copy the displayed public Client ID.
+7. Select **Create installation**, then copy the displayed public Client ID.
    It is not a secret and is the value requested by `npm run setup`.
+
+Each active store can be assigned to only one active Community installation.
+An account can keep at most two active Community installations. Revoke the old
+installation in Cloud before replacing it for the same store.
 
 If the account already has an active trial or paid Cloud plan, do not replace
 it with the free plan. Go directly to **Community installations**: the
@@ -111,7 +117,7 @@ existing installation after a release adds a new scope.
 - Cloud-calculated plan, quota and feature availability;
 - Supervisor coordination and seven currently enabled specialist agents;
 - version compatibility and mandatory-update signal;
-- Cloud-authorized shop creation with sender identity, brand logo and approval mode;
+- read-only access to the single store assigned during Cloud registration;
 - per-shop brand and editorial rules for AI-assisted email generation;
 - three AI-assisted previews for reviewing the configured editorial direction;
 - encrypted OpenAI or Anthropic BYOK configuration, with one active provider
@@ -143,6 +149,25 @@ public repository.
 - Internal/back-office APIs are deny-by-default and absent from the public OpenAPI contract.
 - Every Cloud BFF request carries the Community dashboard version. Incompatible
   versions are rejected by the Cloud outside the capability endpoint.
+- Cloud applies separate request budgets per account and installation, stricter
+  mutation and AI-preview limits, bounded AI-generation concurrency and
+  temporary throttling with HTTP `429` when a budget is exhausted.
+- Costly Community operations fail closed with HTTP `503` if their shared
+  resource guard is unavailable. Cloud operators can also suspend Community
+  access independently of the production member dashboard.
+
+## Supported environments and support boundary
+
+- Node.js 22 LTS is the supported native runtime.
+- Docker is supported through the repository Dockerfile and Compose file.
+- Linux is the reference production host. macOS and Windows are supported for
+  local evaluation through Node.js; Windows production hosting is not supported.
+- A public reverse proxy must preserve the exact HTTPS callback URL.
+
+Support covers reproducible issues on these documented environments. Modified
+forks, custom reverse proxies, third-party process managers and unreleased
+connectors may require community diagnosis before maintainers can reproduce an
+issue.
 
 ## Production
 
@@ -172,4 +197,5 @@ See `CHANGELOG.md` for release notes and known limitations.
 
 ## License
 
-Apache-2.0. The NeuroCheckout name and visual identity are not granted by this code license; see `TRADEMARKS.md`.
+Apache-2.0. The NeuroCheckout name and visual identity are not granted by this
+code license; see `TRADEMARKS.md` and `BRAND-ASSETS-LICENSE.md`.
