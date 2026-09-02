@@ -345,6 +345,37 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .analytics-inspector dd small { display: block; margin-top: 4px; color: var(--muted); font-size: 8px; font-weight: 500; }
 .confidence-line { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 26px; border-left: 2px solid var(--blue); padding: 7px 0 7px 13px; color: var(--muted); font-size: 9px; }
 .confidence-line strong { color: var(--cyan); font-size: 9px; text-transform: uppercase; }
+
+/* Keep secondary information readable in the dense performance workspace. */
+.performance-view .analytics-filters label,
+.performance-view .analytics-summary span,
+.performance-view .analytics-list-head { font-size: 10px; }
+.performance-view .analytics-freshness,
+.performance-view .analytics-index,
+.performance-view .analytics-inspector > code,
+.performance-view .analytics-inspector dt,
+.performance-view .analytics-inspector dd small,
+.performance-view .confidence-line,
+.performance-view .confidence-line strong { font-size: 10px; }
+.performance-view .community-network-header p,
+.performance-view .community-network-status,
+.performance-view .community-supervisor-core strong,
+.performance-view .community-supervisor-core small,
+.performance-view .community-agent-copy > small { font-size: 10px; }
+.performance-view .community-agent-avatar > i,
+.performance-view .community-agent-copy > em,
+.performance-view .community-agent-impact small,
+.performance-view .community-network-legend { font-size: 9px; }
+.performance-view .optimization-counts span,
+.performance-view .optimization-mode-line,
+.performance-view .supervisor-takeover > div > p:last-child,
+.performance-view .supervisor-switch strong,
+.performance-view .optimization-status-grid strong { font-size: 11px; }
+.performance-view .optimization-list article > div:first-child small,
+.performance-view .recommendation-priority,
+.performance-view .optimization-list dt { font-size: 9px; }
+.performance-view .optimization-list article > div:nth-child(2) > p,
+.performance-view .agent-performance-list button span small { font-size: 10px; }
 .conversion-summary { display: grid; grid-template-columns: 170px 230px minmax(280px, 1fr); align-items: center; min-height: 104px; border-bottom: 1px solid var(--line); }
 .conversion-summary > div { height: 100%; border-right: 1px solid var(--line); padding: 20px 18px; }
 .conversion-summary strong { display: block; margin-top: 13px; font-size: 24px; }
