@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { cloudApiBaseUrl } from "@/lib/config";
 import { refreshOAuthSession } from "@/lib/cloud-client";
+import { cloudFetch, CloudRequestError } from "@/lib/cloud-transport";
+import { rejectForeignMutation } from "@/lib/request-origin";
 import {
   COMMUNITY_SESSION_COOKIE,
   sealSession,
@@ -28,12 +30,15 @@ export async function authenticatedCloudFetch(
   path: string,
   init: RequestInit = {},
 ): Promise<NextResponse> {
+  const rejected = rejectForeignMutation(request);
+  if (rejected) return rejected;
+  let resolved: { session: OAuthSession; refreshed: boolean } | null = null;
   try {
-    const resolved = await resolveSession(request);
+    resolved = await resolveSession(request);
     if (!resolved) return NextResponse.json({ detail: "community_not_connected" }, { status: 401 });
     let { session, refreshed } = resolved;
 
-    const send = (accessToken: string) => fetch(`${cloudApiBaseUrl()}${path}`, {
+    const send = (accessToken: string) => cloudFetch(`${cloudApiBaseUrl()}${path}`, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -46,9 +51,19 @@ export async function authenticatedCloudFetch(
 
     let cloudResponse = await send(session.access_token);
     if (cloudResponse.status === 401 && !refreshed) {
+      await cloudResponse.body?.cancel();
       session = await refreshOAuthSession(session);
       refreshed = true;
+      resolved = { session, refreshed };
       cloudResponse = await send(session.access_token);
+    }
+    if (cloudResponse.status === 401) {
+      await cloudResponse.body?.cancel();
+      throw new CloudRequestError("community_not_connected", 401, true);
+    }
+    if (cloudResponse.status >= 500) {
+      await cloudResponse.body?.cancel();
+      throw new CloudRequestError("cloud_unavailable", 503);
     }
     if (cloudResponse.status === 204) {
       const response = new NextResponse(null, { status: 204 });
@@ -76,12 +91,17 @@ export async function authenticatedCloudFetch(
 
     const response = NextResponse.json(payload, { status: cloudResponse.status });
     if (refreshed) response.cookies.set(COMMUNITY_SESSION_COOKIE, sealSession(session), sessionCookieOptions());
-    if (cloudResponse.status === 401) response.cookies.delete(COMMUNITY_SESSION_COOKIE);
     return response;
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "cloud_unavailable";
-    const response = NextResponse.json({ detail }, { status: 401 });
-    response.cookies.delete(COMMUNITY_SESSION_COOKIE);
+    const failure = error instanceof CloudRequestError
+      ? error : new CloudRequestError("cloud_unavailable", 503);
+    const response = NextResponse.json({ detail: failure.detail }, { status: failure.status });
+    if (failure.invalidateSession) response.cookies.delete(COMMUNITY_SESSION_COOKIE);
+    else if (resolved?.refreshed) {
+      // Rotation already succeeded: persist the replacement even if the next
+      // resource request failed, otherwise the browser would retain a used token.
+      response.cookies.set(COMMUNITY_SESSION_COOKIE, sealSession(resolved.session), sessionCookieOptions());
+    }
     return response;
   }
 }

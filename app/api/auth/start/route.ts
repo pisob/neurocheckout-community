@@ -44,10 +44,9 @@ export async function GET(request: NextRequest) {
     response.cookies.set(OAUTH_STATE_COOKIE, state, transientCookieOptions());
     response.cookies.set(PKCE_VERIFIER_COOKIE, verifier, transientCookieOptions());
     return response;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "community_not_configured";
+  } catch {
     return NextResponse.redirect(
-      new URL(`/?auth_error=${encodeURIComponent(message)}`, request.nextUrl.origin),
+      new URL("/?auth_error=community_not_configured", request.nextUrl.origin),
     );
   }
 }

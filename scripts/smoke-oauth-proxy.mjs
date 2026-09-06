@@ -8,6 +8,8 @@ const host = "127.0.0.1";
 const communityPort = 43118;
 const communityOrigin = `http://${host}:${communityPort}`;
 const cookies = new Map();
+let failureMode = "";
+let mutations = 0;
 const observed = {
   tokenExchange: false,
   capabilities: false,
@@ -34,6 +36,7 @@ const cloud = createServer(async (request, response) => {
     assert.equal(body.redirect_uri, `${communityOrigin}/api/auth/callback`);
     assert.ok(body.code_verifier.length >= 43);
     observed.tokenExchange = true;
+    if (failureMode === "token") return json(response, 500, { detail: "synthetic-private-diagnostic" });
     return json(response, 200, {
       access_token: "smoke-access-token",
       refresh_token: "smoke-refresh-token",
@@ -46,6 +49,7 @@ const cloud = createServer(async (request, response) => {
   assert.equal(request.headers["x-neurocheckout-community-version"], "0.1.0-preview.1");
 
   if (request.method === "GET" && request.url === "/api/v1/member/capabilities") {
+    if (failureMode === "transport") return request.socket.destroy();
     observed.capabilities = true;
     return json(response, 200, {
       plan: { code: "community" },
@@ -60,6 +64,10 @@ const cloud = createServer(async (request, response) => {
     });
   }
 
+  if (request.method === "POST" && request.url === "/api/v1/member/notifications/mark-read") {
+    mutations += 1;
+    return json(response, 200, { ok: true });
+  }
   return json(response, 404, { detail: "not_found" });
 });
 
@@ -174,12 +182,41 @@ try {
   const createShop = await communityFetch("/api/cloud/shops", { method: "POST" });
   assert.equal(createShop.status, 405);
 
+  const readPath = "/api/cloud/notifications/smoke/read";
+  for (const headers of [{}, { Origin: "null" }, { Origin: "https://foreign.invalid" }]) {
+    const rejected = await communityFetch(readPath, { method: "POST", headers });
+    assert.equal(rejected.status, 403);
+  }
+  assert.equal(mutations, 0);
+  const accepted = await communityFetch(readPath, { method: "POST", headers: { Origin: communityOrigin } });
+  assert.equal(accepted.status, 200);
+  assert.equal(mutations, 1);
+  const session = cookies.get("nc_community_session");
+  const logout = await communityFetch("/api/auth/logout", { method: "POST", headers: { Origin: "https://foreign.invalid" } });
+  assert.equal(logout.status, 403);
+  assert.equal(cookies.get("nc_community_session"), session);
+
+  failureMode = "transport";
+  const unavailable = await communityFetch("/api/cloud/capabilities");
+  assert.equal(unavailable.status, 503);
+  assert.equal((await unavailable.json()).detail, "cloud_unavailable");
+  assert.equal(cookies.get("nc_community_session"), session);
+
+  failureMode = "token";
+  const failedStart = await communityFetch("/api/auth/start");
+  const failedState = new URL(failedStart.headers.get("location")).searchParams.get("state");
+  const failedCallback = await communityFetch(
+    `/api/auth/callback?code=smoke-authorization-code&state=${encodeURIComponent(failedState)}`,
+  );
+  assert.equal(new URL(failedCallback.headers.get("location")).searchParams.get("auth_error"), "oauth_exchange_failed");
+  assert.ok(!failedCallback.headers.get("location").includes("synthetic-private-diagnostic"));
+
   assert.deepEqual(observed, {
     tokenExchange: true,
     capabilities: true,
     shopList: true,
   });
-  console.log("OAuth PKCE, encrypted session and Cloud proxy smoke test passed.");
+  console.log("OAuth PKCE, session, origin checks, outage handling and Cloud proxy smoke test passed.");
 } catch (error) {
   if (serverOutput) process.stderr.write(serverOutput);
   throw error;

@@ -39,8 +39,7 @@ export async function GET(request: NextRequest) {
     const response = finish("/?connected=1");
     response.cookies.set(COMMUNITY_SESSION_COOKIE, sealSession(session), sessionCookieOptions());
     return response;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "oauth_exchange_failed";
-    return finish(`/?auth_error=${encodeURIComponent(message)}`);
+  } catch {
+    return finish("/?auth_error=oauth_exchange_failed");
   }
 }
