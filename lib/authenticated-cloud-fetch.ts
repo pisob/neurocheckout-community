@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import packageMetadata from "@/package.json";
 import { cloudApiBaseUrl } from "@/lib/config";
 import { refreshOAuthSession } from "@/lib/cloud-client";
 import { cloudFetch, CloudRequestError } from "@/lib/cloud-transport";
@@ -12,7 +13,7 @@ import {
   type OAuthSession,
 } from "@/lib/oauth-session";
 
-export const COMMUNITY_DASHBOARD_VERSION = "0.1.0-preview.1";
+export const COMMUNITY_DASHBOARD_VERSION = packageMetadata.version;
 
 async function resolveSession(request: NextRequest): Promise<{ session: OAuthSession; refreshed: boolean } | null> {
   let session = unsealSession(request.cookies.get(COMMUNITY_SESSION_COOKIE)?.value);

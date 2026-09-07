@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { join } from "node:path";
 
 const host = "127.0.0.1";
+const packageVersion = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+).version;
 const communityPort = 43118;
 const communityOrigin = `http://${host}:${communityPort}`;
 const cookies = new Map();
@@ -46,7 +49,7 @@ const cloud = createServer(async (request, response) => {
   }
 
   assert.equal(request.headers.authorization, "Bearer smoke-access-token");
-  assert.equal(request.headers["x-neurocheckout-community-version"], "0.1.0-preview.1");
+  assert.equal(request.headers["x-neurocheckout-community-version"], packageVersion);
 
   if (request.method === "GET" && request.url === "/api/v1/member/capabilities") {
     if (failureMode === "transport") return request.socket.destroy();

@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: neurocheckout-community:0.1.0-preview.1
+    image: neurocheckout-community:0.1.0-preview.3
     restart: unless-stopped
     env_file:
       - .env.local

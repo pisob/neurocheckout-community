@@ -35,7 +35,7 @@ the fingerprint above, and verify the annotated tag before running any project
 script:
 
 ```bash
-git clone --branch v0.1.0-preview.2 --depth 1 \
+git clone --branch v0.1.0-preview.3 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -43,7 +43,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.2
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.3
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
