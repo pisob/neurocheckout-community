@@ -9,6 +9,7 @@ quotas, delivery and sensitive processing.
 - a NeuroCheckout Cloud account; the free Community plan does not require a
   payment card;
 - Git;
+- GnuPG 2.x;
 - Node.js 22 or newer and npm 10 or newer;
 - outbound HTTPS access to `www.neurocheckout.com`;
 - an available loopback port, `3400` by default;
@@ -21,9 +22,39 @@ Verify the native requirements:
 
 ```bash
 git --version
+gpg --version
 node --version
 npm --version
 ```
+
+## Obtain and verify the official release
+
+Install a fixed signed release, not the moving development branch:
+
+```bash
+git clone --branch v0.1.0-preview.2 --depth 1 \
+  https://github.com/pisob/neurocheckout-community.git
+cd neurocheckout-community
+verification_home="$(mktemp -d)"
+chmod 700 "${verification_home}"
+GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
+GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
+  2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.2
+find "${verification_home}" -depth -delete
+unset verification_home
+```
+
+Git's `detached HEAD` notice is expected for an installation pinned to an
+immutable release tag.
+
+Stop if the fingerprint differs from
+`2949 F3BB 3295 DB8D D776 CC8D CEBA 4BC1 483B 4BB0`, if Git does not report a
+good signature from
+`NeuroCheckout Community Release <contact@neurocheckout.com>`, or if the tag
+cannot be verified. A trust warning after importing the dedicated release key
+into a new temporary keyring is expected and does not mean that the signature
+is invalid.
 
 ## 1. Register the installation
 
@@ -208,10 +239,21 @@ npm run start
 
 ## Upgrade
 
-Back up `.env.local`. For a native installation:
+Read the new release notes, replace `vNEW_SIGNED_VERSION` below with its exact
+published tag, and back up `.env.local` outside the repository. For a native
+installation:
 
 ```bash
-git pull --ff-only
+git fetch --tags origin
+git checkout --detach vNEW_SIGNED_VERSION
+verification_home="$(mktemp -d)"
+chmod 700 "${verification_home}"
+GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
+GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
+  2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
+GNUPGHOME="${verification_home}" git verify-tag vNEW_SIGNED_VERSION
+find "${verification_home}" -depth -delete
+unset verification_home
 npm ci
 npm run doctor
 npm run build
@@ -221,13 +263,24 @@ sudo systemctl restart neurocheckout-community
 For Docker:
 
 ```bash
-git pull --ff-only
+git fetch --tags origin
+git checkout --detach vNEW_SIGNED_VERSION
+verification_home="$(mktemp -d)"
+chmod 700 "${verification_home}"
+GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
+GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
+  2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
+GNUPGHOME="${verification_home}" git verify-tag vNEW_SIGNED_VERSION
+find "${verification_home}" -depth -delete
+unset verification_home
 docker compose build --pull
 docker compose up -d
 ```
 
-Review `CHANGELOG.md` before upgrading. If a release requests new OAuth scopes,
-disconnect and reconnect the installation after the container is updated.
+As during installation, continue only if the displayed fingerprint and signer
+match the official values. Review `CHANGELOG.md` before upgrading. If a release
+requests new OAuth scopes, disconnect and reconnect the installation after the
+container is updated.
 
 ## Revoke or uninstall
 
@@ -243,8 +296,7 @@ sudo systemctl daemon-reload
 For Docker, stop and remove the local container and image:
 
 ```bash
-docker compose down
-docker image rm neurocheckout-community:0.1.0-preview.1
+docker compose down --rmi local
 ```
 
 Delete `.env.local` only after confirming that its session secret is no longer

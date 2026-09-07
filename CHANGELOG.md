@@ -4,7 +4,10 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
-No unreleased changes.
+- Make the end-user installation path clone and verify the immutable signed
+  release tag before running setup or installing dependencies.
+- Replace branch-based upgrades with explicit signed-tag verification and keep
+  the published release-key fingerprint enforced by CI.
 
 ## 0.1.0-preview.2 - 2026-09-07
 

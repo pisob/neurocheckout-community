@@ -27,6 +27,30 @@ Official signing-key fingerprint:
 The historical `v0.1.0-preview.1` technical preview predates this policy. It is
 kept for traceability but is not an official signed release.
 
+## Verify a signed Git checkout
+
+Clone the exact tag advertised on the official release page, import the
+committed release key into a temporary keyring, compare its fingerprint with
+the fingerprint above, and verify the annotated tag before running any project
+script:
+
+```bash
+git clone --branch v0.1.0-preview.2 --depth 1 \
+  https://github.com/pisob/neurocheckout-community.git
+cd neurocheckout-community
+verification_home="$(mktemp -d)"
+chmod 700 "${verification_home}"
+GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
+GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
+  2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.2
+find "${verification_home}" -depth -delete
+unset verification_home
+```
+
+Do not replace the signed tag with `main`, a branch, a fork or a commit hash.
+Stop if the fingerprint, signer or signature does not match.
+
 ## Verify a downloaded release
 
 Place the archive, `.sha256`, `.asc`, and this repository's

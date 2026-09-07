@@ -46,9 +46,11 @@ jobs:
           bash -n tools/build-community-release.sh
           bash -n tools/verify-community-release.sh
           bash -n tools/build-connector-release.sh
-          gpg --batch --import-options show-only --import RELEASE-PUBLIC-KEY.asc
+          test "$(gpg --batch --with-colons --import-options show-only --import RELEASE-PUBLIC-KEY.asc | awk -F: '$1 == \"fpr\" { print $10; exit }')" = "2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0"
           grep -Fq "https://github.com/pisob/neurocheckout-community" README.md
           grep -Fq "https://github.com/pisob/neurocheckout-community" SECURITY.md
+          grep -Fq "git clone --branch v0.1.0-preview.2 --depth 1" README.md
+          grep -Fq "git verify-tag v0.1.0-preview.2" README.md
 
       - name: Test the native setup
         run: npm run test:native

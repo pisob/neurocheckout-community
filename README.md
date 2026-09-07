@@ -21,6 +21,7 @@ not release-ready.
 - a NeuroCheckout Cloud account; the free Community plan does not require a
   payment card;
 - Git;
+- GnuPG 2.x for release-signature verification;
 - Node.js 22 or newer;
 - npm 10 or newer;
 - outbound HTTPS access to `www.neurocheckout.com`;
@@ -32,6 +33,7 @@ Docker is not required. Check the native tools before installation:
 
 ```bash
 git --version
+gpg --version
 node --version
 npm --version
 ```
@@ -70,11 +72,40 @@ self-hosted interface will use the existing Cloud plan, features and quotas.
 
 1. Complete the Cloud activation and copy the public Client ID using the steps
    above.
-2. Clone the repository and run the guided setup:
+2. Clone the current official signed release. Do not install directly from the
+   moving `main` branch:
 
    ```bash
-   git clone https://github.com/pisob/neurocheckout-community.git
+   git clone --branch v0.1.0-preview.2 --depth 1 \
+     https://github.com/pisob/neurocheckout-community.git
    cd neurocheckout-community
+   ```
+
+   Git's `detached HEAD` notice is expected because an immutable release tag,
+   rather than a moving development branch, is checked out.
+
+3. Verify the release tag before running any project script:
+
+   ```bash
+   verification_home="$(mktemp -d)"
+   chmod 700 "${verification_home}"
+   GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
+   GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
+     2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
+   GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.2
+   find "${verification_home}" -depth -delete
+   unset verification_home
+   ```
+
+   Continue only if the fingerprint is exactly
+   `2949 F3BB 3295 DB8D D776 CC8D CEBA 4BC1 483B 4BB0` and Git reports a good
+   signature from `NeuroCheckout Community Release <contact@neurocheckout.com>`.
+   A trust warning is normal for a freshly imported key; a bad signature,
+   different fingerprint or different signer is not.
+
+4. Run the guided setup:
+
+   ```bash
    npm run setup
    ```
 
@@ -82,19 +113,19 @@ self-hosted interface will use the existing Cloud plan, features and quotas.
    private `.env.local`, generates the session secret and selects the correct
    cookie security for the callback URL.
 
-3. Install, diagnose and build the dashboard:
+5. Install, diagnose and build the dashboard:
 
    ```bash
    npm run install:native
    ```
 
-4. Start Community:
+6. Start Community:
 
    ```bash
    npm start
    ```
 
-5. Open `http://localhost:3400` and select **Connect to Cloud**.
+7. Open `http://localhost:3400` and select **Connect to Cloud**.
 
 `npm run doctor` can be repeated at any time. It validates Node.js, the local
 configuration, callback/cookie consistency, the production build and actual
