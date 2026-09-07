@@ -17,7 +17,8 @@ No unreleased changes.
 - Require every future official dashboard release to use a signed Git tag, a
   reproducible archive, a published SHA-256 checksum and an OpenPGP signature.
 - Publish the dedicated release-verification key and local verification tool;
-  the private signing key remains outside Git.
+  the private signing key remains outside Git and the public signing identity
+  uses the existing `contact@neurocheckout.com` mailbox.
 - Require connector release signatures and immediate Minisign verification
   instead of allowing unsigned connector release archives.
 - Support encrypted OpenAI and Anthropic BYOK keys with an explicit active AI
