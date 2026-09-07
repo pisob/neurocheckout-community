@@ -4,6 +4,10 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+No unreleased changes.
+
+## 0.1.0-preview.2 - 2026-09-07
+
 ### Changed
 
 - Declare the single canonical repository in the README, security policy and

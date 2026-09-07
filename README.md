@@ -4,7 +4,7 @@
 > the only canonical source for NeuroCheckout Community releases. Forks and
 > mirrors are not official releases, even when they preserve the source code.
 
-> **Technical Preview — v0.1.0-preview.1.** This release is intended for
+> **Technical Preview — v0.1.0-preview.2.** This release is intended for
 > evaluation and integration testing. Treat the Cloud API contract, deployment
 > process and user experience as pre-stable until the first stable release.
 
