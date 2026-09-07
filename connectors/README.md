@@ -39,6 +39,7 @@ Copy `connector-files.example.txt`, list only reviewed source files, then run:
   1.0.0
 ```
 
-Set `NC_CONNECTOR_MINISIGN_KEY_PATH` to an explicit private-key path to add a
-`.minisig` signature. Signing is intentionally unavailable when `minisign` or
-the key is absent; the script never generates or searches for private keys.
+Set `NC_CONNECTOR_MINISIGN_KEY_PATH` to an explicit private-key path and
+`NC_CONNECTOR_MINISIGN_PUBLIC_KEY` to the matching public key. Both are
+mandatory: the build fails unless the generated `.minisig` verifies
+immediately. The script never generates or searches for private keys.

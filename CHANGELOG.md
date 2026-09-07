@@ -6,6 +6,16 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ### Changed
 
+- Declare the single canonical repository in the README, security policy and
+  trademark policy so forks and mirrors cannot be mistaken for official builds.
+- Clarify that contributions and CI artifacts remain unofficial until reviewed,
+  merged and published through the maintainer-only signed-release process.
+- Require every future official dashboard release to use a signed Git tag, a
+  reproducible archive, a published SHA-256 checksum and an OpenPGP signature.
+- Publish the dedicated release-verification key and local verification tool;
+  the private signing key remains outside Git.
+- Require connector release signatures and immediate Minisign verification
+  instead of allowing unsigned connector release archives.
 - Support encrypted OpenAI and Anthropic BYOK keys with an explicit active AI
   provider per shop; NeuroCheckout platform credentials are never exposed or
   substituted in Community generation.

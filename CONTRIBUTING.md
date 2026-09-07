@@ -11,3 +11,9 @@ Thank you for helping improve NeuroCheckout Community.
 5. Keep new Cloud calls behind Community's server-side BFF and request the narrowest OAuth scope.
 
 By contributing, you agree that your contribution is licensed under Apache-2.0. Security reports must follow `SECURITY.md` and must not be filed publicly.
+
+Contributions are proposed through forks and pull requests. A fork, branch,
+commit or CI artifact is never an official NeuroCheckout release. Only a
+maintainer-reviewed commit merged into the canonical repository and published
+with the complete signed-release procedure in `RELEASES.md` can become an
+official build. Contributors never receive the private release-signing key.

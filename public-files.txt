@@ -10,6 +10,8 @@ Dockerfile
 LICENSE
 NOTICE
 README.md
+RELEASE-PUBLIC-KEY.asc
+RELEASES.md
 SECURITY.md
 TRADEMARKS.md
 compose.yaml
@@ -81,4 +83,6 @@ scripts/smoke-oauth-proxy.mjs
 scripts/start-standalone.mjs
 scripts/test-native-setup.mjs
 tools/build-connector-release.sh
+tools/build-community-release.sh
+tools/verify-community-release.sh
 tsconfig.json

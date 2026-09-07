@@ -9,6 +9,9 @@ your work is derived from NeuroCheckout Community, provided the statement is
 accurate and does not suggest sponsorship, certification, or endorsement.
 
 An unmodified official build may retain the included product identification.
+A build is official only when it is published from the canonical repository at
+<https://github.com/pisob/neurocheckout-community> under the signed-release
+process documented in `RELEASES.md`.
 A modified or redistributed build must use a distinct product name and visual
 identity unless the trademark owner has granted written permission. It must not
 present itself as an official NeuroCheckout release.

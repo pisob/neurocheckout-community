@@ -41,6 +41,15 @@ jobs:
       - name: Check TypeScript
         run: npm run typecheck
 
+      - name: Validate the official release policy
+        run: |
+          bash -n tools/build-community-release.sh
+          bash -n tools/verify-community-release.sh
+          bash -n tools/build-connector-release.sh
+          gpg --batch --import-options show-only --import RELEASE-PUBLIC-KEY.asc
+          grep -Fq "https://github.com/pisob/neurocheckout-community" README.md
+          grep -Fq "https://github.com/pisob/neurocheckout-community" SECURITY.md
+
       - name: Test the native setup
         run: npm run test:native
 

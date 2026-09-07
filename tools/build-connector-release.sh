@@ -90,16 +90,20 @@ find "${staging_dir}" -type f -exec touch -d "@${source_date_epoch}" {} +
 )
 
 signing_key="${NC_CONNECTOR_MINISIGN_KEY_PATH:-}"
-if [[ -n "${signing_key}" ]]; then
-  if [[ "${signing_key}" != /* || ! -f "${signing_key}" ]]; then
-    echo "NC_CONNECTOR_MINISIGN_KEY_PATH must name an existing absolute file." >&2
-    exit 13
-  fi
-  if ! command -v minisign >/dev/null 2>&1; then
-    echo "minisign is required when a signing key is configured." >&2
-    exit 14
-  fi
-  minisign -S -s "${signing_key}" -m "${archive}" -x "${archive}.minisig"
+public_key="${NC_CONNECTOR_MINISIGN_PUBLIC_KEY:-}"
+if [[ -z "${signing_key}" || "${signing_key}" != /* || ! -f "${signing_key}" ]]; then
+  echo "An absolute NC_CONNECTOR_MINISIGN_KEY_PATH is required for every release." >&2
+  exit 13
 fi
+if [[ -z "${public_key}" ]]; then
+  echo "NC_CONNECTOR_MINISIGN_PUBLIC_KEY is required for immediate verification." >&2
+  exit 14
+fi
+if ! command -v minisign >/dev/null 2>&1; then
+  echo "minisign is required to build a connector release." >&2
+  exit 15
+fi
+minisign -S -s "${signing_key}" -m "${archive}" -x "${archive}.minisig"
+minisign -V -P "${public_key}" -m "${archive}" -x "${archive}.minisig"
 
 echo "Connector release prepared: ${archive}"

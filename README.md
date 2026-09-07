@@ -1,5 +1,9 @@
 # NeuroCheckout Community
 
+> **Official repository:** <https://github.com/pisob/neurocheckout-community> is
+> the only canonical source for NeuroCheckout Community releases. Forks and
+> mirrors are not official releases, even when they preserve the source code.
+
 > **Technical Preview — v0.1.0-preview.1.** This release is intended for
 > evaluation and integration testing. Treat the Cloud API contract, deployment
 > process and user experience as pre-stable until the first stable release.
@@ -188,6 +192,12 @@ npm audit --omit=dev
 docker compose config
 docker build -t neurocheckout-community:local .
 ```
+
+Official release archives are published with a SHA-256 checksum, an OpenPGP
+signature and a signed Git tag. Verify all three before installing a downloaded
+archive by following [`RELEASES.md`](RELEASES.md). The historical
+`v0.1.0-preview.1` technical preview predates this policy and is not an official
+signed release.
 
 Connector packages are not declared released until
 `connectors/compatibility.json` marks an audited, tested and signed platform
