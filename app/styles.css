@@ -85,6 +85,10 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .compatibility-alert.recommended { border-color: var(--warning); background: rgb(244 198 109 / 8%); color: #f9d998; }
 .compatibility-alert strong { font-size: 12px; }
 .compatibility-alert p { margin: 4px 0 0; font-size: 11px; line-height: 1.5; }
+.local-update-actions { float: right; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-left: 16px; }
+.local-update-actions [role="status"] { font-size: 14px; max-width: 32ch; }
+.compatibility-alert::after { content: ""; display: block; clear: both; }
+@media (max-width: 640px) { .local-update-actions { float: none; margin: 12px 0; } }
 
 .overview-view { padding-top: 24px; }
 .command-surface { display: grid; grid-template-columns: minmax(235px, .7fr) minmax(0, 1.8fr); overflow: hidden; border: 1px solid var(--line-strong); background: var(--surface); }

@@ -1,6 +1,6 @@
 {
   "name": "neurocheckout-community",
-  "version": "0.1.0-preview.3",
+  "version": "0.1.0-preview.4",
   "private": true,
   "engines": {
     "node": ">=22.0.0",
@@ -15,6 +15,7 @@
     "install:native": "npm ci && npm run doctor && npm run build",
     "smoke:integration": "node scripts/smoke-oauth-proxy.mjs",
     "test:native": "node scripts/test-native-setup.mjs",
+    "test:update": "node scripts/test-local-update.mjs",
     "verify:release": "./tools/verify-community-release.sh",
     "typecheck": "tsc --noEmit"
   },

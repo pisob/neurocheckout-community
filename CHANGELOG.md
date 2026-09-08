@@ -6,6 +6,17 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 No unreleased changes.
 
+## 0.1.0-preview.4 - 2026-09-08
+
+- Add a secure update button for native Linux installations started with npm.
+- Validate the Cloud-authorized target, official tag, pinned OpenPGP signer,
+  archive checksum and equality with the signed Git tree before building.
+- Prepare updates separately, preserve the original environment file, check
+  startup health and restore the previous build when activation fails.
+- Show progress in English and French and link Docker users to manual updates.
+- Protect local update requests with session authentication, origin checks and
+  an exclusive request queue; dependency builds receive no application secrets.
+
 ## 0.1.0-preview.3 - 2026-09-07
 
 ### Fixed

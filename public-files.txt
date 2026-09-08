@@ -86,3 +86,9 @@ tools/build-connector-release.sh
 tools/build-community-release.sh
 tools/verify-community-release.sh
 tsconfig.json
+app/api/local-update/route.ts
+components/LocalUpdate.tsx
+scripts/verified-update.mjs
+scripts/update-switch.mjs
+scripts/test-local-update.mjs
+scripts/test-update-launcher.mjs

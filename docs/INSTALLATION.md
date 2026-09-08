@@ -32,7 +32,7 @@ npm --version
 Install a fixed signed release, not the moving development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.3 --depth 1 \
+git clone --branch v0.1.0-preview.4 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -40,7 +40,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.3
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.4
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -162,6 +162,7 @@ After adapting those three values if necessary:
 
 ```bash
 sudo cp deploy/neurocheckout-community.service /etc/systemd/system/
+sudo install -d -m 0700 -o neurocheckout -g neurocheckout /opt/neurocheckout-community/.community-updates
 sudo systemctl daemon-reload
 sudo systemctl enable --now neurocheckout-community
 sudo systemctl status neurocheckout-community
@@ -238,6 +239,34 @@ npm run start
 ```
 
 ## Upgrade
+
+### Update from the dashboard (native Linux)
+
+With version `.4` or later started using `npm start`, select **Update securely**
+beside the version notice and confirm. Git, GnuPG, gzip, sha256sum and npm must
+be available to the service user. Allow outbound HTTPS to GitHub and the npm
+registry, and reserve disk space for dependencies and a second production build.
+Keep the terminal or service running during preparation.
+
+The server gets the target from Cloud, checks that it is authorized, verifies
+the release signatures and checksum, and builds it in `.community-updates`.
+The original `.env.local` stays in the installation root. Only the application
+receives those settings; dependency installation and build do not receive them.
+After a healthy restart the selection persists across `npm start` restarts.
+A failed build leaves the existing server running; failed activation restores
+the previous server. A stopped or interrupted job is not automatically retried.
+
+The original launcher remains installed in the root directory. Updates that
+change that launcher require the manual procedure below. Docker and direct
+standalone-server launches display the manual update guide. Run as a dedicated
+unprivileged user and keep `.community-updates` private and writable.
+
+### Manual update
+
+If you previously used the dashboard updater, first stop Community and move
+`.community-updates/current.json` to `current.json.backup` in that same folder.
+This makes the next start use the root checkout you are about to upgrade.
+Keep the previous release folders until the replacement has been checked.
 
 Read the new release notes, replace `vNEW_SIGNED_VERSION` below with its exact
 published tag, and back up `.env.local` outside the repository. For a native

@@ -6,6 +6,7 @@ import EmailApprovals from "@/components/EmailApprovals";
 import MemberMessages from "@/components/MemberMessages";
 import AgentPerformance from "@/components/AgentPerformance";
 import ConvertedOrders from "@/components/ConvertedOrders";
+import LocalUpdate from "@/components/LocalUpdate";
 import { agentAvatar, SUPERVISOR_AVATAR } from "@/lib/agent-visuals";
 import { useUiLanguage, type UiLanguage } from "@/lib/ui-language";
 
@@ -302,11 +303,13 @@ export default function Dashboard() {
             {capabilities.dashboard?.update_required ? (
               <section className="compatibility-alert" role="alert">
                 <strong>{ui("Update required", "Mise à jour obligatoire")}</strong>
+                <LocalUpdate french={language === "fr"} />
                 <p>{ui("This interface", "Cette interface")} ({capabilities.dashboard.current_version || ui("unknown version", "version inconnue")}) {ui("must be updated to at least version", "doit être mise à jour vers la version")} {capabilities.dashboard.minimum_version} {ui(".", "minimum.")}</p>
               </section>
             ) : capabilities.dashboard?.update_recommended ? (
               <section className="compatibility-alert recommended">
                 <strong>{ui("Update available", "Mise à jour disponible")}</strong>
+                <LocalUpdate french={language === "fr"} />
                 <p>{ui("NeuroCheckout Community version", "La version")} {capabilities.dashboard.latest_version} {ui("is available.", "de NeuroCheckout Community est disponible.")}</p>
               </section>
             ) : null}

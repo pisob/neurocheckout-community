@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, mkdtempSync, rmSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createServer } from "node:http";
 import { join } from "node:path";
 
@@ -13,6 +14,8 @@ const communityOrigin = `http://${host}:${communityPort}`;
 const cookies = new Map();
 let failureMode = "";
 let mutations = 0;
+let targetBlocked = false;
+const updateDirectory = mkdtempSync(join(tmpdir(), "nc-update-api-test-"));
 const observed = {
   tokenExchange: false,
   capabilities: false,
@@ -49,13 +52,18 @@ const cloud = createServer(async (request, response) => {
   }
 
   assert.equal(request.headers.authorization, "Bearer smoke-access-token");
-  assert.equal(request.headers["x-neurocheckout-community-version"], packageVersion);
+  assert.ok([packageVersion, "99.0.0"].includes(request.headers["x-neurocheckout-community-version"]));
 
   if (request.method === "GET" && request.url === "/api/v1/member/capabilities") {
     if (failureMode === "transport") return request.socket.destroy();
     observed.capabilities = true;
     return json(response, 200, {
       plan: { code: "community" },
+      dashboard: {
+        latest_version: "99.0.0", allowed_versions: [packageVersion, "99.0.0"],
+        update_recommended: true, update_required: targetBlocked,
+        version_status: targetBlocked ? "blocked" : "compatible",
+      },
       quotas: { email: { limit: 100, window: "rolling_24h" } },
     });
   }
@@ -132,6 +140,7 @@ const community = spawn(process.execPath, [join(standaloneDirectory, "server.js"
   env: {
     ...process.env,
     HOSTNAME: host,
+    NC_LOCAL_UPDATE_DIRECTORY: updateDirectory,
     PORT: String(communityPort),
     NC_CLOUD_API_BASE_URL: cloudOrigin,
     NC_CLOUD_AUTHORIZATION_URL: `${cloudOrigin}/oauth/authorize`,
@@ -153,6 +162,8 @@ try {
   const anonymous = await fetch(`${communityOrigin}/api/cloud/capabilities`);
   assert.equal(anonymous.status, 401);
   assert.equal((await anonymous.json()).detail, "community_not_connected");
+  assert.equal((await fetch(`${communityOrigin}/api/local-update`)).status, 401);
+  assert.equal((await fetch(`${communityOrigin}/api/local-update`, { method: "POST", headers: { Origin: communityOrigin } })).status, 401);
 
   const start = await communityFetch("/api/auth/start");
   assert.equal(start.status, 307);
@@ -177,6 +188,17 @@ try {
   const capabilities = await communityFetch("/api/cloud/capabilities");
   assert.equal(capabilities.status, 200);
   assert.equal((await capabilities.json()).quotas.email.limit, 100);
+  for (const origin of ["null", "https://foreign.invalid"]) {
+    assert.equal((await communityFetch("/api/local-update", { method: "POST", headers: { Origin: origin } })).status, 403);
+  }
+  targetBlocked = true;
+  assert.equal((await communityFetch("/api/local-update", { method: "POST", headers: { Origin: communityOrigin } })).status, 409);
+  targetBlocked = false;
+  assert.equal((await communityFetch("/api/local-update", { method: "POST", headers: { Origin: communityOrigin }, body: JSON.stringify({ version: "evil", command: "echo unsafe" }) })).status, 202);
+  assert.deepEqual(JSON.parse(readFileSync(join(updateDirectory, "request.json"), "utf8")), { version: "99.0.0" });
+  assert.equal((await communityFetch("/api/local-update", { method: "POST", headers: { Origin: communityOrigin } })).status, 409);
+  assert.equal((await (await communityFetch("/api/local-update")).json()).phase, "queued");
+  unlinkSync(join(updateDirectory, "request.json"));
 
   const shops = await communityFetch("/api/cloud/shops");
   assert.equal(shops.status, 200);
@@ -230,4 +252,5 @@ try {
     new Promise((resolve) => setTimeout(resolve, 2_000)),
   ]);
   await new Promise((resolve) => cloud.close(resolve));
+  rmSync(updateDirectory, { recursive: true, force: true });
 }

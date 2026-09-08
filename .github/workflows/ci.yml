@@ -57,6 +57,9 @@ jobs:
       - name: Test the native setup
         run: npm run test:native
 
+      - name: Test update verification and rollback
+        run: npm run test:update
+
       - name: Build the production application
         run: npm run build
 

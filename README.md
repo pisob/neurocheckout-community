@@ -4,7 +4,7 @@
 > the only canonical source for NeuroCheckout Community releases. Forks and
 > mirrors are not official releases, even when they preserve the source code.
 
-> **Technical Preview — v0.1.0-preview.3.** This release is intended for
+> **Technical Preview — v0.1.0-preview.4.** This release is intended for
 > evaluation and integration testing. Treat the Cloud API contract, deployment
 > process and user experience as pre-stable until the first stable release.
 
@@ -76,7 +76,7 @@ self-hosted interface will use the existing Cloud plan, features and quotas.
    moving `main` branch:
 
    ```bash
-   git clone --branch v0.1.0-preview.3 --depth 1 \
+   git clone --branch v0.1.0-preview.4 --depth 1 \
      https://github.com/pisob/neurocheckout-community.git
    cd neurocheckout-community
    ```
@@ -92,7 +92,7 @@ self-hosted interface will use the existing Cloud plan, features and quotas.
    GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
    GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
      2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-   GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.3
+   GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.4
    find "${verification_home}" -depth -delete
    unset verification_home
    ```
@@ -132,6 +132,15 @@ configuration, callback/cookie consistency, the production build and actual
 reachability of NeuroCheckout Cloud without exposing credentials.
 
 ## Optional Docker installation
+
+Native Linux installations started with `npm start` include an **Update
+securely** button when Cloud recommends an update. Confirm it to verify,
+prepare and activate the new signed release. Keep the terminal open during
+the update. Configuration is preserved and a failed activation restores the
+previous build. Docker installations use the manual update guide instead.
+
+Versions before `.4` need one manual upgrade to obtain this button. Future
+changes to the native launcher itself may also require a manual upgrade.
 
 Docker remains available for administrators who prefer container isolation:
 

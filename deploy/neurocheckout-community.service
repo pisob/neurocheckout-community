@@ -21,6 +21,7 @@ PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
 ReadWritePaths=/opt/neurocheckout-community/.next
+ReadWritePaths=/opt/neurocheckout-community/.community-updates
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
 [Install]

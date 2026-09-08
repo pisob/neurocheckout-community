@@ -2,6 +2,7 @@
 .env.*
 !.env.example
 .next/
+.community-updates/
 node_modules/
 *.tsbuildinfo
 npm-debug.log*
