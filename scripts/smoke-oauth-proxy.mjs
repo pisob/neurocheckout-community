@@ -72,6 +72,9 @@ const cloud = createServer(async (request, response) => {
   }
   if (request.method === "POST" && request.url === "/api/v1/public/community-relay/poll") {
     assert.equal(request.headers.authorization, `Bearer ${relayToken}`);
+    // Independent background loops need not finish in the same order.
+    // Keep a realistic relay delay so a heartbeat cannot stand in for a reply.
+    await new Promise(resolve => setTimeout(resolve, 500));
     const commands = relayReference ? [{ request_id: "a".repeat(32), operation: "read", record: { kind: "cart", reference: relayReference, minimumRevision: 1 } }] : [];
     return json(response, 200, { commands });
   }
@@ -201,6 +204,14 @@ async function waitForHeartbeat(previous) {
   assert.ok(heartbeats > previous, "server must report availability without browser requests");
 }
 
+async function waitForRelay(previous) {
+  for (let i = 0; i < 160 && relayReads <= previous; i++) {
+    if (community.exitCode !== null) throw new Error(`Community server exited with ${community.exitCode}`);
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  assert.ok(relayReads > previous, "outgoing client must serve a Cloud read without a browser or incoming network connection");
+}
+
 async function localDataFetch(role, input) {
   const path = role === "write" ? "/api/local-data/v1/records" : "/api/local-data/v1/read";
   const body = JSON.stringify(input), timestamp = String(Date.now()), nonce = randomBytes(16).toString("hex");
@@ -249,7 +260,7 @@ try {
   assert.ok(cookies.has("nc_community_session"));
 
   await waitForHeartbeat(0);
-  assert.ok(relayReads > 0, "outgoing client must serve a Cloud read without an incoming network connection");
+  await waitForRelay(0);
   const relayBeforeRestart = relayReads;
   const beforeRestart = heartbeats;
   const stopped = new Promise(resolve => community.once("exit", resolve));
@@ -258,8 +269,7 @@ try {
   community = launch();
   await waitUntilReady(community);
   await waitForHeartbeat(beforeRestart);
-  for (let i = 0; i < 40 && relayReads <= relayBeforeRestart; i++) await new Promise(resolve => setTimeout(resolve, 250));
-  assert.ok(relayReads > relayBeforeRestart, "outgoing client must resume after restart without another OAuth login");
+  await waitForRelay(relayBeforeRestart);
   assert.ok(!serverOutput.includes(relayToken));
   assert.ok(!serverOutput.includes(availabilityToken));
   const restored = await localDataFetch("read", localRead);
