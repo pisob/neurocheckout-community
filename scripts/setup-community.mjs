@@ -16,6 +16,23 @@ const DEFAULTS = {
   cloudUpgradeUrl: "https://www.neurocheckout.com/pricing",
 };
 
+export function cloudConfiguration(environment, existing = {}) {
+  if (environment === "staging") return {
+    cloudApiBaseUrl: "https://community-api-staging.neurocheckout.com",
+    cloudAuthorizationUrl: "https://staging.neurocheckout.com/community/authorize",
+    cloudUpgradeUrl: "https://staging.neurocheckout.com/pricing",
+    deploymentEnvironment: "staging",
+  };
+  if (environment && environment !== "production") throw new Error("Environment must be staging or production.");
+  if (environment === "production") return { ...DEFAULTS, deploymentEnvironment: "production" };
+  return {
+    cloudApiBaseUrl: existing.NC_CLOUD_API_BASE_URL || DEFAULTS.cloudApiBaseUrl,
+    cloudAuthorizationUrl: existing.NC_CLOUD_AUTHORIZATION_URL || DEFAULTS.cloudAuthorizationUrl,
+    cloudUpgradeUrl: existing.NC_CLOUD_UPGRADE_URL || DEFAULTS.cloudUpgradeUrl,
+    deploymentEnvironment: existing.NC_DEPLOYMENT_ENV || "production",
+  };
+}
+
 export function isPlaceholder(value) {
   const normalized = String(value || "").trim().toLowerCase();
   return (
@@ -77,6 +94,9 @@ export function renderConfiguration(values) {
     ["NC_CLOUD_UPGRADE_URL", values.cloudUpgradeUrl],
     ["NC_COMMUNITY_SESSION_SECRET", values.sessionSecret],
     ["NC_COMMUNITY_COOKIE_SECURE", String(values.cookieSecure)],
+    ["NC_DEPLOYMENT_ENV", values.deploymentEnvironment || "production"],
+    ["NC_LOCAL_DATA_PILOT_ENABLED", "false"],
+    ["NC_CONNECTOR_PULL_ENABLED", "false"],
   ];
 
   return [
@@ -98,6 +118,9 @@ function parseArguments(argv) {
       options.redirectUri = argument.slice("--redirect-uri=".length);
     } else if (argument.startsWith("--output=")) {
       options.output = argument.slice("--output=".length);
+    } else if (argument.startsWith("--environment=")) {
+      options.environment = argument.slice("--environment=".length);
+      if (!["staging", "production"].includes(options.environment)) throw new Error("Environment must be staging or production.");
     } else {
       throw new Error(`Unknown option: ${argument}`);
     }
@@ -167,12 +190,7 @@ export async function main(argv = process.argv.slice(2)) {
     const configuration = renderConfiguration({
       clientId,
       redirectUri,
-      cloudApiBaseUrl:
-        existing.NC_CLOUD_API_BASE_URL || DEFAULTS.cloudApiBaseUrl,
-      cloudAuthorizationUrl:
-        existing.NC_CLOUD_AUTHORIZATION_URL || DEFAULTS.cloudAuthorizationUrl,
-      cloudUpgradeUrl:
-        existing.NC_CLOUD_UPGRADE_URL || DEFAULTS.cloudUpgradeUrl,
+      ...cloudConfiguration(options.environment, existing),
       sessionSecret,
       cookieSecure: new URL(redirectUri).protocol === "https:",
     });
@@ -181,6 +199,8 @@ export async function main(argv = process.argv.slice(2)) {
     chmodSync(output, 0o600);
     console.log(`Configuration saved securely to ${options.output}.`);
     console.log(`Registered callback: ${redirectUri}`);
+    console.log(`Cloud API: ${cloudConfiguration(options.environment, existing).cloudApiBaseUrl}`);
+    console.log("Local-data and connector-pull pilots are disabled by this setup.");
     console.log("The generated session secret was not displayed.");
   } finally {
     reader?.close();

@@ -35,7 +35,7 @@ the fingerprint above, and verify the annotated tag before running any project
 script:
 
 ```bash
-git clone --branch v0.1.0-preview.4 --depth 1 \
+git clone --branch v0.1.0-preview.5 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -43,7 +43,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.4
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.5
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -79,3 +79,15 @@ NC_RELEASE_GPG_PASSPHRASE_FILE=/absolute/private/passphrase \
 
 Upload the three generated files to the matching GitHub release. Never publish
 an archive produced from an unsigned tag.
+
+### Publication without uploading a private signing key
+
+The prerelease workflow runs the complete CI, then reconstructs the archive
+from the signed tag using `git -c tar.umask=0002 archive | gzip -n -9`.
+The maintainer signs that exact archive **locally**, and includes its armored
+signature encoded on a single `NC-ARCHIVE-SIGNATURE-BASE64: ...` line in the
+signed tag annotation. The archive content depends on the commit, not this
+annotation. The workflow verifies both signatures against the pinned official
+fingerprint, creates a draft with all three assets and only then publishes it.
+No private signing key or passphrase is uploaded to GitHub. The workflow never
+overwrites an existing release and does not mark staging previews as latest.

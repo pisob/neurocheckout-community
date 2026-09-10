@@ -6,6 +6,20 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 No unreleased changes.
 
+## 0.1.0-preview.5 - 2026-09-10
+
+- Signed staging prerelease with an explicit `setup --environment=staging`
+  path, staging account links and a Mailpit cart-recovery test checklist.
+- Include persistent server availability, an encrypted local product/cart
+  vault, signed source synchronization and an outbound-only Cloud read client.
+- Preserve the requirement that agents, scheduling, quotas and SMTP run in Cloud.
+- Validate restart recovery, replay protection, bounded storage and signed
+  source batches; fix an integration-test race between heartbeat and relay.
+- Keep local-data/source-pull pilots disabled. Native connector exports,
+  minimal event delivery, real-store checks and all Cloud business readers
+  are not yet complete. Existing Cloud data is not migrated or deleted.
+- Not approved for production; no new connector package is declared released.
+
 ## 0.1.0-preview.4 - 2026-09-08
 
 - Add a secure update button for native Linux installations started with npm.

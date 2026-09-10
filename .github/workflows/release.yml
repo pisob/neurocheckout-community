@@ -1,0 +1,77 @@
+name: Publish signed Community prerelease
+
+on:
+  push:
+    tags:
+      - 'v*-preview.*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: community-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: validate
+    if: github.repository == 'pisob/neurocheckout-community'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Reconstruct and verify locally signed artifacts
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "$RELEASE_TAG^{commit}")"
+          test "$(node -p 'require("./package.json").version')" = "${RELEASE_TAG#v}"
+          export GNUPGHOME
+          GNUPGHOME="$(mktemp -d)"
+          chmod 700 "$GNUPGHOME"
+          gpg --batch --import RELEASE-PUBLIC-KEY.asc
+          git verify-tag --raw "$RELEASE_TAG" 2>tag-verification.txt
+          grep -Eq '^\[GNUPG:\] VALIDSIG 2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0 ' tag-verification.txt
+          mkdir release-output
+          archive="neurocheckout-community-${RELEASE_TAG#v}.tar.gz"
+          git -c tar.umask=0002 archive --format=tar --prefix="neurocheckout-community-${RELEASE_TAG#v}/" "$RELEASE_TAG" | gzip -n -9 > "release-output/$archive"
+          python3 - <<'PY'
+          import base64, os, pathlib, re, subprocess
+          tag = os.environ['RELEASE_TAG']
+          message = subprocess.check_output(['git', 'cat-file', 'tag', tag], text=True)
+          matches = re.findall(r'^NC-ARCHIVE-SIGNATURE-BASE64: ([A-Za-z0-9+/=]+)$', message, re.M)
+          if len(matches) != 1:
+              raise SystemExit('Exactly one archive signature is required inside the signed tag')
+          signature = base64.b64decode(matches[0], validate=True)
+          if len(signature) > 16384 or not signature.startswith(b'-----BEGIN PGP SIGNATURE-----'):
+              raise SystemExit('Invalid archive signature format')
+          pathlib.Path('release-output', f'neurocheckout-community-{tag[1:]}.tar.gz.asc').write_bytes(signature)
+          PY
+          gpg --batch --status-fd 1 --verify "release-output/$archive.asc" "release-output/$archive" >archive-verification.txt
+          grep -Eq '^\[GNUPG:\] VALIDSIG 2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0 ' archive-verification.txt
+          (cd release-output && sha256sum "$archive" > "$archive.sha256" && sha256sum --check "$archive.sha256")
+
+      - name: Publish verified prerelease with all three assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" release-output/* \
+            --verify-tag --draft --prerelease --latest=false \
+            --title "NeuroCheckout Community $RELEASE_TAG" \
+            --notes-file docs/RELEASE-NOTES.md
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease --latest=false

@@ -53,7 +53,7 @@ if [[ -e "${archive}" || -e "${checksum}" || -e "${signature}" ]]; then
 fi
 
 mkdir -p "${output_dir}"
-git -C "${repo_root}" archive \
+git -C "${repo_root}" -c tar.umask=0002 archive \
   --format=tar \
   --prefix="neurocheckout-community-${version}/" \
   "${tag}" | gzip -n -9 > "${archive}"

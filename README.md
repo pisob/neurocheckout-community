@@ -1,15 +1,16 @@
 # NeuroCheckout Community
 
-> **Development branch — local-data architecture candidate.** These changes are
-> published for staging evaluation, not as a new signed release. The installation
-> instructions below still target the existing `v0.1.0-preview.4` release.
-> Keep the local-data pilot disabled until the full integration is validated.
+> **Signed staging prerelease — v0.1.0-preview.5.** Follow the installation below
+> to connect to **staging**, not production. The new local-data components are
+> included but disabled: this is not a completed migration of products/carts out
+> of Cloud. The current Cloud event/email/conversion path remains in use.
+> Test emails are captured by staging Mailpit, not delivered to customer inboxes.
 
 > **Official repository:** <https://github.com/pisob/neurocheckout-community> is
 > the only canonical source for NeuroCheckout Community releases. Forks and
 > mirrors are not official releases, even when they preserve the source code.
 
-> **Technical Preview — v0.1.0-preview.4.** This release is intended for
+> **Technical Preview — v0.1.0-preview.5.** This release is intended for
 > evaluation and integration testing. Treat the Cloud API contract, deployment
 > process and user experience as pre-stable until the first stable release.
 
@@ -31,7 +32,8 @@ not release-ready.
 - GnuPG 2.x for release-signature verification;
 - Node.js 22.13 or newer for this candidate (Node.js 22 LTS recommended);
 - npm 10 or newer;
-- outbound HTTPS access to `www.neurocheckout.com`;
+- outbound HTTPS access to `staging.neurocheckout.com` and
+  `community-api-staging.neurocheckout.com` for this prerelease;
 - local port `3400`, or another available loopback port;
 - for a public server: a domain name, HTTPS and a reverse proxy such as Caddy
   or Nginx.
@@ -54,7 +56,7 @@ availability. Configure the service to restart after reboot and monitor it.
 Agents, scheduled workers and email delivery continue to run in NeuroCheckout
 Cloud.
 
-**Upcoming release:** when Cloud enables the server-availability requirement,
+When Cloud enables the server-availability requirement,
 automations for the associated store pause after Community stops reporting
 availability. Pending automated actions are checked again automatically when
 the server reconnects. Normal delivery, cart and quota checks still apply;
@@ -62,9 +64,10 @@ reconnecting does not guarantee that every old action remains eligible. Emails
 already accepted for delivery cannot be recalled. A manual approval that returns
 an unavailable error remains pending and must be submitted again.
 
-This feature is not included in the signed `v0.1.0-preview.4` installation below.
-After upgrading to a release that includes it, reconnect to Cloud once to
-register the server. Subsequent heartbeats run without an open browser and
+The server-availability client is included in `v0.1.0-preview.5`, but the
+Cloud requirement is disabled during initial staging evaluation. When the
+operator enables it, reconnect to Cloud once to register the server.
+Subsequent heartbeats run without an open browser and
 survive server restarts. Preserve the private `.community-state/` directory
 and the session secret together; Docker uses the `community-state` volume.
 After loss of this state, reconnect to Cloud to register the server again.
@@ -72,11 +75,11 @@ After loss of this state, reconnect to Cloud to register the server again.
 This availability feature does not move existing store data. Local-only product
 and cart storage is a separate development and is not provided by this release.
 
-### Local product/cart data — staging pilot, not a released migration
+### Local product/cart data — included pilot, not an activated migration
 
 The candidate includes an encrypted local store and signed server-to-server
-read/write endpoints, disabled by default. This is **not** an alternative
-installation procedure for the signed release below. It does not yet redirect
+read/write endpoints, disabled by default. Pilot activation is **not** part of
+the normal signed-release installation below. It does not yet redirect
 installed connectors or replace the existing Cloud agent data pipeline.
 Do not enable it against production or claim that existing Cloud copies have
 been removed. Agents, scheduling and email delivery remain in Cloud.
@@ -94,8 +97,8 @@ long-poll HTTPS connection to the configured Cloud API and answers bounded read
 requests using its local encrypted vault. You do not need to open a router port,
 expose localhost, change DNS or keep a browser open. Keep Community bound to
 loopback for a local-computer installation. The Cloud-side staging relay must
-be deployed and explicitly enabled first; this is not part of the current
-signed release's installation steps.
+be deployed and explicitly enabled first; the operator has not yet enabled it
+for this release's normal installation steps.
 
 With both staging pilots enabled, a new OAuth connection registers a separate,
 server-only relay credential, encrypted in `.community-state/data-relay.enc`.
@@ -157,10 +160,10 @@ See the [Node.js SQLite documentation](https://nodejs.org/download/release/v22.1
 
 Yes, the customer first uses the official NeuroCheckout website:
 
-1. Open [www.neurocheckout.com/register](https://www.neurocheckout.com/register)
-   to create an account, or [sign in](https://www.neurocheckout.com/login) with
+1. For this staging prerelease, open [staging registration](https://staging.neurocheckout.com/register)
+   to create an account, or [sign in to staging](https://staging.neurocheckout.com/login) with
    an existing account. Complete email verification if requested.
-2. Open the [plan selection page](https://www.neurocheckout.com/onboarding/subscription).
+2. Open the [staging plan selection page](https://staging.neurocheckout.com/onboarding/subscription).
 3. Select **Activate Community** or **Continue free with Community**. No payment
    card is requested. Cloud activates the Community allowance for one store,
    Supervisor plus seven enabled specialist agents, and 100 emails per account
@@ -168,7 +171,7 @@ Yes, the customer first uses the official NeuroCheckout website:
 4. In the Cloud member dashboard, create or connect the store that this
    installation will manage. Store creation remains a Cloud operation.
 5. Go to
-   [Community installations](https://www.neurocheckout.com/dashboard/community).
+   [staging Community installations](https://staging.neurocheckout.com/dashboard/community).
 6. Select the store, then enter an installation name and the exact callback URL:
    - local computer: `http://localhost:3400/api/auth/callback`;
    - public server: `https://community.example.com/api/auth/callback`.
@@ -178,6 +181,9 @@ Yes, the customer first uses the official NeuroCheckout website:
 Each active store can be assigned to only one active Community installation.
 An account can keep at most two active Community installations. Revoke the old
 installation in Cloud before replacing it for the same store.
+For a reinstall of the same registered installation, you may reuse its public
+staging Client ID and exact callback; stop the old local server first. Do not
+create a second registration for the same store or use a production Client ID.
 
 If the account already has an active trial or paid Cloud plan, do not replace
 it with the free plan. Go directly to **Community installations**: the
@@ -191,7 +197,7 @@ self-hosted interface will use the existing Cloud plan, features and quotas.
    moving `main` branch:
 
    ```bash
-   git clone --branch v0.1.0-preview.4 --depth 1 \
+   git clone --branch v0.1.0-preview.5 --depth 1 \
      https://github.com/pisob/neurocheckout-community.git
    cd neurocheckout-community
    ```
@@ -207,7 +213,7 @@ self-hosted interface will use the existing Cloud plan, features and quotas.
    GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
    GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
      2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-   GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.4
+   GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.5
    find "${verification_home}" -depth -delete
    unset verification_home
    ```
@@ -221,12 +227,14 @@ self-hosted interface will use the existing Cloud plan, features and quotas.
 4. Run the guided setup:
 
    ```bash
-   npm run setup
+   npm run setup -- --environment=staging
    ```
 
    Enter the public client ID returned by Cloud. The setup assistant creates a
-   private `.env.local`, generates the session secret and selects the correct
-   cookie security for the callback URL.
+   private `.env.local`, generates the session secret, selects the correct
+   cookie security and explicitly selects the staging API/authorization URLs.
+   Keep the local-data and connector-pull pilot flags disabled. Node.js 22.13+
+   is required. No router port needs to be opened.
 
 5. Install, diagnose and build the dashboard:
 
@@ -241,6 +249,17 @@ self-hosted interface will use the existing Cloud plan, features and quotas.
    ```
 
 7. Open `http://localhost:3400` and select **Connect to Cloud**.
+
+### After installation: staging abandoned-cart test
+
+Keep Community running and use only the connected test store. Its connector
+must still send events to the approved staging Cloud endpoint, not localhost.
+Create a test cart using an email address you control and wait for the Cloud
+schedule/approval rules. Read the recovery email in **staging Mailpit**; its
+absence from a real inbox is expected. Follow the recovery link, complete the
+test order, then inspect **Orders & emails** and **Agent performance**.
+This validates the current Cloud path, not the disabled local-data migration.
+Do not use real customer addresses or activate payment/production integrations.
 
 `npm run doctor` can be repeated at any time. It validates Node.js, the local
 configuration, callback/cookie consistency, the production build and actual
@@ -260,7 +279,7 @@ changes to the native launcher itself may also require a manual upgrade.
 Docker remains available for administrators who prefer container isolation:
 
 ```bash
-npm run setup
+npm run setup -- --environment=staging
 docker compose up --build -d
 ```
 
