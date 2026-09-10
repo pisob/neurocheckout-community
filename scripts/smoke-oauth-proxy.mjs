@@ -4,6 +4,9 @@ import { cpSync, existsSync, mkdirSync, readFileSync, mkdtempSync, rmSync, unlin
 import { tmpdir } from "node:os";
 import { createServer } from "node:http";
 import { join } from "node:path";
+import { randomBytes } from "node:crypto";
+import { initializeLocalData, loadLocalDataConfig } from "./local-data-store.mjs";
+import { signLocalRequest } from "./local-data-handler.mjs";
 
 const host = "127.0.0.1";
 const packageVersion = JSON.parse(
@@ -15,7 +18,15 @@ const cookies = new Map();
 let failureMode = "";
 let mutations = 0;
 let targetBlocked = false;
+const availabilityToken = "nc_live_" + randomBytes(32).toString("base64url");
+const relayToken = "nc_data_" + randomBytes(32).toString("base64url");
+let relayReference = "";
+let relayReads = 0;
+let heartbeats = 0;
 const updateDirectory = mkdtempSync(join(tmpdir(), "nc-update-api-test-"));
+const stateDirectory = join(updateDirectory, "private-state");
+initializeLocalData(stateDirectory, "synthetic-shop");
+const localKeys = loadLocalDataConfig(stateDirectory);
 const observed = {
   tokenExchange: false,
   capabilities: false,
@@ -48,9 +59,30 @@ const cloud = createServer(async (request, response) => {
       refresh_token: "smoke-refresh-token",
       expires_in: 900,
       scope: "openid capabilities:read shops:read",
+      availability_token: availabilityToken,
+      local_data_credential: { token: relayToken, installation_id: "11111111-1111-4111-8111-111111111111", shop_id: "synthetic-shop" },
     });
   }
 
+  if (request.method === "POST" && request.url === "/api/v1/public/oauth/heartbeat") {
+    assert.equal(request.headers.authorization, `Bearer ${availabilityToken}`);
+    assert.equal(request.headers["x-neurocheckout-community-version"], packageVersion);
+    heartbeats += 1;
+    return json(response, 200, { ok: true });
+  }
+  if (request.method === "POST" && request.url === "/api/v1/public/community-relay/poll") {
+    assert.equal(request.headers.authorization, `Bearer ${relayToken}`);
+    const commands = relayReference ? [{ request_id: "a".repeat(32), operation: "read", record: { kind: "cart", reference: relayReference, minimumRevision: 1 } }] : [];
+    return json(response, 200, { commands });
+  }
+  if (request.method === "POST" && request.url === "/api/v1/public/community-relay/reply") {
+    assert.equal(request.headers.authorization, `Bearer ${relayToken}`);
+    const reply = JSON.parse(await requestBody(request));
+    assert.equal(reply.result.status, "ok");
+    assert.equal(reply.result.record.payload.status, "abandoned");
+    relayReads++;
+    return json(response, 200, { accepted: true });
+  }
   assert.equal(request.headers.authorization, "Bearer smoke-access-token");
   assert.ok([packageVersion, "99.0.0"].includes(request.headers["x-neurocheckout-community-version"]));
 
@@ -135,12 +167,15 @@ if (existsSync(join(process.cwd(), "public"))) {
   cpSync(join(process.cwd(), "public"), join(standaloneDirectory, "public"), { recursive: true });
 }
 
-const community = spawn(process.execPath, [join(standaloneDirectory, "server.js")], {
+const launchOptions = {
   cwd: standaloneDirectory,
   env: {
     ...process.env,
     HOSTNAME: host,
     NC_LOCAL_UPDATE_DIRECTORY: updateDirectory,
+    NC_COMMUNITY_STATE_DIRECTORY: join(updateDirectory, "private-state"),
+    NC_DEPLOYMENT_ENV: "staging",
+    NC_LOCAL_DATA_PILOT_ENABLED: "true",
     PORT: String(communityPort),
     NC_CLOUD_API_BASE_URL: cloudOrigin,
     NC_CLOUD_AUTHORIZATION_URL: `${cloudOrigin}/oauth/authorize`,
@@ -150,14 +185,42 @@ const community = spawn(process.execPath, [join(standaloneDirectory, "server.js"
     NC_COMMUNITY_SESSION_SECRET: "community-smoke-session-secret-at-least-32-chars",
   },
   stdio: ["ignore", "pipe", "pipe"],
-});
+};
 
 let serverOutput = "";
-community.stdout.on("data", (chunk) => { serverOutput += chunk.toString(); });
-community.stderr.on("data", (chunk) => { serverOutput += chunk.toString(); });
+function launch() {
+  const child = spawn(process.execPath, [join(standaloneDirectory, "server.js")], launchOptions);
+  child.stdout.on("data", (chunk) => { serverOutput += chunk.toString(); });
+  child.stderr.on("data", (chunk) => { serverOutput += chunk.toString(); });
+  return child;
+}
+let community = launch();
+
+async function waitForHeartbeat(previous) {
+  for (let i = 0; i < 160 && heartbeats <= previous; i++) await new Promise(resolve => setTimeout(resolve, 250));
+  assert.ok(heartbeats > previous, "server must report availability without browser requests");
+}
+
+async function localDataFetch(role, input) {
+  const path = role === "write" ? "/api/local-data/v1/records" : "/api/local-data/v1/read";
+  const body = JSON.stringify(input), timestamp = String(Date.now()), nonce = randomBytes(16).toString("hex");
+  const secret = role === "write" ? localKeys.ingestionKey : localKeys.readKey;
+  return fetch(`${communityOrigin}${path}`, { method: "POST", body, headers: {
+    "Content-Type": "application/json", "X-NC-Data-Time": timestamp, "X-NC-Data-Nonce": nonce,
+    "X-NC-Data-Signature": signLocalRequest(secret, "POST", path, timestamp, nonce, body),
+  } });
+}
 
 try {
   await waitUntilReady(community);
+
+  const inserted = await localDataFetch("write", { kind: "cart", sourceId: "synthetic-cart", revision: 1,
+    observedAt: new Date().toISOString(), operation: "upsert", payload: { email: "private-smoke@example.invalid", status: "abandoned" } });
+  assert.equal(inserted.status, 200);
+  const { reference } = await inserted.json();
+  relayReference = reference;
+  const localRead = { kind: "cart", reference, minimumRevision: 1 };
+  assert.equal((await localDataFetch("read", localRead)).status, 200);
 
   const anonymous = await fetch(`${communityOrigin}/api/cloud/capabilities`);
   assert.equal(anonymous.status, 401);
@@ -184,6 +247,25 @@ try {
   assert.equal(callback.status, 307);
   assert.equal(new URL(callback.headers.get("location")).searchParams.get("connected"), "1");
   assert.ok(cookies.has("nc_community_session"));
+
+  await waitForHeartbeat(0);
+  assert.ok(relayReads > 0, "outgoing client must serve a Cloud read without an incoming network connection");
+  const relayBeforeRestart = relayReads;
+  const beforeRestart = heartbeats;
+  const stopped = new Promise(resolve => community.once("exit", resolve));
+  community.kill("SIGTERM");
+  await stopped;
+  community = launch();
+  await waitUntilReady(community);
+  await waitForHeartbeat(beforeRestart);
+  for (let i = 0; i < 40 && relayReads <= relayBeforeRestart; i++) await new Promise(resolve => setTimeout(resolve, 250));
+  assert.ok(relayReads > relayBeforeRestart, "outgoing client must resume after restart without another OAuth login");
+  assert.ok(!serverOutput.includes(relayToken));
+  assert.ok(!serverOutput.includes(availabilityToken));
+  const restored = await localDataFetch("read", localRead);
+  assert.equal(restored.status, 200);
+  assert.equal((await restored.json()).payload.status, "abandoned");
+  for (const sensitive of [localKeys.encryptionKey, localKeys.ingestionKey, localKeys.readKey, "private-smoke@example.invalid"]) assert.ok(!serverOutput.includes(sensitive));
 
   const capabilities = await communityFetch("/api/cloud/capabilities");
   assert.equal(capabilities.status, 200);
@@ -241,7 +323,7 @@ try {
     capabilities: true,
     shopList: true,
   });
-  console.log("OAuth PKCE, session, origin checks, outage handling and Cloud proxy smoke test passed.");
+  console.log("OAuth, proxy, origin checks, persistent heartbeat and encrypted local-data API/restart smoke test passed.");
 } catch (error) {
   if (serverOutput) process.stderr.write(serverOutput);
   throw error;

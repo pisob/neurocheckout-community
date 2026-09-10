@@ -17,6 +17,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3400
 ENV HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 community
+RUN mkdir -p /app/.community-state && chown community:nodejs /app/.community-state && chmod 700 /app/.community-state
+ENV NC_COMMUNITY_STATE_DIRECTORY=/app/.community-state
 COPY --from=builder --chown=community:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=community:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=community:nodejs /app/public ./public

@@ -3,6 +3,7 @@
 !.env.example
 .next/
 .community-updates/
+.community-state/
 node_modules/
 *.tsbuildinfo
 npm-debug.log*

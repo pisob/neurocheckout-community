@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     image: neurocheckout-community:0.1.0-preview.4
     restart: unless-stopped
+    volumes:
+      - community-state:/app/.community-state
     env_file:
       - .env.local
     ports:
@@ -17,3 +19,6 @@ services:
       - no-new-privileges:true
     pids_limit: 256
     mem_limit: 768m
+
+volumes:
+  community-state:

@@ -1,6 +1,7 @@
 .git
 .next
 .community-updates
+.community-state
 node_modules
 .env
 .env.*

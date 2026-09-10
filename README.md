@@ -1,5 +1,10 @@
 # NeuroCheckout Community
 
+> **Development branch — local-data architecture candidate.** These changes are
+> published for staging evaluation, not as a new signed release. The installation
+> instructions below still target the existing `v0.1.0-preview.4` release.
+> Keep the local-data pilot disabled until the full integration is validated.
+
 > **Official repository:** <https://github.com/pisob/neurocheckout-community> is
 > the only canonical source for NeuroCheckout Community releases. Forks and
 > mirrors are not official releases, even when they preserve the source code.
@@ -18,11 +23,13 @@ not release-ready.
 
 ## Requirements
 
+- for continuous automation: an always-on server with a stable Internet connection;
+  a laptop that sleeps or a computer that is switched off is suitable only for tests;
 - a NeuroCheckout Cloud account; the free Community plan does not require a
   payment card;
 - Git;
 - GnuPG 2.x for release-signature verification;
-- Node.js 22 or newer;
+- Node.js 22.13 or newer for this candidate (Node.js 22 LTS recommended);
 - npm 10 or newer;
 - outbound HTTPS access to `www.neurocheckout.com`;
 - local port `3400`, or another available loopback port;
@@ -37,6 +44,114 @@ gpg --version
 node --version
 npm --version
 ```
+
+## Server availability
+
+Keep the server hosting Community online continuously, including when nobody
+is using the dashboard. Closing a browser tab is fine; stopping the server,
+putting the computer to sleep or losing its Internet connection interrupts
+availability. Configure the service to restart after reboot and monitor it.
+Agents, scheduled workers and email delivery continue to run in NeuroCheckout
+Cloud.
+
+**Upcoming release:** when Cloud enables the server-availability requirement,
+automations for the associated store pause after Community stops reporting
+availability. Pending automated actions are checked again automatically when
+the server reconnects. Normal delivery, cart and quota checks still apply;
+reconnecting does not guarantee that every old action remains eligible. Emails
+already accepted for delivery cannot be recalled. A manual approval that returns
+an unavailable error remains pending and must be submitted again.
+
+This feature is not included in the signed `v0.1.0-preview.4` installation below.
+After upgrading to a release that includes it, reconnect to Cloud once to
+register the server. Subsequent heartbeats run without an open browser and
+survive server restarts. Preserve the private `.community-state/` directory
+and the session secret together; Docker uses the `community-state` volume.
+After loss of this state, reconnect to Cloud to register the server again.
+
+This availability feature does not move existing store data. Local-only product
+and cart storage is a separate development and is not provided by this release.
+
+### Local product/cart data — staging pilot, not a released migration
+
+The candidate includes an encrypted local store and signed server-to-server
+read/write endpoints, disabled by default. This is **not** an alternative
+installation procedure for the signed release below. It does not yet redirect
+installed connectors or replace the existing Cloud agent data pipeline.
+Do not enable it against production or claim that existing Cloud copies have
+been removed. Agents, scheduling and email delivery remain in Cloud.
+
+The pilot requires `NC_DEPLOYMENT_ENV=staging` and
+`NC_LOCAL_DATA_PILOT_ENABLED=true`, plus explicit server-side vault setup.
+An operator can initialize a new private vault using
+`NC_DEPLOYMENT_ENV=staging npm run setup:local-data -- SHOP_ID` from the candidate
+directory. This creates three separate keys in `.community-state/`; it does not
+print keys or configure a connector. Never commit, publicly upload or expose
+that directory. Host the data volume on a local filesystem, not NFS.
+
+The candidate also supports **outbound-only Cloud reads**: Community opens a
+long-poll HTTPS connection to the configured Cloud API and answers bounded read
+requests using its local encrypted vault. You do not need to open a router port,
+expose localhost, change DNS or keep a browser open. Keep Community bound to
+loopback for a local-computer installation. The Cloud-side staging relay must
+be deployed and explicitly enabled first; this is not part of the current
+signed release's installation steps.
+
+With both staging pilots enabled, a new OAuth connection registers a separate,
+server-only relay credential, encrypted in `.community-state/data-relay.enc`.
+The credential is bound to one store and installation; it does not authorize
+Cloud member API calls. Preserve the private state and session secret together.
+Reads fail closed while offline and retry after reconnection. This transport
+does not move agents, scheduling or SMTP onto your computer.
+
+The candidate now includes an outbound source-sync client with signed,
+transactional batches and a persistent resume cursor. Source-managed vault reads
+pause while synchronization is incomplete, has failed, or has not caught up for
+60 seconds. The poller invalidates the previous ready state on startup. Its
+source endpoint and dedicated secret are encrypted in the vault and included
+in backups. A populated manual vault cannot be attached to a source silently.
+The pilot currently requires a public IPv4 HTTPS source and refuses redirects,
+private/reserved addresses and compressed responses.
+
+Candidate connector routes are defined for PrestaShop, Magento and WooCommerce.
+The private PrestaShop, Magento and WooCommerce candidates now include bounded, read-only
+native export pilots, tested against synthetic MariaDB tables and this encrypted
+store. Each is limited to 256 products plus carts and has not been validated on
+a real store. The Magento pilot targets Open Source on one database; MSI stock
+is explicitly not exported yet. The WooCommerce pilot targets default native
+storage on 10.1.x, selects either legacy or HPOS orders, and does not treat a linked
+order as proof of payment. Its runtime and checkout flows still need real-store
+validation; custom storage is refused. All candidates
+remain disabled by default and are not released or installed.
+
+**Still pending:** scalable and business-complete connector export,
+real-store staging validation, minimal event delivery
+and migration of every Cloud agent data path.
+A remote store cannot push to your `localhost`. Do not point its API endpoint
+at localhost or enable the pilot as a completed migration. Only the isolated
+candidate tests currently exercise the new read path.
+`NC_CONNECTOR_PULL_ENABLED` therefore remains `false`. The candidate's
+`setup:source-pull` command accepts an absolute path to an operator-owned,
+mode-0600 JSON file with `endpoint` and `secret`; it does not create the required
+connector endpoint or configure the store. Do not pass secrets on the command
+line or use this as a signed-release installation step.
+
+The pilot retains encrypted records for 30 days from their source timestamp,
+with up to ten historical revisions per record. Expired records are not served;
+physical cleanup runs on writes. Storage is bounded and further writes are
+refused when capacity is reached. Opaque revision markers survive payload expiry
+to reject older updates; these contain no product/cart details and are capped
+at 100,000 distinct references per vault. Reaching that limit requires an
+operator-controlled migration, not silently forgetting revision protection.
+Back up both the vault and its keys privately;
+losing the encryption key makes the records unreadable. A consistent backup to
+a **new, absolute directory** can be created with
+`NC_DEPLOYMENT_ENV=staging npm run backup:local-data -- /private/new-backup`.
+Copying a running SQLite file alone is not a valid backup procedure.
+
+This candidate uses Node's built-in SQLite API, still experimental in Node 22;
+it is subject to staging validation, not a general-availability commitment.
+See the [Node.js SQLite documentation](https://nodejs.org/download/release/v22.13.0/docs/api/sqlite.html).
 
 ## Activate Community in NeuroCheckout Cloud
 

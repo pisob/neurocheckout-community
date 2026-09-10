@@ -3,7 +3,7 @@
   "version": "0.1.0-preview.4",
   "private": true,
   "engines": {
-    "node": ">=22.0.0",
+    "node": ">=22.13.0",
     "npm": ">=10.0.0"
   },
   "scripts": {
@@ -16,6 +16,13 @@
     "smoke:integration": "node scripts/smoke-oauth-proxy.mjs",
     "test:native": "node scripts/test-native-setup.mjs",
     "test:update": "node scripts/test-local-update.mjs",
+    "test:availability": "node --test scripts/test-server-availability.mjs",
+    "test:local-data": "node --test scripts/test-local-data.mjs",
+    "test:relay": "node --test scripts/test-server-data-relay.mjs",
+    "test:source-pull": "node --test scripts/test-source-pull.mjs",
+    "setup:source-pull": "node scripts/configure-source-pull.mjs",
+    "setup:local-data": "node scripts/setup-local-data.mjs",
+    "backup:local-data": "node scripts/backup-local-data.mjs",
     "verify:release": "./tools/verify-community-release.sh",
     "typecheck": "tsc --noEmit"
   },

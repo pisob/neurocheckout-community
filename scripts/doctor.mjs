@@ -38,9 +38,9 @@ function validateServiceUrl(name, value) {
   }
 }
 
-const nodeMajor = Number(process.versions.node.split(".")[0]);
-if (nodeMajor >= 22) pass(`Node.js ${process.versions.node}`);
-else fail(`Node.js 22 or newer is required; found ${process.versions.node}`);
+const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
+if (nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 13)) pass(`Node.js ${process.versions.node}`);
+else fail(`Node.js 22.13 or newer is required; found ${process.versions.node}`);
 
 try {
   validateClientId(process.env.NC_COMMUNITY_CLIENT_ID);

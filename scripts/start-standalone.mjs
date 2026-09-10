@@ -11,6 +11,7 @@ const root = process.cwd();
 loadEnvironmentFile(resolve(root, ".env.local"));
 process.env.HOSTNAME ||= "127.0.0.1";
 process.env.PORT ||= "3400";
+process.env.NC_COMMUNITY_STATE_DIRECTORY ||= resolve(root, ".community-state");
 const directory = resolve(root, ".community-updates");
 mkdirSync(directory, { recursive: true, mode: 0o700 });
 const lockPath = resolve(directory, "launcher.lock");

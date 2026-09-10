@@ -112,8 +112,8 @@ async function promptForValue(reader, label, current = "") {
 }
 
 export async function main(argv = process.argv.slice(2)) {
-  const major = Number(process.versions.node.split(".")[0]);
-  if (major < 22) throw new Error("Node.js 22 or newer is required.");
+  const [major, minor] = process.versions.node.split(".").map(Number);
+  if (major < 22 || (major === 22 && minor < 13)) throw new Error("Node.js 22.13 or newer is required.");
 
   const options = parseArguments(argv);
   const output = resolve(options.output);

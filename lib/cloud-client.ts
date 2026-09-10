@@ -5,6 +5,8 @@ import {
 } from "@/lib/config";
 import type { OAuthSession } from "@/lib/oauth-session";
 import { cloudFetch, CloudRequestError } from "@/lib/cloud-transport";
+import { persistAvailabilityToken } from "@/lib/server-availability";
+import { persistRelayCredential } from "@/lib/server-data-relay";
 
 type TokenPayload = {
   access_token?: string;
@@ -13,6 +15,8 @@ type TokenPayload = {
   expires_in?: number;
   scope?: string;
   detail?: string;
+  availability_token?: string;
+  local_data_credential?: unknown;
 };
 
 async function tokenRequest(body: Record<string, string>): Promise<OAuthSession> {
@@ -55,6 +59,10 @@ async function tokenRequest(body: Record<string, string>): Promise<OAuthSession>
   ) {
     throw new CloudRequestError("cloud_response_invalid", 502);
   }
+  if (payload.availability_token !== undefined) {
+    await persistAvailabilityToken(payload.availability_token);
+  }
+  if (payload.local_data_credential !== undefined) await persistRelayCredential(payload.local_data_credential);
   return {
     access_token: payload.access_token,
     refresh_token: payload.refresh_token,

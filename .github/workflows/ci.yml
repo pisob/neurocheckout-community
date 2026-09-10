@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'feat/community-*'
   pull_request:
     branches:
       - main
@@ -59,6 +60,18 @@ jobs:
 
       - name: Test update verification and rollback
         run: npm run test:update
+
+      - name: Test server availability credentials and recovery
+        run: npm run test:availability
+
+      - name: Test encrypted staging local data
+        run: npm run test:local-data
+
+      - name: Test outgoing staging relay
+        run: npm run test:relay
+
+      - name: Test outgoing source synchronization
+        run: npm run test:source-pull
 
       - name: Build the production application
         run: npm run build
