@@ -57,6 +57,14 @@ assert.equal(cloudConfiguration("production", { NC_CLOUD_API_BASE_URL: staging.c
 assert.throws(() => cloudConfiguration("invalid"));
 assert.equal(parseEnvironment(renderConfiguration({ ...staging, clientId: "nc_public_test_123", redirectUri: "http://localhost:3400/api/auth/callback", sessionSecret, cookieSecure: false })).NC_DEPLOYMENT_ENV, "staging");
 
+const dashboardSource = readFileSync(
+  fileURLToPath(new URL("../components/Dashboard.tsx", import.meta.url)),
+  "utf8",
+);
+assert.match(dashboardSource, /ensureEncryptedLocalSynchronization/);
+assert.match(dashboardSource, /has_active_api_key === true/);
+assert.match(dashboardSource, /setTimeout\(\(\) => void activate\(\), 30_000\)/);
+
 const setupTestDirectory = mkdtempSync(join(tmpdir(), "nc-native-staging-setup-"));
 try {
   const output = join(setupTestDirectory, ".env.local");

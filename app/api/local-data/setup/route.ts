@@ -20,10 +20,10 @@ function stateDirectory(): string {
 
 export async function GET() {
   if (process.env.NC_DEPLOYMENT_ENV !== "staging" || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true") {
-    return NextResponse.json({ configured: false, ready: false });
+    return NextResponse.json({ available: false, configured: false, ready: false });
   }
   const { automaticSourceStatus } = await import("@/scripts/automatic-source-setup.mjs");
-  return NextResponse.json(automaticSourceStatus(stateDirectory()));
+  return NextResponse.json({ available: true, ...automaticSourceStatus(stateDirectory()) });
 }
 
 export async function POST(request: NextRequest) {

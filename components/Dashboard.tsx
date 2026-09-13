@@ -143,6 +143,43 @@ function viewFromHash(): DashboardView {
   return candidate in VIEW_COPY.en ? candidate : "overview";
 }
 
+let localDataBootstrapPromise: Promise<void> | null = null;
+
+async function ensureEncryptedLocalSynchronization(): Promise<void> {
+  if (localDataBootstrapPromise) return localDataBootstrapPromise;
+  localDataBootstrapPromise = (async () => {
+    const statusResponse = await fetch("/api/local-data/setup", { cache: "no-store" });
+    const localStatus = await statusResponse.json().catch(() => ({})) as {
+      available?: boolean;
+      configured?: boolean;
+    };
+    if (!statusResponse.ok || localStatus.available === false || localStatus.configured) return;
+
+    const shopsResponse = await fetch("/api/cloud/shops", { cache: "no-store" });
+    const shopsPayload = await shopsResponse.json().catch(() => ({})) as {
+      items?: Array<{ shop_uuid?: string; uuid?: string; has_active_api_key?: boolean }>;
+    };
+    if (!shopsResponse.ok) throw new Error("local_data_shop_unavailable");
+    const candidates = (Array.isArray(shopsPayload.items) ? shopsPayload.items : [])
+      .filter((shop) => shop.has_active_api_key === true);
+    if (candidates.length !== 1) return;
+    const shopUuid = String(candidates[0].shop_uuid || candidates[0].uuid || "").trim();
+    if (!shopUuid) return;
+
+    const setupResponse = await fetch("/api/local-data/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shop_uuid: shopUuid }),
+    });
+    if (!setupResponse.ok) throw new Error("local_data_setup_failed");
+  })();
+  try {
+    await localDataBootstrapPromise;
+  } finally {
+    localDataBootstrapPromise = null;
+  }
+}
+
 export default function Dashboard() {
   const { language, setLanguage } = useUiLanguage();
   const ui = (english: string, french: string) => language === "fr" ? french : english;
@@ -176,6 +213,24 @@ export default function Dashboard() {
     setActiveView(viewFromHash());
     void load();
   }, []);
+
+  useEffect(() => {
+    if (status !== "connected") return;
+    let stopped = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const activate = async () => {
+      try {
+        await ensureEncryptedLocalSynchronization();
+      } catch {
+        if (!stopped) retry = setTimeout(() => void activate(), 30_000);
+      }
+    };
+    void activate();
+    return () => {
+      stopped = true;
+      if (retry) clearTimeout(retry);
+    };
+  }, [status]);
 
   const selectView = (view: DashboardView) => {
     setActiveView(view);

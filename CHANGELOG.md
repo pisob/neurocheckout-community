@@ -6,6 +6,14 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 No unreleased changes.
 
+## 0.1.0-preview.7 - 2026-09-13
+
+- Activate the encrypted local product and cart synchronization automatically
+  after Cloud connection when the installation has one eligible store.
+- Retry automatically after temporary Cloud or network unavailability.
+- Keep the manual control only as a recovery action and hide it when the local
+  synchronization is already active.
+
 ## 0.1.0-preview.6 - 2026-09-13
 
 - Add guided, authenticated setup of the encrypted local product and cart vault.
