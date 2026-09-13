@@ -112,6 +112,7 @@ export default function CloudConfiguration() {
   const [previews, setPreviews] = useState<EmailPreview[]>([]);
   const [apiKey, setApiKey] = useState("");
   const [connectorKey, setConnectorKey] = useState<string | null>(null);
+  const [localSyncActive, setLocalSyncActive] = useState(false);
   const [dpaAccepted, setDpaAccepted] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -182,6 +183,10 @@ export default function CloudConfiguration() {
     await Promise.all([
       loadEmailProfile(uuid, locale),
       loadByokStatus(uuid, provider),
+      fetch("/api/local-data/setup", { cache: "no-store" }).then(readJson).then((status: { configured?: boolean; shopId?: string }) => {
+        const selected = shops.find((shop) => shopUuid(shop) === uuid);
+        setLocalSyncActive(Boolean(status.configured && selected && status.shopId === selected.shop_id));
+      }),
     ]);
   };
 
@@ -402,10 +407,29 @@ export default function CloudConfiguration() {
       const payload = (await readJson(response)) as { api_key?: string };
       if (!response.ok || !payload.api_key) throw new Error(detail(payload, ui("Connector key rejected", "Clé connecteur refusée")));
       setConnectorKey(payload.api_key);
-      setNotice(ui("Key created. Copy it now; it will not be displayed again after you leave this page.", "Clé créée. Copiez-la maintenant : elle ne sera plus affichée après avoir quitté cette page."));
+      await activateLocalSync();
+      setNotice(ui("Key created and encrypted local synchronization started. Copy the connector key now; it will not be displayed again.", "Clé créée et synchronisation locale chiffrée démarrée. Copiez maintenant la clé connecteur : elle ne sera plus affichée."));
       await loadShops();
     } catch (keyError) {
       setError(keyError instanceof Error ? keyError.message : ui("Connector key rejected", "Clé connecteur refusée"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const activateLocalSync = async () => {
+    setBusy("local-sync");
+    setError(null);
+    try {
+      const response = await fetch("/api/local-data/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shop_uuid: selectedShopUuid }),
+      });
+      const payload = await readJson(response);
+      if (!response.ok) throw new Error(detail(payload, ui("Local synchronization unavailable", "Synchronisation locale indisponible")));
+      setLocalSyncActive(true);
+      setNotice(ui("Encrypted local synchronization is starting automatically.", "La synchronisation locale chiffrée démarre automatiquement."));
     } finally {
       setBusy(null);
     }
@@ -516,6 +540,8 @@ export default function CloudConfiguration() {
           <div className="configuration-form compact-form">
             <label className="checkbox-line"><input type="checkbox" checked={dpaAccepted} onChange={(event) => setDpaAccepted(event.target.checked)} /><span>{ui("I accept the NeuroCheckout DPA v1.0 and confirm that I am authorized to accept it for my organization.", "J’accepte le DPA NeuroCheckout v1.0 et confirme être autorisé à l’accepter pour mon organisation.")}</span></label>
             <div className="actions left"><button className="button primary" type="button" disabled={!dpaAccepted || busy !== null} onClick={() => void issueConnectorKey(selectedShop.has_active_api_key ? "rotate" : "create")}>{selectedShop.has_active_api_key ? ui("Rotate key", "Faire une rotation") : ui("Create key", "Créer la clé")}</button></div>
+            {selectedShop.has_active_api_key ? <div className="actions left"><button className="button secondary-blue" type="button" disabled={!dpaAccepted || busy !== null} onClick={() => void activateLocalSync().catch((syncError) => setError(syncError instanceof Error ? syncError.message : ui("Local synchronization unavailable", "Synchronisation locale indisponible")))}>{busy === "local-sync" ? ui("Starting…", "Démarrage…") : ui("Activate encrypted local synchronization", "Activer la synchronisation locale chiffrée")}</button></div> : null}
+            {localSyncActive ? <div className="selected-shop-note"><span>{ui("Local data", "Données locales")}</span><strong>{ui("Synchronization active", "Synchronisation active")}</strong><small>{ui("Products and carts are stored in this Community vault.", "Les produits et paniers sont stockés dans ce coffre Community.")}</small></div> : null}
             {connectorKey ? <div className="one-time-secret"><strong>{ui("Secret displayed once", "Secret affiché une seule fois")}</strong><code>{connectorKey}</code></div> : null}
           </div>
         </article>

@@ -98,7 +98,15 @@ export class SourceSynchronizer {
         const ref = mac(this.store.config.encryptionKey, JSON.stringify([record.kind, record.sourceId]));
         if (seen.has(ref)) fail();
         seen.add(ref);
-        this.store.putInTransaction(record);
+        // The native identifier stays inside the encrypted local vault. Cloud
+        // may read it transiently to build a recovery action, but signals never
+        // contain it and Community never stores it as plaintext metadata.
+        this.store.putInTransaction({
+          ...record,
+          payload: record.operation === "delete"
+            ? record.payload
+            : { ...record.payload, _nc_local_source_id: record.sourceId },
+        });
       }
       const now = this.store.clock();
       this.db.prepare(`UPDATE source_sync SET stream_id=?,cursor=?,ready=?,last_success_at=?,

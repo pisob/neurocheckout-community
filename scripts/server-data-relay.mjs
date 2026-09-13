@@ -90,6 +90,28 @@ export async function relayOnce(options, fetchImpl = fetch) {
     });
     if ((await smallJson(health, 2048)).service !== "neurocheckout-community") return false;
     const headers = { Authorization: `Bearer ${credential.token}`, "Content-Type": "application/json", "X-NeuroCheckout-Community-Version": options.version };
+    let signalStore;
+    try {
+      signalStore = new LocalDataStore(options.directory);
+      if (signalStore.config.shopId !== credential.shop_id) throw new Error("relay_store_mismatch");
+      signalStore.bindInstallation(credential.installation_id);
+      const signals = signalStore.signals(100);
+      if (signals.length) {
+        const signalResponse = await fetchImpl(`${options.cloudUrl}/api/v1/public/community-relay/signals`, {
+          method: "POST", headers, body: JSON.stringify({ signals }), cache: "no-store",
+          redirect: "error", signal: AbortSignal.timeout(5000),
+        });
+        const acknowledgement = await smallJson(signalResponse, 4096);
+        if (!signalResponse.ok || !acknowledgement || Object.keys(acknowledgement).join(",") !== "accepted_ids" ||
+            !Array.isArray(acknowledgement.accepted_ids)) return false;
+        const sentIds = new Set(signals.map(item => item.id));
+        if (acknowledgement.accepted_ids.some(id => !Number.isSafeInteger(id) || !sentIds.has(id)) ||
+            new Set(acknowledgement.accepted_ids).size !== acknowledgement.accepted_ids.length) return false;
+        if (acknowledgement.accepted_ids.length) signalStore.acknowledgeSignals(acknowledgement.accepted_ids);
+      }
+    } finally {
+      signalStore?.close();
+    }
     const response = await fetchImpl(`${options.cloudUrl}/api/v1/public/community-relay/poll`, {
       method: "POST", headers, body: "{}", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(25_000),
     });

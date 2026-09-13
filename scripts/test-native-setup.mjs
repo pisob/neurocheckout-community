@@ -67,8 +67,8 @@ try {
   assert.equal(configured.NC_CLOUD_AUTHORIZATION_URL, staging.cloudAuthorizationUrl);
   assert.equal(configured.NC_DEPLOYMENT_ENV, "staging");
   assert.equal(configured.NC_COMMUNITY_REDIRECT_URI, "http://localhost:3400/api/auth/callback");
-  assert.equal(configured.NC_LOCAL_DATA_PILOT_ENABLED, "false");
-  assert.equal(configured.NC_CONNECTOR_PULL_ENABLED, "false");
+  assert.equal(configured.NC_LOCAL_DATA_PILOT_ENABLED, "true");
+  assert.equal(configured.NC_CONNECTOR_PULL_ENABLED, "true");
   assert.equal(statSync(output).mode & 0o777, 0o600);
 } finally {
   rmSync(setupTestDirectory, { recursive: true, force: true });

@@ -95,8 +95,8 @@ export function renderConfiguration(values) {
     ["NC_COMMUNITY_SESSION_SECRET", values.sessionSecret],
     ["NC_COMMUNITY_COOKIE_SECURE", String(values.cookieSecure)],
     ["NC_DEPLOYMENT_ENV", values.deploymentEnvironment || "production"],
-    ["NC_LOCAL_DATA_PILOT_ENABLED", "false"],
-    ["NC_CONNECTOR_PULL_ENABLED", "false"],
+    ["NC_LOCAL_DATA_PILOT_ENABLED", values.deploymentEnvironment === "staging" ? "true" : "false"],
+    ["NC_CONNECTOR_PULL_ENABLED", values.deploymentEnvironment === "staging" ? "true" : "false"],
   ];
 
   return [
@@ -200,7 +200,9 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(`Configuration saved securely to ${options.output}.`);
     console.log(`Registered callback: ${redirectUri}`);
     console.log(`Cloud API: ${cloudConfiguration(options.environment, existing).cloudApiBaseUrl}`);
-    console.log("Local-data and connector-pull pilots are disabled by this setup.");
+    console.log(options.environment === "staging"
+      ? "Encrypted local-data and connector synchronization are ready for activation in Configuration."
+      : "Local-data and connector synchronization remain disabled outside the validated staging rollout.");
     console.log("The generated session secret was not displayed.");
   } finally {
     reader?.close();

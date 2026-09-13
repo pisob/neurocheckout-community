@@ -1,6 +1,6 @@
 # NeuroCheckout Community
 
-> **Signed staging prerelease — v0.1.0-preview.5.** Follow the installation below
+> **Signed staging prerelease — v0.1.0-preview.6.** Follow the installation below
 > to connect to **staging**, not production. The new local-data components are
 > included but disabled: this is not a completed migration of products/carts out
 > of Cloud. The current Cloud event/email/conversion path remains in use.
@@ -10,7 +10,7 @@
 > the only canonical source for NeuroCheckout Community releases. Forks and
 > mirrors are not official releases, even when they preserve the source code.
 
-> **Technical Preview — v0.1.0-preview.5.** This release is intended for
+> **Technical Preview — v0.1.0-preview.6.** This release is intended for
 > evaluation and integration testing. Treat the Cloud API contract, deployment
 > process and user experience as pre-stable until the first stable release.
 
@@ -64,7 +64,7 @@ reconnecting does not guarantee that every old action remains eligible. Emails
 already accepted for delivery cannot be recalled. A manual approval that returns
 an unavailable error remains pending and must be submitted again.
 
-The server-availability client is included in `v0.1.0-preview.5`, but the
+The server-availability client is included in `v0.1.0-preview.6`, but the
 Cloud requirement is disabled during initial staging evaluation. When the
 operator enables it, reconnect to Cloud once to register the server.
 Subsequent heartbeats run without an open browser and
@@ -197,7 +197,7 @@ self-hosted interface will use the existing Cloud plan, features and quotas.
    moving `main` branch:
 
    ```bash
-   git clone --branch v0.1.0-preview.5 --depth 1 \
+   git clone --branch v0.1.0-preview.6 --depth 1 \
      https://github.com/pisob/neurocheckout-community.git
    cd neurocheckout-community
    ```
@@ -213,7 +213,7 @@ self-hosted interface will use the existing Cloud plan, features and quotas.
    GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
    GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
      2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-   GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.5
+   GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.6
    find "${verification_home}" -depth -delete
    unset verification_home
    ```

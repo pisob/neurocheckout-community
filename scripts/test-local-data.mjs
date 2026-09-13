@@ -25,6 +25,10 @@ test("encrypted data survives restart; outbox contains references only", t => {
   assert.match(first.reference, /^[a-f0-9]{64}$/);
   assert.equal(store.put(input).deduplicated, true);
   assert.equal(store.signals().length, 1);
+  assert.equal(store.acknowledgeSignals([store.signals()[0].id]), 1);
+  assert.equal(store.signals().length, 0);
+  assert.throws(() => store.acknowledgeSignals([]), /signal_ack_invalid/);
+  store.put({ ...input, revision: 2 });
   assert.equal(JSON.stringify(store.signals()).includes("PRIVATE"), false);
   for (const file of readdirSync(directory).filter(f => f.startsWith("local-data.sqlite"))) {
     const data = readFileSync(resolve(directory, file));

@@ -37,7 +37,8 @@ test("page contents, reference signals and cursor commit atomically", t => {
   assert.equal(store.db.prepare("SELECT cursor FROM source_sync").get().cursor, "");
   assert.deepEqual(sync.apply(page({ records: [input] }), lease), { count: 1, complete: true });
   const reference = store.reference("cart", input.sourceId);
-  assert.deepEqual(store.read({ kind: "cart", reference, minimumRevision: 1 }).payload, payload);
+  assert.deepEqual(store.read({ kind: "cart", reference, minimumRevision: 1 }).payload,
+    { ...payload, _nc_local_source_id: input.sourceId });
   assert.equal(store.signals().length, 1);
   assert.throws(() => store.put(record()), /source_managed/);
   assert.throws(() => store.putInTransaction(record()), /transaction_required/);

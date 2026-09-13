@@ -25,11 +25,19 @@ test("outgoing polling reads locally, replies only to Cloud and survives restart
   store.close();
   const command = { request_id: "a".repeat(32), operation: "read", record: { kind: "cart", reference: record.reference, minimumRevision: 1 } };
   let replies = 0;
+  let signalBatches = 0;
   const mock = async (url, init) => {
     assert.equal(init.redirect, "error");
     if (url.endsWith("/api/health")) return Response.json({ service: "neurocheckout-community" });
     assert.equal(init.headers.Authorization, `Bearer ${auth.token}`);
     assert.ok(url.startsWith(options.cloudUrl));
+    if (url.endsWith("/signals")) {
+      const signalBody = JSON.parse(init.body);
+      assert.equal(JSON.stringify(signalBody).includes("synthetic-private@example.invalid"), false);
+      assert.deepEqual(Object.keys(signalBody), ["signals"]);
+      signalBatches++;
+      return Response.json({ accepted_ids: signalBody.signals.map(signal => signal.id) });
+    }
     if (url.endsWith("/poll")) { assert.equal(init.body, "{}"); return Response.json({ commands: [command] }); }
     assert.equal(url, `${options.cloudUrl}/api/v1/public/community-relay/reply`);
     const reply = JSON.parse(init.body);
@@ -41,6 +49,10 @@ test("outgoing polling reads locally, replies only to Cloud and survives restart
   assert.equal(await relayOnce(options, mock), true);
   assert.equal(await relayOnce({ ...options }, mock), true);
   assert.equal(replies, 2);
+  assert.equal(signalBatches, 1);
+  const acknowledged = new LocalDataStore(options.directory);
+  assert.equal(acknowledged.signals().length, 0);
+  acknowledged.close();
   assert.equal(await relayOnce(options, async () => { throw new Error("network offline"); }), false);
   assert.equal(await relayOnce(options, mock), true);
 });

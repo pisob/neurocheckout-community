@@ -6,6 +6,15 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 No unreleased changes.
 
+## 0.1.0-preview.6 - 2026-09-13
+
+- Add guided, authenticated setup of the encrypted local product and cart vault.
+- Obtain source bindings automatically from the staging Cloud after OAuth connection.
+- Synchronize connector snapshots into local encrypted storage without manual secrets.
+- Relay only minimized, pseudonymized signals to Cloud and acknowledge them safely.
+- Resume source pulls and signal delivery automatically after temporary downtime.
+- Add local-data setup, source-pull, relay and native-setup validation coverage.
+
 ## 0.1.0-preview.5 - 2026-09-10
 
 - Signed staging prerelease with an explicit `setup --environment=staging`

@@ -216,6 +216,19 @@ export class LocalDataStore {
     return this.db.prepare("SELECT id,kind,reference,revision,operation,observed_at FROM outbox WHERE observed_at > ? ORDER BY id LIMIT ?").all(this.clock() - RETENTION_MS, limit);
   }
 
+  acknowledgeSignals(ids) {
+    if (!Array.isArray(ids) || ids.length < 1 || ids.length > 100 ||
+        ids.some(id => !Number.isSafeInteger(id) || id < 1) || new Set(ids).size !== ids.length) {
+      fail("local_data_signal_ack_invalid");
+    }
+    return this.transaction(() => {
+      const remove = this.db.prepare("DELETE FROM outbox WHERE id=?");
+      let removed = 0;
+      for (const id of ids) removed += Number(remove.run(id).changes);
+      return removed;
+    });
+  }
+
   backup(destination) {
     if (!destination || !destination.startsWith("/")) fail("local_data_absolute_backup_path_required");
     // A new directory only, never overwrite another backup or the live vault.

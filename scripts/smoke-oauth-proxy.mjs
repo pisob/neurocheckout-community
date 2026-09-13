@@ -21,6 +21,7 @@ let targetBlocked = false;
 const availabilityToken = "nc_live_" + randomBytes(32).toString("base64url");
 const relayToken = "nc_data_" + randomBytes(32).toString("base64url");
 let relayReference = "";
+let signalBatches = 0;
 let relayReads = 0;
 let heartbeats = 0;
 const updateDirectory = mkdtempSync(join(tmpdir(), "nc-update-api-test-"));
@@ -77,6 +78,15 @@ const cloud = createServer(async (request, response) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     const commands = relayReference ? [{ request_id: "a".repeat(32), operation: "read", record: { kind: "cart", reference: relayReference, minimumRevision: 1 } }] : [];
     return json(response, 200, { commands });
+  }
+  if (request.method === "POST" && request.url === "/api/v1/public/community-relay/signals") {
+    assert.equal(request.headers.authorization, `Bearer ${relayToken}`);
+    const body = JSON.parse(await requestBody(request));
+    assert.deepEqual(Object.keys(body), ["signals"]);
+    assert.ok(body.signals.length >= 1);
+    assert.equal(JSON.stringify(body).includes("private-smoke@example.invalid"), false);
+    signalBatches += 1;
+    return json(response, 200, { accepted_ids: body.signals.map(signal => signal.id) });
   }
   if (request.method === "POST" && request.url === "/api/v1/public/community-relay/reply") {
     assert.equal(request.headers.authorization, `Bearer ${relayToken}`);
@@ -261,6 +271,7 @@ try {
 
   await waitForHeartbeat(0);
   await waitForRelay(0);
+  assert.equal(signalBatches, 1, "opaque local signals must reach Cloud once");
   const relayBeforeRestart = relayReads;
   const beforeRestart = heartbeats;
   const stopped = new Promise(resolve => community.once("exit", resolve));
