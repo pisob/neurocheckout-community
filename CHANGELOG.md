@@ -6,6 +6,13 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 No unreleased changes.
 
+## 0.1.0-preview.8 - 2026-09-14
+
+- Replace the public README with a concise English installation, security,
+  backup, connector and contribution guide.
+- Add the public `--environment=preview` setup option while preserving the
+  existing preview service configuration.
+
 ## 0.1.0-preview.7 - 2026-09-13
 
 - Activate the encrypted local product and cart synchronization automatically

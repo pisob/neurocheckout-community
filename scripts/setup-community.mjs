@@ -17,7 +17,7 @@ const DEFAULTS = {
 };
 
 export function cloudConfiguration(environment, existing = {}) {
-  if (environment === "staging") return {
+  if (environment === "preview" || environment === "staging") return {
     cloudApiBaseUrl: "https://community-api-staging.neurocheckout.com",
     cloudAuthorizationUrl: "https://staging.neurocheckout.com/community/authorize",
     cloudUpgradeUrl: "https://staging.neurocheckout.com/pricing",
@@ -120,7 +120,7 @@ function parseArguments(argv) {
       options.output = argument.slice("--output=".length);
     } else if (argument.startsWith("--environment=")) {
       options.environment = argument.slice("--environment=".length);
-      if (!["staging", "production"].includes(options.environment)) throw new Error("Environment must be staging or production.");
+      if (!["preview", "staging", "production"].includes(options.environment)) throw new Error("Environment must be preview or production.");
     } else {
       throw new Error(`Unknown option: ${argument}`);
     }

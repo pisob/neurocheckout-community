@@ -49,6 +49,7 @@ assert.equal(parsed.NC_COMMUNITY_COOKIE_SECURE, "false");
 assert.equal(parsed.NC_LOCAL_DATA_PILOT_ENABLED, "false");
 assert.equal(parsed.NC_CONNECTOR_PULL_ENABLED, "false");
 const staging = cloudConfiguration("staging", { NC_CLOUD_API_BASE_URL: "https://www.neurocheckout.com" });
+assert.deepEqual(cloudConfiguration("preview"), cloudConfiguration("staging"));
 assert.equal(staging.cloudApiBaseUrl, "https://community-api-staging.neurocheckout.com");
 assert.equal(staging.cloudAuthorizationUrl, "https://staging.neurocheckout.com/community/authorize");
 assert.equal(staging.deploymentEnvironment, "staging");
