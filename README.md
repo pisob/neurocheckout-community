@@ -23,10 +23,10 @@ dependent actions pause safely and resume automatically after reconnection.
 ## Install an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.10`:
+and note the latest tag. The example below uses `v0.1.0-preview.11`:
 
 ```bash
-git clone --branch v0.1.0-preview.10 --depth 1 \
+git clone --branch v0.1.0-preview.11 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -42,7 +42,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.10
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.11
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -113,6 +113,26 @@ maintainers. See [CONTRIBUTING.md](CONTRIBUTING.md) and
 [SECURITY.md](SECURITY.md).
 
 ## Security and official distribution
+
+### Sent email previews (upcoming release)
+
+The email activity view shows the latest ten confirmed sends and, when available,
+the original HTML or text copy stored in your encrypted local archive. Select an
+email to inspect it, or choose **Full preview** to enlarge it. External images,
+scripts and links are blocked so viewing a preview does not trigger customer
+tracking. Remote images may therefore be absent from the preview.
+
+Email preparation, agents and delivery remain Cloud responsibilities. Supported
+deliveries archive a Cloud-authenticated copy locally before sending; a failed
+archive blocks the send rather than losing the original content. Sent copies are
+limited to ten and expire after 30 days. Unconfirmed preparations are bounded to
+100 and expire after 24 hours. Include your private Community state in backups.
+
+Older messages without a saved copy display **Preview unavailable**. An absent
+opening, click or conversion record is not inferred from viewing the preview.
+This feature does not add tracking to delivery paths that do not support it.
+It requires matching Community and Cloud support; it is not activated by this
+documentation alone.
 
 Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 This repository, its signed tags and its release assets are the canonical

@@ -1,6 +1,6 @@
 {
   "name": "neurocheckout-community",
-  "version": "0.1.0-preview.10",
+  "version": "0.1.0-preview.11",
   "private": true,
   "engines": {
     "node": ">=22.13.0",
@@ -19,6 +19,7 @@
     "test:availability": "node --test scripts/test-server-availability.mjs",
     "test:local-data": "node --test scripts/test-local-data.mjs",
     "test:relay": "node --test scripts/test-server-data-relay.mjs",
+    "test:email-archive": "node --test scripts/test-email-archive.mjs",
     "test:source-pull": "node --test scripts/test-source-pull.mjs",
     "test:auto-source": "node --test scripts/test-automatic-source-setup.mjs",
     "setup:source-pull": "node scripts/configure-source-pull.mjs",

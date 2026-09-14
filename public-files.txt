@@ -19,6 +19,10 @@ scripts/configure-source-pull.mjs
 scripts/test-source-pull.mjs
 lib/server-data-relay.ts
 scripts/server-data-relay.mjs
+scripts/email-archive.mjs
+scripts/email-archive.d.mts
+scripts/test-email-archive.mjs
+scripts/test-sent-email-ui.mjs
 scripts/server-data-relay.d.mts
 scripts/test-server-data-relay.mjs
 app/api/local-data/v1/records/route.ts
@@ -75,6 +79,8 @@ components/AgentNetwork.tsx
 components/AgentPerformance.tsx
 components/CloudConfiguration.tsx
 components/ConvertedOrders.tsx
+components/SentEmailPreview.tsx
+lib/sent-email-preview.ts
 components/Dashboard.tsx
 components/EmailApprovals.tsx
 components/MemberMessages.tsx

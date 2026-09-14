@@ -6,6 +6,19 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 No unreleased changes.
 
+## 0.1.0-preview.11 - 2026-09-14
+
+- Preview the last ten sent emails using encrypted copies stored in Community,
+  when the connected Cloud service supports email archival.
+- Add a responsive message inspector and full-size preview in English and French.
+- Isolate email HTML and block remote resources and navigation so previews do
+  not trigger customer tracking.
+- Authenticate and scope archived copies to the connected store; show only
+  messages with confirmed sending evidence.
+- Retain at most ten confirmed copies for up to 30 days. Older messages without
+  a local copy remain available as metadata only.
+- Add archive, relay, authenticated proxy and browser regression coverage.
+
 ## 0.1.0-preview.10 - 2026-09-14
 
 - Replace the browser confirmation prompt with a responsive NeuroCheckout
