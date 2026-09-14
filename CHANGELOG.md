@@ -6,6 +6,14 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 No unreleased changes.
 
+## 0.1.0-preview.10 - 2026-09-14
+
+- Replace the browser confirmation prompt with a responsive NeuroCheckout
+  update dialog in English and French.
+- Explain the brief restart and configuration preservation before installation.
+- Add keyboard focus management, Escape and backdrop dismissal, and reduced
+  motion support.
+
 ## 0.1.0-preview.9 - 2026-09-14
 
 - Display connector versions reported through authenticated store checks.
