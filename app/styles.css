@@ -90,6 +90,28 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .compatibility-alert::after { content: ""; display: block; clear: both; }
 @media (max-width: 640px) { .local-update-actions { float: none; margin: 12px 0; } }
 
+.update-modal-backdrop { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 22px; background: rgb(1 10 18 / 78%); backdrop-filter: blur(9px); animation: update-backdrop-in .18s ease-out both; }
+.update-modal { position: relative; width: min(100%, 470px); overflow: hidden; border: 1px solid rgb(98 200 255 / 32%); border-radius: 16px; background: linear-gradient(145deg, #0c2d46, #071b2b 68%); padding: 30px; box-shadow: 0 34px 90px rgb(0 0 0 / 48%), inset 0 1px rgb(255 255 255 / 4%); animation: update-modal-in .24s cubic-bezier(.2, .78, .25, 1) both; }
+.update-modal::before { position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, transparent, var(--cyan), var(--blue), transparent); content: ""; opacity: .85; }
+.update-modal-mark { display: grid; width: 46px; height: 46px; place-items: center; border: 1px solid rgb(98 200 255 / 36%); border-radius: 13px; background: rgb(40 119 243 / 14%); box-shadow: 0 12px 34px rgb(40 119 243 / 16%); color: var(--cyan); }
+.update-modal-mark svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.update-modal-eyebrow { margin: 22px 0 0; color: var(--cyan); font-size: 9px; font-weight: 800; letter-spacing: .18em; }
+.update-modal h2 { margin-top: 8px; font-size: 25px; }
+.update-modal-copy { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.update-modal-assurance { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; margin-top: 22px; border-block: 1px solid var(--line); padding: 17px 0; }
+.update-modal-assurance > span { display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid rgb(98 200 255 / 34%); border-radius: 50%; background: rgb(98 200 255 / 8%); color: var(--cyan); font-size: 11px; }
+.update-modal-assurance strong, .update-modal-assurance small { display: block; }
+.update-modal-assurance strong { color: #dcefff; font-size: 11px; }
+.update-modal-assurance small { margin-top: 5px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.update-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.update-modal-confirm { gap: 12px; }
+.update-modal-confirm span { transition: transform .18s ease; }
+.update-modal-confirm:hover span { transform: translateX(3px); }
+@keyframes update-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes update-modal-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (max-width: 520px) { .update-modal { padding: 24px; } .update-modal-actions { flex-direction: column-reverse; } .update-modal-actions .button { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .update-modal-backdrop, .update-modal { animation: none; } }
+
 .overview-view { padding-top: 24px; }
 .command-surface { display: grid; grid-template-columns: minmax(235px, .7fr) minmax(0, 1.8fr); overflow: hidden; border: 1px solid var(--line-strong); background: var(--surface); }
 .edition-summary { display: flex; min-height: 180px; flex-direction: column; justify-content: center; border-right: 1px solid var(--line); padding: 28px; }
