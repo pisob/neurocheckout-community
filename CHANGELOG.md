@@ -6,6 +6,12 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 No unreleased changes.
 
+## 0.1.0-preview.9 - 2026-09-14
+
+- Display connector versions reported through authenticated store checks.
+- Link update notices to exact official releases and explain the data-preserving
+  in-place upgrade procedure.
+
 ## 0.1.0-preview.8 - 2026-09-14
 
 - Replace the public README with a concise English installation, security,

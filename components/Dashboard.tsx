@@ -47,6 +47,19 @@ type Capabilities = {
     update_required: boolean;
     update_recommended: boolean;
   };
+  connectors: Array<{
+    shop_id: string;
+    platform: "prestashop" | "magento" | "woocommerce";
+    installed_version: string;
+    latest_version: string;
+    minimum_version: string;
+    status: "current" | "available" | "required" | "blocked";
+    update_available: boolean;
+    update_required: boolean;
+    release_url: string;
+    preserves_data: boolean;
+    last_seen_at: string;
+  }>;
   upgrade: {
     available: boolean;
     target_plans: string[];
@@ -371,6 +384,15 @@ export default function Dashboard() {
 
             {activeView === "overview" ? (
               <div className="view-enter overview-view">
+                {(capabilities.connectors || []).filter((connector) => connector.status !== "current").map((connector) => (
+                  <section className={`compatibility-alert${connector.status === "available" ? " recommended" : ""}`} role="alert" key={`${connector.shop_id}-${connector.platform}`}>
+                    <strong>{connector.status === "available" ? ui("Connector update available", "Mise à jour du connecteur disponible") : ui("Connector update required", "Mise à jour du connecteur obligatoire")}</strong>
+                    <p>
+                      {connector.shop_id} · {connector.platform}: {connector.installed_version} → {connector.latest_version}. {ui("Back up the store, download the official package and upload it over the installed connector. Do not uninstall it; its configuration and data are preserved.", "Sauvegardez la boutique, téléchargez le paquet officiel puis chargez-le par-dessus le connecteur installé. Ne le désinstallez pas : sa configuration et ses données sont conservées.")}
+                    </p>
+                    <a className="button ghost" href={connector.release_url} target="_blank" rel="noopener noreferrer">{ui("Download official update", "Télécharger la mise à jour officielle")}</a>
+                  </section>
+                ))}
                 <section className="command-surface">
                   <div className="edition-summary">
                     <p className="eyebrow">{ui("Active edition", "Édition active")}</p>
