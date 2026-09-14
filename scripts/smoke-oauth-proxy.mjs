@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { initializeLocalData, loadLocalDataConfig } from "./local-data-store.mjs";
 import { signLocalRequest } from "./local-data-handler.mjs";
+import { EmailArchive } from "./email-archive.mjs";
 
 const host = "127.0.0.1";
 const packageVersion = JSON.parse(
@@ -28,6 +29,9 @@ const updateDirectory = mkdtempSync(join(tmpdir(), "nc-update-api-test-"));
 const stateDirectory = join(updateDirectory, "private-state");
 initializeLocalData(stateDirectory, "synthetic-shop");
 const localKeys = loadLocalDataConfig(stateDirectory);
+const emailArchive=new EmailArchive(stateDirectory);
+for(const id of [1,2])emailArchive.prepare({delivery_id:`community-edge-${id}`,recipient_email:'email-copy@example.invalid',subject:'Archived original',body_html:'<p>PRIVATE ARCHIVED ORIGINAL</p>',body_text:'PRIVATE ARCHIVED ORIGINAL',agent_name:'abandoned_cart',copy_signature:'a'.repeat(64)});
+emailArchive.close();
 const observed = {
   tokenExchange: false,
   capabilities: false,
@@ -118,6 +122,12 @@ const cloud = createServer(async (request, response) => {
     return json(response, 200, {
       items: [{ shop_uuid: "33333333-3333-4333-8333-333333333333", shop_id: "shop_smoke", platform: "woocommerce" }],
     });
+  }
+
+  if (request.method === "GET" && request.url.startsWith("/api/v1/member/analytics/recent-emails?")) {
+    const query=new URL(request.url,cloudOrigin).searchParams;
+    if(query.get('shop_uuid')!=='33333333-3333-4333-8333-333333333333')return json(response,403,{detail:'forbidden'});
+    return json(response,200,{shop:{shop_uuid:query.get('shop_uuid'),shop_id:failureMode==='archive-shop'?'other-shop':'synthetic-shop'},limit:10,count:1,items:[{delivery_id:'community-edge-1',sent_at:new Date().toISOString(),status:'sent',customer:{}}]});
   }
 
   if (request.method === "POST" && request.url === "/api/v1/member/notifications/mark-read") {
@@ -246,6 +256,7 @@ try {
   const anonymous = await fetch(`${communityOrigin}/api/cloud/capabilities`);
   assert.equal(anonymous.status, 401);
   assert.equal((await anonymous.json()).detail, "community_not_connected");
+  assert.equal((await fetch(`${communityOrigin}/api/cloud/recent-emails?shop_uuid=33333333-3333-4333-8333-333333333333`)).status,401);
   assert.equal((await fetch(`${communityOrigin}/api/local-update`)).status, 401);
   assert.equal((await fetch(`${communityOrigin}/api/local-update`, { method: "POST", headers: { Origin: communityOrigin } })).status, 401);
 
@@ -268,6 +279,18 @@ try {
   assert.equal(callback.status, 307);
   assert.equal(new URL(callback.headers.get("location")).searchParams.get("connected"), "1");
   assert.ok(cookies.has("nc_community_session"));
+
+  const emailPath='/api/cloud/recent-emails?shop_uuid=33333333-3333-4333-8333-333333333333';
+  const emails=await communityFetch(emailPath);assert.equal(emails.status,200);
+  assert.match(emails.headers.get('cache-control'),/no-store/);
+  const copies=await emails.json();assert.equal(copies.items.length,1);
+  assert.equal(copies.items[0].body_html,'<p>PRIVATE ARCHIVED ORIGINAL</p>');
+  assert.equal(copies.items[0].preview_available,true);
+  assert.equal(JSON.stringify(copies).includes('community-edge-2'),false);
+  assert.equal((await communityFetch('/api/cloud/recent-emails?shop_uuid=44444444-4444-4444-8444-444444444444')).status,403);
+  failureMode='archive-shop';
+  assert.equal(JSON.stringify(await (await communityFetch(emailPath)).json()).includes('PRIVATE ARCHIVED ORIGINAL'),false);
+  failureMode='';
 
   await waitForHeartbeat(0);
   await waitForRelay(0);

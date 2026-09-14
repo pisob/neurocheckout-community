@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { saveRelayCredential, relayOnce } from "./server-data-relay.mjs";
 import { LocalDataStore } from "./local-data-store.mjs";
+import { EmailArchive } from "./email-archive.mjs";
 
 function fixture(t) {
   const directory = mkdtempSync(resolve(tmpdir(), "nc-outgoing-relay-test-"));
@@ -15,6 +16,24 @@ function fixture(t) {
 }
 const credential = () => ({ token: "nc_data_" + randomBytes(32).toString("base64url"),
   installation_id: "11111111-1111-4111-8111-111111111111", shop_id: "synthetic-shop" });
+
+test("authenticated relay archives large copies and confirms only metadata", async t => {
+  const options=fixture(t), auth=credential();await saveRelayCredential(options,auth);
+  let operation="archive_email";
+  const copy={delivery_id:"community-edge-1",recipient_email:"private@example.invalid",subject:"Original",body_html:"<p>"+"x".repeat(5000)+"</p>",body_text:"Original",agent_name:"abandoned_cart",copy_signature:"a".repeat(64)};
+  const mock=async (url,init)=>{
+    if(url.endsWith("/api/health"))return Response.json({service:"neurocheckout-community"});
+    assert.equal(init.headers.Authorization,`Bearer ${auth.token}`);
+    if(url.endsWith("/poll"))return Response.json({commands:[{operation,request_id:"b".repeat(32),record:operation==="archive_email"?copy:{delivery_id:copy.delivery_id,sent_at:new Date().toISOString()}}]});
+    const reply=JSON.parse(init.body);assert.equal(reply.result.status,"ok");assert.equal(reply.result.archived,true);
+    if(operation==="archive_email")assert.deepEqual(reply.result.copy,copy);
+    return Response.json({accepted:true});
+  };
+  assert.equal(await relayOnce(options,mock),true);operation="confirm_email";
+  assert.equal(await relayOnce(options,mock),true);
+  const archive=new EmailArchive(options.directory);assert.deepEqual(archive.get(copy.delivery_id),copy);
+  assert.ok(archive.db.prepare('SELECT sent_at FROM email_archive').get().sent_at);archive.close();
+});
 
 test("outgoing polling reads locally, replies only to Cloud and survives restart", async t => {
   const options = fixture(t), auth = credential();

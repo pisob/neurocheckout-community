@@ -65,6 +65,9 @@ jobs:
       - name: Test server availability credentials and recovery
         run: npm run test:availability
 
+      - name: Test encrypted email archive
+        run: npm run test:email-archive
+
       - name: Test encrypted staging local data
         run: npm run test:local-data
 

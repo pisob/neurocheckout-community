@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { UiLanguage } from "@/lib/ui-language";
+import SentEmailPreview, { type SentEmail } from "./SentEmailPreview";
 
 type Shop = { id?: string; shop_uuid?: string; canonical_shop_id?: string; shop_id: string; platform?: string; currency_code?: string | null };
 type ConvertedOrder = {
@@ -16,7 +17,7 @@ type ConvertedOrder = {
   customer: { display_name?: string | null; email_masked?: string | null };
 };
 type ConvertedPayload = { shop: Shop; count: number; items: ConvertedOrder[]; detail?: string };
-type RecentEmail = {
+type RecentEmail = SentEmail & {
   sent_at?: string | null;
   subject?: string | null;
   agent_name?: string | null;
@@ -228,7 +229,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
             <div>
               <p className="eyebrow">{ui("Delivery evidence", "Preuves d’envoi")}</p>
               <h2 id="recent-email-heading">{ui("Latest 10 emails sent", "10 derniers emails envoyés")}</h2>
-              <p>{ui("A privacy-safe operational record from NeuroCheckout Cloud.", "Un journal opérationnel minimisé par NeuroCheckout Cloud.")}</p>
+              <p>{ui("Confirmed sends, with original copies when available in your encrypted local archive.", "Envois confirmés, avec leur copie originale lorsqu’elle est disponible dans votre archive locale chiffrée.")}</p>
             </div>
             <span>{emailPayload?.count ?? 0} / 10</span>
           </header>
@@ -239,18 +240,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
             <div className="email-activity-state"><p>{ui("No customer email has been sent for this store yet.", "Aucun email client n’a encore été envoyé pour cette boutique.")}</p></div>
           ) : null}
           {!emailLoading && emailPayload && emailPayload.items.length > 0 ? (
-            <div className="email-ledger">
-              <div className="email-ledger-head"><span>{ui("Message", "Message")}</span><span>{ui("Recipient", "Destinataire")}</span><span>{ui("Status", "Statut")}</span><span>{ui("Sent", "Envoi")}</span></div>
-              {emailPayload.items.slice(0, 10).map((item, index) => (
-                <article key={`${item.sent_at || "email"}-${index}`}>
-                  <span className="analytics-index">{String(index + 1).padStart(2, "0")}</span>
-                  <div><strong>{item.subject || ui("Email without subject", "Email sans objet")}</strong><small>{AGENT_LABELS[language][String(item.agent_name || "")] || readable(item.agent_name || item.automation)}</small></div>
-                  <div><strong>{item.customer.email_masked || ui("Protected", "Protégé")}</strong><small>{ui("Contact minimized", "Contact minimisé")}</small></div>
-                  <span className={`email-status ${String(item.status || "sent").toLowerCase()}`}>{emailStatus(item.status)}</span>
-                  <time>{formatDate(item.sent_at)}</time>
-                </article>
-              ))}
-            </div>
+            <SentEmailPreview items={emailPayload.items.slice(0,10)} language={language} />
           ) : null}
         </section>
       ) : null}

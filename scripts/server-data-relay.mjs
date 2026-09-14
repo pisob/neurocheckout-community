@@ -3,6 +3,7 @@ import { mkdir, lstat, open, writeFile, rename, unlink } from "node:fs/promises"
 import { constants } from "node:fs";
 import { resolve } from "node:path";
 import { LocalDataStore, initializeLocalData } from "./local-data-store.mjs";
+import { EmailArchive } from "./email-archive.mjs";
 
 const key = secret => {
   if (typeof secret !== "string" || secret.length < 32) throw new Error("relay_configuration_invalid");
@@ -115,16 +116,29 @@ export async function relayOnce(options, fetchImpl = fetch) {
     const response = await fetchImpl(`${options.cloudUrl}/api/v1/public/community-relay/poll`, {
       method: "POST", headers, body: "{}", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(25_000),
     });
-    const item = await smallJson(response, 4096);
+    const item = await smallJson(response, 128 * 1024);
     if (!item || Object.keys(item).length !== 1 || !Array.isArray(item.commands) || item.commands.length > 1) return false;
     for (const command of item.commands) {
-      if (!command || Object.keys(command).sort().join(",") !== "operation,record,request_id" || command.operation !== "read" || !/^[a-f0-9]{32}$/.test(command.request_id)) return false;
+      if (!command || Object.keys(command).sort().join(",") !== "operation,record,request_id" || !["read", "archive_email", "confirm_email"].includes(command.operation) || !/^[a-f0-9]{32}$/.test(command.request_id)) return false;
       let result, store;
       try {
+        if (["archive_email", "confirm_email"].includes(command.operation)) {
+          const archive = new EmailArchive(options.directory);
+          try {
+            if (archive.store.config.shopId !== credential.shop_id) throw new Error("relay_store_mismatch");
+            archive.store.bindInstallation(credential.installation_id);
+            if (command.operation === "confirm_email") {
+              if (!command.record || Object.keys(command.record).sort().join() !== "delivery_id,sent_at") throw new Error("email_archive_invalid");
+              archive.confirm(command.record.delivery_id, command.record.sent_at);
+              result = { status: "ok", archived: true };
+            } else result = { status: "ok", ...archive.prepare(command.record) };
+          } finally { archive.close(); }
+        } else {
         store = new LocalDataStore(options.directory);
         if (store.config.shopId !== credential.shop_id) throw new Error("relay_store_mismatch");
         store.bindInstallation(credential.installation_id);
         result = { status: "ok", record: store.read(command.record) };
+        }
       } catch (error) {
         const statuses = { local_data_record_missing: "missing", local_data_record_deleted: "deleted", local_data_revision_not_ready: "not_ready" };
         result = { status: statuses[error?.message] || "unavailable" };
