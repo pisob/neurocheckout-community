@@ -1,12 +1,14 @@
-# NeuroCheckout Community v0.1.0-preview.11
+# NeuroCheckout Community v0.1.0-preview.12
 
-Official signed prerelease with encrypted local previews of sent emails.
+Official signed prerelease with a sent email preview fallback fix.
 
 - Browse the last ten confirmed sent emails in a responsive English/French
   inspector, with an accessible full-size preview.
 - Original email copies are encrypted in your Community vault, scoped to your
   store, and retained for up to 30 days. Cloud archival support is required for
   new copies; messages without a local copy show metadata only.
+- When NeuroCheckout Cloud already has the sent email HTML/text, Community now
+  preserves that preview instead of marking the original content as unavailable.
 - Remote images, tracking pixels, scripts and navigation are blocked in previews.
   Viewing a preview does not count as a customer opening or clicking an email.
 - Agents, scheduling, quotas and email delivery remain in NeuroCheckout Cloud.

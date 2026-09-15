@@ -6,6 +6,13 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 No unreleased changes.
 
+## 0.1.0-preview.12 - 2026-09-15
+
+- Preserve sent email previews returned by NeuroCheckout Cloud when the local
+  encrypted archive does not contain the matching copy.
+- Keep encrypted local archive copies as the preferred preview source when
+  available.
+
 ## 0.1.0-preview.11 - 2026-09-14
 
 - Preview the last ten sent emails using encrypted copies stored in Community,
