@@ -1,6 +1,6 @@
-# NeuroCheckout Community v0.1.0-preview.12
+# NeuroCheckout Community v0.1.0-preview.13
 
-Official signed prerelease with a sent email preview fallback fix.
+Official signed prerelease improving original sent-email previews.
 
 - Browse the last ten confirmed sent emails in a responsive English/French
   inspector, with an accessible full-size preview.
@@ -9,13 +9,18 @@ Official signed prerelease with a sent email preview fallback fix.
   new copies; messages without a local copy show metadata only.
 - When NeuroCheckout Cloud already has the sent email HTML/text, Community now
   preserves that preview instead of marking the original content as unavailable.
-- Remote images, tracking pixels, scripts and navigation are blocked in previews.
-  Viewing a preview does not count as a customer opening or clicking an email.
+- HTTPS raster product and recommendation images are displayed. Tracking pixels,
+  scripts and automatic navigation remain blocked inside previews.
+- Choose **Open original cart link** to open the recovery CTA in a new tab.
+  This deliberate action may count as an email click.
+- Cached email images use the connected Cloud API origin.
 - Agents, scheduling, quotas and email delivery remain in NeuroCheckout Cloud.
 - Upgrade in place using the signed updater. Keep your configuration, local
   vault and encryption keys; do not uninstall or delete them to update.
 - This release does not reconstruct historical emails or add customer tracking
   and conversion attribution to delivery paths that do not already support them.
+- Historical copies retain their original URLs; expired recovery links are not
+  renewed by updating Community.
 
 Verify the tag and attached archive using the instructions in `RELEASES.md`.
 Expected signing fingerprint:

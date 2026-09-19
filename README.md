@@ -23,10 +23,10 @@ dependent actions pause safely and resume automatically after reconnection.
 ## Install an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.12`:
+and note the latest tag. The example below uses `v0.1.0-preview.13`:
 
 ```bash
-git clone --branch v0.1.0-preview.12 --depth 1 \
+git clone --branch v0.1.0-preview.13 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -42,7 +42,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.12
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.13
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -118,9 +118,11 @@ maintainers. See [CONTRIBUTING.md](CONTRIBUTING.md) and
 
 The email activity view shows the latest ten confirmed sends and, when available,
 the original HTML or text copy stored in your encrypted local archive. Select an
-email to inspect it, or choose **Full preview** to enlarge it. External images,
-scripts and links are blocked so viewing a preview does not trigger customer
-tracking. Remote images may therefore be absent from the preview.
+email to inspect it, or choose **Full preview** to enlarge it. HTTPS raster product
+images are displayed. Scripts, links, tracking pixels and images with query strings
+are blocked inside the embedded preview. Choose **Open original cart link** to
+open the email's recovery link in a new tab. This explicit action may count as
+an email click. Historical copies retain their original content and links.
 
 Email preparation, agents and delivery remain Cloud responsibilities. Supported
 deliveries archive a Cloud-authenticated copy locally before sending; a failed

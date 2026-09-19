@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { sentEmailPreview } from "@/lib/sent-email-preview";
+import { sentEmailPreview, sentEmailRecoveryLink } from "@/lib/sent-email-preview";
 import type { UiLanguage } from "@/lib/ui-language";
 
 export type SentEmail = {
@@ -9,14 +9,17 @@ export type SentEmail = {
   agent_name?: string | null; status?: string | null; body_html?: string; body_text?: string;
   opened_at?: string | null; clicked_at?: string | null; converted_at?: string | null;
   tracking_available?: boolean; preview_available?: boolean;
+  preview_asset_base_url?: string;
 };
 export default function SentEmailPreview({ items, language }: { items: SentEmail[]; language: UiLanguage }) {
   const fr = language === "fr", ui = (en: string, french: string) => fr ? french : en;
   const [index, setIndex] = useState(0), [documentHtml, setDocumentHtml] = useState("");
+  const [recoveryLink, setRecoveryLink] = useState<{ href: string; label: string } | null>(null);
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null);
   const selected = items[index] || items[0];
   useEffect(() => { setIndex(0); dialog.current?.close(); }, [items]);
-  useEffect(() => { setDocumentHtml(selected?.body_html && selected.preview_available ? sentEmailPreview(selected.body_html) : ""); }, [selected]);
+  useEffect(() => { setDocumentHtml(selected?.body_html && selected.preview_available ? sentEmailPreview(selected.body_html, selected.preview_asset_base_url) : ""); }, [selected]);
+  useEffect(() => { setRecoveryLink(selected?.body_html && selected.preview_available ? sentEmailRecoveryLink(selected.body_html) : null); }, [selected]);
   const date = (value?: string | null) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString(fr ? "fr-FR" : "en-US") : "—";
   const statuses: Record<string, string> = { sent: ui("Sent", "Envoyé"), delivered: ui("Delivered", "Livré"), opened: ui("Opened", "Ouvert"), clicked: ui("Clicked", "Cliqué"), converted: ui("Converted", "Converti"), bounced: ui("Bounced", "Rejeté") };
   const preview = (large = false) => documentHtml ? <iframe className={large ? "sent-preview-frame expanded" : "sent-preview-frame"} sandbox="" referrerPolicy="no-referrer" title={ui("Sent email preview", "Aperçu de l’email envoyé")} srcDoc={documentHtml} /> : selected?.preview_available && selected.body_text ? <pre className="sent-preview-text">{selected.body_text}</pre> : <p className="email-activity-state">{ui("The original content was not archived. No preview can be reconstructed.", "Le contenu original n’a pas été archivé. Aucun aperçu ne peut être reconstitué.")}</p>;
@@ -41,7 +44,8 @@ export default function SentEmailPreview({ items, language }: { items: SentEmail
         <div><dt>Conversion</dt><dd>{date(selected.converted_at)}</dd></div>
       </dl>
       {selected.tracking_available === false ? <p className="sent-preview-note">{ui("Open, click and conversion tracking is not available for this delivery path.", "Le suivi des ouvertures, clics et conversions n’est pas disponible pour ce circuit d’envoi.")}</p> : null}
-      <p className="sent-preview-note">{ui("External images and links are disabled. Viewing this preview does not count as a customer open.", "Les images externes et les liens sont désactivés. Cet aperçu ne compte pas comme une ouverture client.")}</p>
+      <p className="sent-preview-note">{ui("Product images are displayed. Tracking pixels and links are disabled in this preview.", "Les images des produits sont affichées. Les pixels de suivi et les liens sont désactivés dans cet aperçu.")}</p>
+      {recoveryLink ? <p className="sent-preview-note"><a className="button secondary-blue" href={recoveryLink.href} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{ui("Open original cart link", "Ouvrir le lien original du panier")}</a><br />{ui("Opens the sent email’s cart link in a new tab. This action may count as an email click.", "Ouvre le lien du mail envoyé dans un nouvel onglet. Cette action peut être comptabilisée comme un clic sur l’email.")}</p> : null}
       {preview()}
     </section>
     <dialog ref={dialog} className="sent-preview-dialog" aria-label={ui("Full email preview", "Aperçu complet de l’email")} onClose={() => trigger.current?.focus()}>

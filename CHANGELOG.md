@@ -6,6 +6,13 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 No unreleased changes.
 
+## 0.1.0-preview.13 - 2026-09-19
+
+- Display HTTPS product and recommendation images in original sent-email
+  previews while suppressing tracking pixels and active content.
+- Resolve archived email image-cache assets against the connected Cloud API.
+- Add an explicit action to open the original cart recovery link in a new tab.
+
 ## 0.1.0-preview.12 - 2026-09-15
 
 - Preserve sent email previews returned by NeuroCheckout Cloud when the local

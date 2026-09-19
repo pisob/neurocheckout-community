@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { EmailArchive } from "@/scripts/email-archive.mjs";
 
 import { authenticatedCloudFetch } from "@/lib/authenticated-cloud-fetch";
+import { cloudApiBaseUrl } from "@/lib/config";
 
 export const runtime = "nodejs";
 
@@ -49,6 +50,9 @@ export async function GET(request: NextRequest) {
     // Missing keys/copies do not invent previews or expose private diagnostics.
     payload.items = payload.items.map((item: Record<string, unknown>) => preserveCloudPreview(item));
   } finally { archive?.close(); }
+  payload.items = payload.items.map((item: Record<string, unknown>) => ({
+    ...item, preview_asset_base_url: new URL(cloudApiBaseUrl()).origin,
+  }));
   const headers = new Headers(response.headers); headers.delete("content-length");
   return NextResponse.json(payload, { headers });
 }

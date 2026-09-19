@@ -28,7 +28,11 @@ try {
  });
  await page.goto(origin+'/?connected=1#converted-orders');
  await page.locator('.sent-email-inspector iframe').waitFor();
- await page.frameLocator('.sent-email-inspector iframe').getByText('Total: $147.24').waitFor();
+  await page.frameLocator('.sent-email-inspector iframe').getByText('Total: $147.24').waitFor();
+  const recovery = page.getByRole('link', {name: 'Open original cart link'});
+  assert.equal(await recovery.getAttribute('href'), 'https://tracking.invalid/click');
+  assert.equal(await recovery.getAttribute('target'), '_blank');
+  assert.equal(await recovery.getAttribute('rel'), 'noopener noreferrer');
  assert.equal(await page.frameLocator('.sent-email-inspector iframe').locator('script,iframe,meta[http-equiv="refresh"],a[href],img[src^="http"]').count(),0);
  await page.getByRole('button',{name:'Full preview',exact:true}).click();
  assert.equal(await page.locator('dialog[open]').count(),1);
@@ -41,7 +45,8 @@ try {
   await page.locator('.email-activity').screenshot({path:process.env.NC_TEST_SCREENSHOT});
  }
  await page.getByRole('button',{name:/Older message/}).click();
- await page.locator('.sent-email-inspector').getByText('The original content was not archived.',{exact:false}).waitFor();
+  await page.locator('.sent-email-inspector').getByText('The original content was not archived.',{exact:false}).waitFor();
+  assert.equal(await page.getByRole('link', {name: 'Open original cart link'}).count(), 0);
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await page.getByRole('button',{name:/Your selection is saved/}).click();
