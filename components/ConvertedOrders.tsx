@@ -25,7 +25,18 @@ type RecentEmail = SentEmail & {
   status?: string | null;
   customer: { email_masked?: string | null };
 };
-type RecentEmailPayload = { shop: Shop; limit: number; count: number; items: RecentEmail[]; detail?: string };
+type EmailStatus = "all" | "sent" | "delivered" | "opened" | "clicked" | "converted" | "bounced";
+type RecentEmailPayload = {
+  shop: Shop;
+  limit: number;
+  offset: number;
+  count: number;
+  total: number;
+  has_more: boolean;
+  status_counts: Record<string, number>;
+  items: RecentEmail[];
+  detail?: string;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -57,9 +68,15 @@ function normalizeRecentEmailPayload(value: unknown): RecentEmailPayload | null 
       customer: isRecord(item.customer) ? item.customer : {},
     })) as RecentEmail[];
   return {
-    ...(value as Omit<RecentEmailPayload, "items" | "count" | "limit">),
+    ...(value as Omit<RecentEmailPayload, "items" | "count" | "limit" | "offset" | "total" | "has_more" | "status_counts">),
     limit: typeof value.limit === "number" ? value.limit : 10,
+    offset: typeof value.offset === "number" ? value.offset : 0,
     count: typeof value.count === "number" ? value.count : items.length,
+    total: typeof value.total === "number" ? value.total : items.length,
+    has_more: value.has_more === true,
+    status_counts: isRecord(value.status_counts)
+      ? Object.fromEntries(Object.entries(value.status_counts).map(([key, count]) => [key, Number(count) || 0]))
+      : {},
     items,
   };
 }
@@ -86,6 +103,8 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
   const [limit, setLimit] = useState(30);
   const [payload, setPayload] = useState<ConvertedPayload | null>(null);
   const [emailPayload, setEmailPayload] = useState<RecentEmailPayload | null>(null);
+  const [emailFilter, setEmailFilter] = useState<EmailStatus>("all");
+  const [emailOffset, setEmailOffset] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [emailLoading, setEmailLoading] = useState(true);
@@ -131,7 +150,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
     setEmailLoading(true);
     setEmailError("");
     try {
-      const query = new URLSearchParams({ shop_uuid: selectedShopUuid, limit: "10" });
+      const query = new URLSearchParams({ shop_uuid: selectedShopUuid, limit: "10", offset: String(emailOffset), status: emailFilter });
       const response = await fetch(`/api/cloud/recent-emails?${query.toString()}`, { cache: "no-store" });
       const rawBody: unknown = await response.json().catch(() => ({}));
       const body = normalizeRecentEmailPayload(rawBody);
@@ -148,11 +167,12 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
       setEmailPayload(null);
       setEmailError(loadError instanceof Error ? loadError.message : ui("Recent emails unavailable.", "Emails récents indisponibles."));
     } finally { setEmailLoading(false); }
-  }, [language, recentEmailsEnabled, selectedShopUuid]);
+  }, [emailFilter, emailOffset, language, recentEmailsEnabled, selectedShopUuid]);
 
   useEffect(() => { void loadShops().catch((loadError) => { setError(loadError instanceof Error ? loadError.message : ui("Stores unavailable.", "Boutiques indisponibles.")); setLoading(false); setEmailLoading(false); }); }, [loadShops]);
   useEffect(() => { void loadOrders(); }, [loadOrders]);
   useEffect(() => { void loadRecentEmails(); }, [loadRecentEmails]);
+  useEffect(() => { setEmailOffset(0); }, [selectedShopUuid]);
 
   const selected = payload?.items[selectedIndex] || null;
   const totalValue = useMemo(() => (payload?.items || []).reduce((sum, item) => sum + Number(item.order_total || 0), 0), [payload]);
@@ -170,6 +190,20 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
     return labels[String(status || "sent").toLowerCase()] || readable(status);
   };
   const refreshEvidence = () => { void loadOrders(); void loadRecentEmails(); };
+  const emailFilters: Array<{ value: EmailStatus; label: string }> = [
+    { value: "all", label: ui("All", "Tous") },
+    { value: "sent", label: ui("Sent", "Envoyés") },
+    { value: "delivered", label: ui("Delivered", "Livrés") },
+    { value: "opened", label: ui("Opened", "Ouverts") },
+    { value: "clicked", label: ui("Clicked", "Cliqués") },
+    { value: "converted", label: ui("Converted", "Convertis") },
+    { value: "bounced", label: ui("Bounced", "Rejetés") },
+  ];
+  const statusTotal = (value: EmailStatus) => value === "all"
+    ? Object.values(emailPayload?.status_counts || {}).reduce((sum, count) => sum + count, 0)
+    : emailPayload?.status_counts?.[value] || 0;
+  const emailPage = Math.floor(emailOffset / 10) + 1;
+  const emailPages = Math.max(1, Math.ceil((emailPayload?.total || 0) / 10));
 
   return (
     <section className="view-enter analytics-view converted-view">
@@ -228,19 +262,35 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
           <header>
             <div>
               <p className="eyebrow">{ui("Delivery evidence", "Preuves d’envoi")}</p>
-              <h2 id="recent-email-heading">{ui("Latest 10 emails sent", "10 derniers emails envoyés")}</h2>
-              <p>{ui("Confirmed sends, with original copies when available in your encrypted local archive.", "Envois confirmés, avec leur copie originale lorsqu’elle est disponible dans votre archive locale chiffrée.")}</p>
+              <h2 id="recent-email-heading">{ui("Email delivery history", "Historique des emails envoyés")}</h2>
+              <p>{ui("Up to 50 recent delivery records, with the latest 10 original copies kept in your encrypted local archive.", "Jusqu’à 50 preuves d’envoi récentes, avec les 10 dernières copies originales conservées dans votre archive locale chiffrée.")}</p>
             </div>
-            <span>{emailPayload?.count ?? 0} / 10</span>
+            <span>{emailPayload?.total ?? 0} {ui("records", "preuves")}</span>
           </header>
+
+          <div className="email-history-controls">
+            <div className="email-status-filters" role="group" aria-label={ui("Filter emails by status", "Filtrer les emails par statut")}>
+              {emailFilters.map((filter) => <button className={emailFilter === filter.value ? "active" : ""} type="button" aria-pressed={emailFilter === filter.value} key={filter.value} onClick={() => { setEmailFilter(filter.value); setEmailOffset(0); }}>{filter.label}<span>{statusTotal(filter.value)}</span></button>)}
+            </div>
+            {statusTotal("converted") > 0 ? <p className="conversion-presence"><span />{statusTotal("converted")} {ui("conversion evidence retained", "preuve(s) de conversion conservée(s)")}</p> : null}
+          </div>
 
           {emailError ? <p className="email-activity-error" role="alert">{emailError}</p> : null}
           {emailLoading ? <div className="email-activity-state"><span className="loader" /><p>{ui("Loading sent emails…", "Chargement des emails envoyés…")}</p></div> : null}
           {!emailLoading && !emailError && emailPayload?.items.length === 0 ? (
-            <div className="email-activity-state"><p>{ui("No customer email has been sent for this store yet.", "Aucun email client n’a encore été envoyé pour cette boutique.")}</p></div>
+            <div className="email-activity-state"><p>{emailFilter === "all"
+              ? ui("No customer email has been sent for this store yet.", "Aucun email client n’a encore été envoyé pour cette boutique.")
+              : ui("No email matches this status in the recent history.", "Aucun email ne correspond à ce statut dans l’historique récent.")}</p></div>
           ) : null}
           {!emailLoading && emailPayload && emailPayload.items.length > 0 ? (
-            <SentEmailPreview items={emailPayload.items.slice(0,10)} language={language} />
+            <>
+              <SentEmailPreview items={emailPayload.items.slice(0,10)} language={language} />
+              <nav className="email-pagination" aria-label={ui("Email history pages", "Pages de l’historique email")}>
+                <button className="button ghost" type="button" disabled={emailOffset === 0} onClick={() => setEmailOffset(Math.max(0, emailOffset - 10))}>{ui("Previous", "Précédent")}</button>
+                <span>{ui("Page", "Page")} {emailPage} / {emailPages}</span>
+                <button className="button ghost" type="button" disabled={!emailPayload.has_more} onClick={() => setEmailOffset(emailOffset + 10)}>{ui("Next", "Suivant")}</button>
+              </nav>
+            </>
           ) : null}
         </section>
       ) : null}

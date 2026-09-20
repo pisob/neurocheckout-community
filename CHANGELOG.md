@@ -4,7 +4,15 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
-No unreleased changes.
+- Add a synchronization-health workspace covering connector freshness,
+  encrypted local queues, Cloud reconciliation, delivery evidence and safe
+  manual retry scheduling.
+- Keep a filterable, paginated history of up to 50 recent email delivery
+  records while retaining the latest ten encrypted original copies locally.
+- Keep converted-email evidence visible through a dedicated filter and status
+  count instead of relying on its position in the latest-message list.
+- Explain the rolling email quota and show when the next individual capacity
+  unit becomes available.
 
 ## 0.1.0-preview.14 - 2026-09-20
 
