@@ -4,6 +4,8 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.15 - 2026-09-21
+
 - Add a synchronization-health workspace covering connector freshness,
   encrypted local queues, Cloud reconciliation, delivery evidence and safe
   manual retry scheduling.
