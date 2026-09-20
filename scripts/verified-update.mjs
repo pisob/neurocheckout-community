@@ -6,6 +6,37 @@ export const FINGERPRINT = "2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0";
 export function validVersion(version) {
   return typeof version === "string" && version.length < 128 && version === version.trim() && /^[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?$/.test(version);
 }
+export function compareVersions(left, right) {
+  if (!validVersion(left) || !validVersion(right)) return null;
+  const parse = value => {
+    const separator = value.indexOf("-");
+    const core = (separator === -1 ? value : value.slice(0, separator)).split(".").map(Number);
+    const prerelease = separator === -1 ? null : value.slice(separator + 1).split(".");
+    return { core, prerelease };
+  };
+  const a = parse(left), b = parse(right);
+  for (let index = 0; index < 3; index++) {
+    if (a.core[index] !== b.core[index]) return a.core[index] < b.core[index] ? -1 : 1;
+  }
+  if (a.prerelease === null || b.prerelease === null) {
+    if (a.prerelease === b.prerelease) return 0;
+    return a.prerelease === null ? 1 : -1;
+  }
+  const length = Math.max(a.prerelease.length, b.prerelease.length);
+  for (let index = 0; index < length; index++) {
+    const leftPart = a.prerelease[index], rightPart = b.prerelease[index];
+    if (leftPart === undefined || rightPart === undefined) return leftPart === undefined ? -1 : 1;
+    if (leftPart === rightPart) continue;
+    const leftNumeric = /^[0-9]+$/.test(leftPart), rightNumeric = /^[0-9]+$/.test(rightPart);
+    if (leftNumeric && rightNumeric) return Number(leftPart) < Number(rightPart) ? -1 : 1;
+    if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1;
+    return leftPart < rightPart ? -1 : 1;
+  }
+  return 0;
+}
+export function isNewerVersion(candidate, current) {
+  return compareVersions(candidate, current) === 1;
+}
 export function verifySigner(status) {
   const lines = status.split("\n").filter(line => line.startsWith("[GNUPG:] VALIDSIG "));
   if (lines.length !== 1 || !lines[0].split(/\s+/).includes(FINGERPRINT) ||

@@ -4,7 +4,7 @@ import { dirname, resolve, relative, isAbsolute } from "node:path";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { loadEnvironmentFile } from "./env-file.mjs";
-import { prepareRelease } from "./verified-update.mjs";
+import { isNewerVersion, prepareRelease } from "./verified-update.mjs";
 import { activateCandidate } from "./update-switch.mjs";
 
 const root = process.cwd();
@@ -100,6 +100,8 @@ try {
           if (dirname(current) !== generated && dirname(previous) !== generated) await rm(generated, { recursive: true, force: true });
         }
       }
+      const currentMetadata = JSON.parse(await readFile(resolve(current, "package.json"), "utf8"));
+      if (!isNewerVersion(request.version, currentMetadata.version)) throw new Error("update_not_newer");
       const candidate = await prepareRelease(directory, request.version, status, cancellation.signal);
       if (stopping) break;
       await status("restarting");

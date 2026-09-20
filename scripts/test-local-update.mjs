@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
-import { validVersion, verifySigner, verifyCheckout, FINGERPRINT } from "./verified-update.mjs";
+import { compareVersions, isNewerVersion, validVersion, verifySigner, verifyCheckout, FINGERPRINT } from "./verified-update.mjs";
 import { activateCandidate } from "./update-switch.mjs";
 
 for (const bad of [undefined, {}, "../main", "1.2.3;id", "1.2.3\n", "--upload-pack=evil", "v1.2.3", "https://example.com"]) assert.equal(validVersion(bad), false);
 assert.equal(validVersion("0.1.0-preview.4"), true);
+assert.equal(compareVersions("0.1.0-preview.10", "0.1.0-preview.13"), -1);
+assert.equal(compareVersions("0.1.0-preview.13", "0.1.0-preview.10"), 1);
+assert.equal(compareVersions("0.1.0-preview.13", "0.1.0-preview.13"), 0);
+assert.equal(compareVersions("0.1.0-preview.13", "0.1.0"), -1);
+assert.equal(isNewerVersion("0.1.0-preview.14", "0.1.0-preview.13"), true);
+assert.equal(isNewerVersion("0.1.0-preview.10", "0.1.0-preview.13"), false);
+assert.equal(isNewerVersion("0.1.0-preview.13", "0.1.0-preview.13"), false);
 const signature = `[GNUPG:] VALIDSIG ${FINGERPRINT} 2026-09-08 1 0 4 0 22 8 00 ${FINGERPRINT}`;
 verifySigner(signature);
 verifyCheckout("a".repeat(40) + "\n", "a".repeat(40));
