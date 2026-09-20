@@ -5,6 +5,7 @@ import CloudConfiguration from "@/components/CloudConfiguration";
 import EmailApprovals from "@/components/EmailApprovals";
 import MemberMessages from "@/components/MemberMessages";
 import AgentPerformance from "@/components/AgentPerformance";
+import JourneyAudit from "@/components/JourneyAudit";
 import ConvertedOrders from "@/components/ConvertedOrders";
 import LocalUpdate from "@/components/LocalUpdate";
 import { agentAvatar, SUPERVISOR_AVATAR } from "@/lib/agent-visuals";
@@ -68,7 +69,7 @@ type Capabilities = {
   };
 };
 
-type DashboardView = "overview" | "agents" | "agent-performance" | "converted-orders" | "usage" | "email-approvals" | "messages" | "features" | "configuration";
+type DashboardView = "overview" | "agents" | "agent-performance" | "converted-orders" | "usage" | "email-approvals" | "journey-audit" | "messages" | "features" | "configuration";
 
 type ViewCopy = Record<DashboardView, { label: string; eyebrow: string; title: string; description: string }>;
 
@@ -80,7 +81,8 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
     "converted-orders": { label: "Orders & emails", eyebrow: "Customer activity evidence", title: "Orders and email activity", description: "Inspect attributed orders and the latest 10 sent emails, with locally archived previews when available." },
     usage: { label: "Usage", eyebrow: "Community capacity", title: "Quotas and usage", description: "Track your email window and the limits applied by your plan." },
     "email-approvals": { label: "Email approvals", eyebrow: "Delivery control", title: "Emails to approve", description: "Review manual-approval emails before NeuroCheckout Cloud sends them." },
-    messages: { label: "Messages", eyebrow: "Account notices", title: "Member messages", description: "Read quota, account and service notices issued for your workspace." },
+    "journey-audit": { label: "Journey audit", eyebrow: "Customer journey evidence", title: "Customer journey audit", description: "Review useful journeys, likely revenue leaks and the handoffs other agents can take over." },
+    messages: { label: "Internal messages", eyebrow: "Operational guidance", title: "Internal messages", description: "Read operational updates, account notices and guidance issued for your workspace." },
     features: { label: "Features", eyebrow: "Cloud-calculated access", title: "Available features", description: "Access is recalculated server-side whenever your plan changes." },
     configuration: { label: "Configuration", eyebrow: "Controlled customization", title: "Store, email and connector", description: "Configure only the tool you need from a focused workspace." },
   },
@@ -91,7 +93,8 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
     "converted-orders": { label: "Commandes & emails", eyebrow: "Preuves d’activité client", title: "Commandes et activité email", description: "Consultez les commandes attribuées et les 10 derniers emails envoyés, avec les aperçus archivés localement lorsqu’ils sont disponibles." },
     usage: { label: "Utilisation", eyebrow: "Capacité Community", title: "Quotas et consommation", description: "Suivez la fenêtre email et les limites appliquées par votre offre." },
     "email-approvals": { label: "Validations email", eyebrow: "Contrôle des envois", title: "Emails à approuver", description: "Vérifiez les emails en validation manuelle avant leur envoi par NeuroCheckout Cloud." },
-    messages: { label: "Messages", eyebrow: "Notifications du compte", title: "Messages membre", description: "Consultez les alertes de quota, de compte et de service de votre espace." },
+    "journey-audit": { label: "Audit du parcours", eyebrow: "Preuves du parcours client", title: "Audit du parcours client", description: "Examinez les parcours utiles, les fuites de revenu probables et les relais possibles entre agents." },
+    messages: { label: "Messages internes", eyebrow: "Conseils opérationnels", title: "Messages internes", description: "Consultez les informations opérationnelles, alertes de compte et conseils destinés à votre espace." },
     features: { label: "Fonctionnalités", eyebrow: "Droits calculés par le Cloud", title: "Fonctionnalités disponibles", description: "Les accès sont recalculés côté serveur à chaque changement d’offre." },
     configuration: { label: "Configuration", eyebrow: "Personnalisation contrôlée", title: "Boutique, emails et connecteur", description: "Configurez uniquement l’outil dont vous avez besoin, sans parcourir une longue page." },
   },
@@ -275,6 +278,7 @@ export default function Dashboard() {
     if (!capabilities) return view === "overview";
     if (view === "email-approvals") return capabilities.features.email_approvals === true;
     if (view === "messages") return capabilities.features.member_messages === true;
+    if (view === "journey-audit") return capabilities.features.journey_audit === true;
     if (view === "agent-performance") return capabilities.features.agent_performance === true;
     if (view === "converted-orders") return capabilities.features.converted_orders === true;
     return capabilities.features.member_dashboard !== false;
@@ -514,6 +518,10 @@ export default function Dashboard() {
 
             {activeView === "converted-orders" && capabilities.features.converted_orders ? (
               <ConvertedOrders language={language} recentEmailsEnabled={capabilities.features.recent_emails === true} />
+            ) : null}
+
+            {activeView === "journey-audit" && capabilities.features.journey_audit ? (
+              <JourneyAudit language={language} />
             ) : null}
 
             {activeView === "messages" && capabilities.features.member_messages ? (

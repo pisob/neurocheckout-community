@@ -1,6 +1,22 @@
 # NeuroCheckout Community v0.1.0-preview.14
 
-Official signed prerelease protecting secure updates from version downgrades.
+Official signed prerelease extending operational evidence in Community and
+protecting secure updates from version downgrades.
+
+## Operational evidence
+
+- Agent performance now shows both **Open rate** and **Click rate** using the
+  same owner-scoped Cloud analytics source.
+- The new **Journey audit** workspace shows funnel signals, prioritized
+  customer journeys, cart value, outcomes and recent audit snapshots for the
+  selected store and period.
+- Journey data is scoped to the connected store. Raw names, emails, tokens,
+  cookies and session identifiers are not exposed in Community.
+- **Internal messages** now uses the same Cloud member-notification service as
+  the hosted dashboard and includes the matching welcome guidance in English
+  and French.
+
+## Secure updates
 
 - The secure updater now installs a release only when its complete semantic
   version is strictly newer than the currently running version.

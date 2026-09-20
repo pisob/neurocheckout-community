@@ -8,6 +8,11 @@ No unreleased changes.
 
 ## 0.1.0-preview.14 - 2026-09-20
 
+- Add the Cloud-synchronized customer journey audit with store, period and
+  journey filters, funnel evidence, prioritized sessions and recent audits.
+- Display the aggregate click rate next to the open rate in agent performance.
+- Align the Internal messages workspace with the Cloud message center while
+  keeping read state synchronized for Cloud notices.
 - Refuse secure-update targets that are older than or equal to the installed
   Community version.
 - Compare complete semantic versions, including numeric preview identifiers,
