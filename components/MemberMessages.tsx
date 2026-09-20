@@ -15,7 +15,55 @@ type MemberMessage = {
   badge?: string | null;
   shop_id?: string | null;
   upgrade_href?: string | null;
+  localOnly?: boolean;
 };
+
+const WELCOME_MESSAGE_ID = "welcome-cockpit-2026-10";
+const LOCAL_READ_STORAGE_KEY = "nc_member_messages_read_ids";
+
+function welcomeMessage(language: UiLanguage): MemberMessage {
+  if (language === "fr") {
+    return {
+      id: WELCOME_MESSAGE_ID,
+      title: "Bienvenue dans votre cockpit NeuroCheckout",
+      preview: "Votre espace membre est prêt. Suivez vos KPI et les signaux de vos agents autonomes.",
+      body: "Bienvenue dans votre cockpit NeuroCheckout.\n\nVotre environnement est prêt : les agents actifs de votre offre s’activent automatiquement et fonctionnent de manière autonome. Commencez par la vue d’ensemble, puis consultez les performances et l’audit du parcours pour identifier les actions à forte valeur.\n\nConseil : utilisez les messages internes pour suivre les informations opérationnelles qui demandent votre attention.",
+      createdAt: "2026-10-11T08:00:00Z",
+      unread: true,
+      badge: "NeuroCheckout",
+      localOnly: true,
+    };
+  }
+  return {
+    id: WELCOME_MESSAGE_ID,
+    title: "Welcome to your NeuroCheckout cockpit",
+    preview: "Your member space is ready. Track KPIs and signals from your autonomous agents.",
+    body: "Welcome to your NeuroCheckout cockpit.\n\nYour environment is ready: the active agents in your plan activate automatically and operate autonomously. Start from Overview, then review performance and the journey audit to identify high-value actions.\n\nTip: use Internal messages to follow operational information that needs your attention.",
+    createdAt: "2026-10-11T08:00:00Z",
+    unread: true,
+    badge: "NeuroCheckout",
+    localOnly: true,
+  };
+}
+
+function localReadIds(): Set<string> {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOCAL_READ_STORAGE_KEY) || "[]");
+    return new Set(Array.isArray(parsed) ? parsed.map((item) => String(item)) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function markLocalRead(id: string): void {
+  const ids = localReadIds();
+  ids.add(id);
+  try {
+    window.localStorage.setItem(LOCAL_READ_STORAGE_KEY, JSON.stringify([...ids]));
+  } catch {
+    // The visual read state still updates when browser storage is unavailable.
+  }
+}
 
 export default function MemberMessages({ language }: { language: UiLanguage }) {
   const ui = (english: string, french: string) => language === "fr" ? french : english;
@@ -46,7 +94,15 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
         }
         throw new Error(detail || ui("Unable to load messages.", "Impossible de charger les messages."));
       }
-      const nextItems = Array.isArray(payload?.items) ? payload.items as MemberMessage[] : [];
+      const dynamicItems = Array.isArray(payload?.items) ? payload.items as MemberMessage[] : [];
+      const readIds = localReadIds();
+      const builtIn = { ...welcomeMessage(language), unread: !readIds.has(WELCOME_MESSAGE_ID) };
+      const nextItems = [builtIn, ...dynamicItems.filter((item) => item.id !== builtIn.id)]
+        .sort((left, right) => {
+          const leftTime = Date.parse(String(left.createdAt || ""));
+          const rightTime = Date.parse(String(right.createdAt || ""));
+          return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+        });
       setItems(nextItems);
       setSelectedId((current) => nextItems.some((item) => item.id === current) ? current : nextItems[0]?.id || "");
     } catch (loadError) {
@@ -81,6 +137,10 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
     if (!item.unread) return;
     setError("");
     setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, unread: false } : candidate));
+    if (item.localOnly) {
+      markLocalRead(item.id);
+      return;
+    }
     try {
       const response = await fetch(`/api/cloud/notifications/${encodeURIComponent(item.id)}/read`, { method: "POST", cache: "no-store" });
       const payload = await response.json().catch(() => ({}));

@@ -130,6 +130,23 @@ const cloud = createServer(async (request, response) => {
     return json(response,200,{shop:{shop_uuid:query.get('shop_uuid'),shop_id:failureMode==='archive-shop'?'other-shop':'synthetic-shop'},limit:10,count:1,items:[{delivery_id:'community-edge-1',sent_at:new Date().toISOString(),status:'sent',customer:{}}]});
   }
 
+  if (request.method === "GET" && request.url.startsWith("/api/v1/member/analytics/journey-audit?")) {
+    const query = new URL(request.url, cloudOrigin).searchParams;
+    assert.equal(query.get("shop_uuid"), "33333333-3333-4333-8333-333333333333");
+    assert.equal(query.get("days"), "30");
+    assert.equal(query.get("limit"), "10");
+    assert.equal(query.get("session_page"), "1");
+    assert.equal(query.get("session_filter"), "cart");
+    return json(response, 200, {
+      shop: { shop_uuid: query.get("shop_uuid"), shop_id: "synthetic-shop" },
+      audit_count: 1,
+      event_summary: { total_events: 4, cart_snapshots: 1 },
+      recent_sessions: [],
+      recent_audits: [],
+      state: "collecting_events",
+    });
+  }
+
   if (request.method === "POST" && request.url === "/api/v1/member/notifications/mark-read") {
     mutations += 1;
     return json(response, 200, { ok: true });
@@ -257,6 +274,7 @@ try {
   assert.equal(anonymous.status, 401);
   assert.equal((await anonymous.json()).detail, "community_not_connected");
   assert.equal((await fetch(`${communityOrigin}/api/cloud/recent-emails?shop_uuid=33333333-3333-4333-8333-333333333333`)).status,401);
+  assert.equal((await fetch(`${communityOrigin}/api/cloud/journey-audit?shop_uuid=33333333-3333-4333-8333-333333333333`)).status,401);
   assert.equal((await fetch(`${communityOrigin}/api/local-update`)).status, 401);
   assert.equal((await fetch(`${communityOrigin}/api/local-update`, { method: "POST", headers: { Origin: communityOrigin } })).status, 401);
 
@@ -291,6 +309,10 @@ try {
   failureMode='archive-shop';
   assert.equal(JSON.stringify(await (await communityFetch(emailPath)).json()).includes('PRIVATE ARCHIVED ORIGINAL'),false);
   failureMode='';
+
+  const journeyAudit = await communityFetch("/api/cloud/journey-audit?shop_uuid=33333333-3333-4333-8333-333333333333&days=30&limit=10&session_page=1&session_filter=cart");
+  assert.equal(journeyAudit.status, 200);
+  assert.equal((await journeyAudit.json()).event_summary.cart_snapshots, 1);
 
   await waitForHeartbeat(0);
   await waitForRelay(0);

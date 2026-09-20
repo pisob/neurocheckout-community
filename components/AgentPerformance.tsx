@@ -192,6 +192,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
             <div><span>{ui("Attributed revenue", "Revenu attribué")}</span><strong>{formatMoney(summary.attributed_revenue, currency)}</strong></div>
             <div><span>{ui("Attributed orders", "Commandes attribuées")}</span><strong>{formatMetric(summary.orders_attributed, 0)}</strong></div>
             <div><span>{ui("Open rate", "Taux d’ouverture")}</span><strong>{formatMetric(summary.open_rate)}%</strong></div>
+            <div><span>{ui("Click rate", "Taux de clic")}</span><strong>{formatMetric(summary.click_rate)}%</strong></div>
             <div><span>{ui("Estimated net ROI", "ROI net estimé")}</span><strong>{formatMetric(summary.roi_profit_net, 2)}x</strong></div>
           </div>
 
@@ -210,13 +211,13 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
               <OptimizationRecommendations days={days} language={language} shopUuid={selectedShopUuid} />
               <div className="analytics-split">
                 <div className="agent-performance-list">
-                  <div className="analytics-list-head"><span>{ui("Agent", "Agent")}</span><span>{ui("Business value", "Valeur métier")}</span><span>{ui("Engagement", "Engagement")}</span></div>
+                  <div className="analytics-list-head"><span>{ui("Agent", "Agent")}</span><span>{ui("Business value", "Valeur métier")}</span><span>{ui("Open / click", "Ouverture / clic")}</span></div>
                   {payload.items.map((item, index) => (
                     <button className={selected?.agent_name === item.agent_name ? "active" : ""} key={item.agent_name} type="button" onClick={() => setSelectedAgent(item.agent_name)}>
                       <span className="analytics-index">{String(index + 1).padStart(2, "0")}</span>
                       <span className="analytics-agent-name"><strong>{LABELS[language][item.agent_name] || readableMetric(item.agent_name)}</strong><small>{item.mode === "conversion" ? ui("Conversion", "Conversion") : ui("Operations", "Pilotage")}</small></span>
                       <span><strong>{item.mode === "conversion" ? formatMoney(item.attributed_revenue ?? item.assisted_revenue, currency) : formatMetric(item.impact_value)}</strong><small>{item.mode === "conversion" ? ui("attributed", "attribué") : readableMetric(item.impact_label)}</small></span>
-                      <span><strong>{item.open_rate === null || item.open_rate === undefined ? "—" : `${formatMetric(item.open_rate)}%`}</strong><small>{ui("open rate", "ouverture")}</small></span>
+                      <span><strong>{item.open_rate === null || item.open_rate === undefined ? "—" : `${formatMetric(item.open_rate)}%`} / {item.click_rate === null || item.click_rate === undefined ? "—" : `${formatMetric(item.click_rate)}%`}</strong><small>{ui("open / click", "ouverture / clic")}</small></span>
                     </button>
                   ))}
                 </div>

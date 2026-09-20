@@ -1,6 +1,33 @@
-# NeuroCheckout Community v0.1.0-preview.13
+# NeuroCheckout Community v0.1.0-preview.14
 
-Official signed prerelease improving original sent-email previews.
+Official signed prerelease extending operational evidence in Community and
+protecting secure updates from version downgrades.
+
+## Operational evidence
+
+- Agent performance now shows both **Open rate** and **Click rate** using the
+  same owner-scoped Cloud analytics source.
+- The new **Journey audit** workspace shows funnel signals, prioritized
+  customer journeys, cart value, outcomes and recent audit snapshots for the
+  selected store and period.
+- Journey data is scoped to the connected store. Raw names, emails, tokens,
+  cookies and session identifiers are not exposed in Community.
+- **Internal messages** now uses the same Cloud member-notification service as
+  the hosted dashboard and includes the matching welcome guidance in English
+  and French.
+
+## Secure updates
+
+- The secure updater now installs a release only when its complete semantic
+  version is strictly newer than the currently running version.
+- Numeric preview identifiers are ordered correctly, so `preview.13` is newer
+  than `preview.10`.
+- A stale or incorrectly configured Cloud update target is rejected before it
+  is downloaded, built or activated.
+- Configuration, encryption keys, the local vault and archived sent-email
+  previews remain untouched when a target is rejected.
+
+This release includes the sent-email preview features from `preview.13`:
 
 - Browse the last ten confirmed sent emails in a responsive English/French
   inspector, with an accessible full-size preview.
