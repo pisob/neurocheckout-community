@@ -114,10 +114,11 @@ maintainers. See [CONTRIBUTING.md](CONTRIBUTING.md) and
 
 ## Security and official distribution
 
-### Sent email previews (upcoming release)
+### Sent email activity
 
-The email activity view shows the latest ten confirmed sends and, when available,
-the original HTML or text copy stored in your encrypted local archive. Select an
+The email activity view keeps a filterable, paginated record of up to 50 recent
+sends. For the latest ten confirmed sends it also shows, when available, the
+original HTML or text copy stored in your encrypted local archive. Select an
 email to inspect it, or choose **Full preview** to enlarge it. HTTPS raster product
 images are displayed. Scripts, links, tracking pixels and images with query strings
 are blocked inside the embedded preview. Choose **Open original cart link** to
@@ -135,6 +136,15 @@ opening, click or conversion record is not inferred from viewing the preview.
 This feature does not add tracking to delivery paths that do not support it.
 It requires matching Community and Cloud support; it is not activated by this
 documentation alone.
+
+### Synchronization health
+
+The synchronization-health workspace reports connector freshness, encrypted
+local outbox acknowledgements, Cloud processing queues and delivery evidence.
+Temporary network or Cloud failures are retried automatically. The manual retry
+action only wakes the same idempotent reconciliation loops; it does not duplicate
+events or bypass validation. Operational diagnostics never expose raw cart,
+product or customer payloads.
 
 Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 This repository, its signed tags and its release assets are the canonical

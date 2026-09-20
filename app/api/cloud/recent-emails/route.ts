@@ -22,7 +22,7 @@ function preserveCloudPreview(item: Record<string, unknown>) {
 
 export async function GET(request: NextRequest) {
   const target = new URL("https://community.invalid/api/v1/member/analytics/recent-emails");
-  for (const key of ["shop_uuid", "limit"]) {
+  for (const key of ["shop_uuid", "limit", "offset", "status"]) {
     const value = String(request.nextUrl.searchParams.get(key) || "").trim();
     if (value) target.searchParams.set(key, value);
   }

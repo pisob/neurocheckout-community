@@ -11,13 +11,18 @@ export type SentEmail = {
   tracking_available?: boolean; preview_available?: boolean;
   preview_asset_base_url?: string;
 };
+function emailKey(item: SentEmail): string {
+  return item.delivery_id || [item.sent_at, item.subject, item.recipient_email || item.customer.email_masked].join("|");
+}
 export default function SentEmailPreview({ items, language }: { items: SentEmail[]; language: UiLanguage }) {
   const fr = language === "fr", ui = (en: string, french: string) => fr ? french : en;
-  const [index, setIndex] = useState(0), [documentHtml, setDocumentHtml] = useState("");
+  const [selectedKey, setSelectedKey] = useState(""), [documentHtml, setDocumentHtml] = useState("");
   const [recoveryLink, setRecoveryLink] = useState<{ href: string; label: string } | null>(null);
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null);
-  const selected = items[index] || items[0];
-  useEffect(() => { setIndex(0); dialog.current?.close(); }, [items]);
+  const selected = items.find((item) => emailKey(item) === selectedKey) || items[0];
+  useEffect(() => {
+    if (!items.some((item) => emailKey(item) === selectedKey)) setSelectedKey(items[0] ? emailKey(items[0]) : "");
+  }, [items, selectedKey]);
   useEffect(() => { setDocumentHtml(selected?.body_html && selected.preview_available ? sentEmailPreview(selected.body_html, selected.preview_asset_base_url) : ""); }, [selected]);
   useEffect(() => { setRecoveryLink(selected?.body_html && selected.preview_available ? sentEmailRecoveryLink(selected.body_html) : null); }, [selected]);
   const date = (value?: string | null) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString(fr ? "fr-FR" : "en-US") : "—";
@@ -26,7 +31,7 @@ export default function SentEmailPreview({ items, language }: { items: SentEmail
   if (!selected) return null;
   return <div className="sent-email-workspace">
     <div className="sent-email-list" aria-label={ui("Sent emails", "Emails envoyés")}>
-      {items.slice(0,10).map((item,i) => <button type="button" className={i===index ? "active" : ""} aria-pressed={i===index} key={item.delivery_id || i} onClick={() => setIndex(i)}>
+      {items.slice(0,10).map((item) => <button type="button" className={emailKey(item)===emailKey(selected) ? "active" : ""} aria-pressed={emailKey(item)===emailKey(selected)} key={emailKey(item)} onClick={() => { setSelectedKey(emailKey(item)); dialog.current?.close(); }}>
         <strong>{item.subject || ui("Subject unavailable", "Objet indisponible")}</strong>
         <span>{item.recipient_email || item.customer.email_masked || ui("Protected recipient", "Destinataire protégé")}</span>
         <small>{date(item.sent_at)} · {statuses[item.status || "sent"] || "—"}</small>
