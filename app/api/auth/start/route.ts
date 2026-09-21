@@ -31,9 +31,14 @@ export async function GET(request: NextRequest) {
       "byok:read", "byok:write", "connectors:write", "emails:read",
       "emails:write", "analytics:read",
     ];
-    // The write scope stays on staging until the matching private Cloud route
-    // is promoted. This keeps current production installations compatible.
-    if (authorizationUrl.hostname === "staging.neurocheckout.com") scopes.push("analytics:write");
+    // New write scopes stay on the preview Cloud until their matching private
+    // routes are promoted. Existing public installations remain compatible.
+    if (
+      process.env.NC_DEPLOYMENT_ENV === "staging"
+      || authorizationUrl.hostname === "staging.neurocheckout.com"
+    ) {
+      scopes.push("analytics:write", "billing:write");
+    }
     authorizationUrl.searchParams.set(
       "scope",
       scopes.join(" "),

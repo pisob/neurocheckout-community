@@ -23,10 +23,10 @@ dependent actions pause safely and resume automatically after reconnection.
 ## Install an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.15`:
+and note the latest tag. The example below uses `v0.1.0-preview.16`:
 
 ```bash
-git clone --branch v0.1.0-preview.15 --depth 1 \
+git clone --branch v0.1.0-preview.16 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -42,7 +42,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.15
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.16
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -66,6 +66,35 @@ Open http://localhost:3400 and select **Connect to Cloud**. After connection,
 Community automatically creates its encrypted local vault and starts product and
 cart synchronization for the eligible store. No additional synchronization
 secret, server file or SSH access is required.
+
+## Plans, billing and continuity
+
+Community remains your self-hosted interface on Community Free, Starter and
+Pro. Open **Plan & data** to compare an eligible plan, start the secure checkout,
+manage billing and refresh the Cloud-calculated entitlements. After checkout,
+the browser returns to the same registered Community installation; the Cloud
+validates that return origin against the installation's OAuth callback.
+
+Changing, cancelling or temporarily suspending a plan does not delete the
+encrypted local vault, connector configuration or backups. Access to paid
+features follows the current Cloud entitlement contract. Agents, prompts,
+Supervisor coordination, decisions, scheduling, final generation, delivery,
+billing and quota enforcement always remain in NeuroCheckout Cloud.
+
+If payment is suspended, Community keeps only the capabilities and billing
+portal routes required to restore payment. If a subscription expires or is
+cancelled, it keeps only the exact billing recovery routes needed: an existing
+Stripe subscription returns through the billing portal, while an account with
+no active Stripe subscription can select a plan and reopen checkout. Agent,
+analytics and store-data APIs remain closed until Cloud confirms reactivation.
+Checkout attempts are idempotent. Community shares the non-secret checkout
+intent between tabs and reuses the same session; a second concurrent checkout
+for the same account is refused.
+
+This subscription flow uses the narrowly scoped `billing:write` OAuth
+permission. After updating from a release that did not request this permission,
+disconnect and reconnect the installation once before starting or managing a
+subscription from Community.
 
 ## Connect an ecommerce platform
 
@@ -100,6 +129,7 @@ then follow the update instructions displayed by Community.
 ```bash
 npm ci
 npm run typecheck
+npm run smoke:integration
 npm run test:native
 npm run test:local-data
 npm run test:source-pull

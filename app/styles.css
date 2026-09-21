@@ -59,6 +59,8 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .language-switch button.active { background: var(--blue); color: white; box-shadow: 0 5px 16px rgb(40 119 243 / 20%); }
 .cloud-status { display: inline-flex; align-items: center; gap: 8px; color: var(--muted-strong); font-size: 11px; white-space: nowrap; }
 .cloud-status .status-dot, .status-pill .status-dot { margin: 0; }
+.cloud-status.delayed { color: #f4bf68; }
+.cloud-status.delayed .status-dot { background: #f4bf68; box-shadow: 0 0 0 4px rgb(244 191 104 / 10%), 0 0 16px rgb(244 191 104 / 35%); }
 
 .button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 8px; padding: 0 16px; font-size: 12px; font-weight: 750; text-decoration: none; transition: border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease; }
 .button:hover:not(:disabled) { transform: translateY(-1px); }
@@ -207,6 +209,41 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .feature-matrix strong { font-size: 13px; }
 .feature-matrix small { margin-top: 5px; color: var(--muted); font-size: 10px; }
 .feature-matrix i { display: grid; width: 25px; height: 25px; place-items: center; border: 1px solid rgb(98 200 255 / 25%); border-radius: 50%; color: var(--cyan); font-size: 11px; font-style: normal; }
+
+.plan-data-view { padding-top: 22px; }
+.subscription-band { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 28px; overflow: hidden; border: 1px solid var(--line-strong); background: linear-gradient(118deg, rgb(40 119 243 / 15%), var(--surface-soft) 58%); padding: 30px; }
+.subscription-band::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--cyan); content: ""; }
+.subscription-band.attention::before { background: var(--warning); }
+.subscription-band.blocked::before { background: var(--danger); }
+.subscription-band h2 { margin-top: 9px; }
+.subscription-band p:last-child { max-width: 760px; margin: 13px 0 0; color: var(--muted-strong); font-size: 12px; line-height: 1.65; }
+.subscription-state { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line-strong); border-radius: 999px; padding: 8px 11px; color: #d7edfb; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.subscription-state i { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px rgb(98 200 255 / 60%); }
+.subscription-band.attention .subscription-state i { background: var(--warning); box-shadow: 0 0 12px rgb(244 198 109 / 55%); }
+.subscription-band.blocked .subscription-state i { background: var(--danger); box-shadow: 0 0 12px rgb(255 123 134 / 55%); }
+.billing-alert { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 14px; border-left: 2px solid var(--warning); background: rgb(244 198 109 / 8%); padding: 13px 16px; color: #f7d794; }
+.billing-alert strong { font-size: 11px; }
+.billing-alert span { font-size: 10px; }
+.plan-data-view > .config-error, .plan-data-view > .config-notice { margin: 14px 0 0; }
+.subscription-controls { display: grid; grid-template-columns: minmax(150px, .55fr) minmax(150px, .55fr) minmax(310px, 1.4fr); gap: 1px; margin-top: 18px; border: 1px solid var(--line); background: var(--line); }
+.subscription-controls > div { display: grid; align-content: center; gap: 8px; min-height: 106px; background: var(--surface-soft); padding: 18px; }
+.subscription-controls > div > span { color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
+.subscription-controls select { width: 100%; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); padding: 9px 11px; color: var(--text); }
+.subscription-controls strong { font-size: 15px; }
+.subscription-controls .subscription-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 9px; }
+.preservation-note { display: grid; grid-template-columns: minmax(190px, .42fr) minmax(0, 1fr); gap: 24px; margin-top: 1px; border-inline: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 17px 20px; }
+.preservation-note strong { color: #d8edfa; font-size: 11px; }
+.preservation-note span { color: var(--muted); font-size: 10px; line-height: 1.55; }
+.data-boundary-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-top: 44px; border-bottom: 1px solid var(--line); padding: 0 2px 18px; }
+.data-boundary-heading > span { color: var(--muted); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+.data-boundary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-left: 1px solid var(--line); }
+.data-boundary-grid > section { min-height: 275px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 22px; }
+.data-boundary-grid > section > span { color: #547793; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; }
+.data-boundary-grid h3 { min-height: 43px; margin: 15px 0 0; font-size: 14px; line-height: 1.45; }
+.data-boundary-grid ul { display: grid; gap: 10px; margin: 20px 0 0; padding: 0; list-style: none; }
+.data-boundary-grid li { position: relative; padding-left: 13px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.data-boundary-grid li::before { position: absolute; top: .62em; left: 0; width: 4px; height: 4px; border-radius: 50%; background: var(--cyan); content: ""; }
+.feature-heading { margin-top: 38px; }
 
 .operational-view { padding-top: 22px; }
 .operational-toolbar { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
@@ -557,6 +594,9 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .email-preview-list small { display: block; margin-top: 10px; color: #6787a0; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
 
 @media (max-width: 1080px) {
+  .data-boundary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .subscription-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .subscription-controls .subscription-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .agent-matrix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .agent-cell:nth-child(-n + 4) { border-top: 0; }
   .agent-cell:nth-child(-n + 2) { border-top: 1px solid var(--line); }
@@ -594,6 +634,12 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
   .agent-preview:nth-child(even) { border-left: 0; padding-left: 0; }
   .agent-preview:nth-child(n + 2) { border-top: 1px solid var(--line); }
   .usage-view { grid-template-columns: 1fr; }
+  .subscription-band { grid-template-columns: 1fr; }
+  .subscription-state { width: fit-content; }
+  .subscription-controls, .data-boundary-grid { grid-template-columns: 1fr; }
+  .subscription-controls .subscription-actions { grid-column: auto; }
+  .preservation-note { grid-template-columns: 1fr; gap: 8px; }
+  .data-boundary-heading { align-items: flex-start; flex-direction: column; }
   .usage-upgrade { grid-column: auto; }
   .configuration-toolbar { align-items: stretch; flex-direction: column; }
   .shop-selector select { width: 100%; }

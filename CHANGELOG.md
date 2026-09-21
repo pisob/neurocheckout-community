@@ -4,6 +4,34 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.16 - 2026-09-21
+
+- Keep the self-hosted Community interface available when an account activates
+  Starter or Pro, with Cloud-calculated feature and quota entitlements.
+- Add a Plan & data workspace for subscription lifecycle, secure checkout,
+  billing management, entitlement refresh and an explicit data-residency map.
+- Return checkout and billing-portal sessions only to the OAuth-registered
+  Community origin, with a dedicated `billing:write` scope and same-origin BFF
+  protection.
+- Preserve encrypted local data and configuration across plan changes,
+  cancellation, payment grace and suspension.
+- Refresh entitlements after billing returns, periodically and when the browser
+  becomes active, while keeping Cloud authoritative and deny-by-default.
+- Keep suspended and expired accounts connected only to narrowly scoped billing
+  recovery routes; business features remain closed until Cloud reactivates them.
+- Prevent duplicate subscriptions with durable checkout intents, Stripe
+  idempotency and a per-account Cloud checkout reservation. Reuse the same
+  non-secret intent across tabs and keep the reservation when Stripe returns an
+  ambiguous result.
+- Share refresh-token rotation across concurrent dashboard requests and keep
+  transient Cloud failures from falsely disconnecting the installation.
+- Show paid-plan email usage from the authoritative Cloud quota gate, distinguish
+  unknown usage from unlimited plans and expose delayed synchronization.
+- Retry checkout confirmation without discarding the recovery URL, and never
+  invent a fallback data-residency claim when the Cloud manifest is missing.
+- Cover the Community billing proxy, foreign-origin rejection and return flow
+  in the OAuth integration smoke test.
+
 ## 0.1.0-preview.15 - 2026-09-21
 
 - Add a synchronization-health workspace covering connector freshness,

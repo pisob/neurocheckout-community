@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import CloudConfiguration from "@/components/CloudConfiguration";
 import EmailApprovals from "@/components/EmailApprovals";
 import MemberMessages from "@/components/MemberMessages";
+import PlanAndData from "@/components/PlanAndData";
 import AgentPerformance from "@/components/AgentPerformance";
 import JourneyAudit from "@/components/JourneyAudit";
 import SynchronizationHealth from "@/components/SynchronizationHealth";
@@ -12,10 +13,31 @@ import LocalUpdate from "@/components/LocalUpdate";
 import { agentAvatar, SUPERVISOR_AVATAR } from "@/lib/agent-visuals";
 import { useUiLanguage, type UiLanguage } from "@/lib/ui-language";
 
-type Capabilities = {
+export type Capabilities = {
   schema_version: string;
+  manifest?: {
+    version: string;
+    authority: "neurocheckout_cloud";
+    deny_by_default: boolean;
+    refresh_after_seconds: number;
+  };
+  interface?: {
+    mode: "self_hosted_community";
+    permanent_after_upgrade: boolean;
+    cloud_business_logic_only: boolean;
+  };
   plan: { code: string; edition: "community" | "cloud" };
-  subscription: { status: string; active: boolean };
+  subscription: {
+    status: string;
+    active: boolean;
+    selected_plan_code?: string | null;
+    billing_cycle?: "monthly" | "annual" | null;
+    trial_ends_at?: string | null;
+    grace_ends_at?: string | null;
+    action_required?: string;
+    can_manage_billing?: boolean;
+    local_data_preserved?: boolean;
+  };
   limits: {
     shops: number | null;
     active_agents: number | null;
@@ -67,8 +89,18 @@ type Capabilities = {
   upgrade: {
     available: boolean;
     target_plans: string[];
+    action?: "checkout" | "upgrade" | null;
+    billing_cycles?: Array<"monthly" | "annual">;
     same_member_api: boolean;
     self_hosted_dashboard_can_continue: boolean;
+    return_to_community?: boolean;
+  };
+  data_residency?: {
+    local_encrypted: string[];
+    cloud_persistent_minimized: string[];
+    cloud_transient_processing: string[];
+    cloud_only_logic: string[];
+    preserved_on_plan_change: boolean;
   };
 };
 
@@ -87,7 +119,7 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
     "journey-audit": { label: "Journey audit", eyebrow: "Customer journey evidence", title: "Customer journey audit", description: "Review useful journeys, likely revenue leaks and the handoffs other agents can take over." },
     "sync-health": { label: "Sync health", eyebrow: "End-to-end reliability", title: "Synchronization health", description: "Follow each event from the store connector to its Cloud processing evidence." },
     messages: { label: "Internal messages", eyebrow: "Operational guidance", title: "Internal messages", description: "Read operational updates, account notices and guidance issued for your workspace." },
-    features: { label: "Features", eyebrow: "Cloud-calculated access", title: "Available features", description: "Access is recalculated server-side whenever your plan changes." },
+    features: { label: "Plan & data", eyebrow: "Cloud-calculated access", title: "Plan, access and data", description: "Manage your subscription and verify where data and business logic live." },
     configuration: { label: "Configuration", eyebrow: "Controlled customization", title: "Store, email and connector", description: "Configure only the tool you need from a focused workspace." },
   },
   fr: {
@@ -100,7 +132,7 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
     "journey-audit": { label: "Audit du parcours", eyebrow: "Preuves du parcours client", title: "Audit du parcours client", description: "Examinez les parcours utiles, les fuites de revenu probables et les relais possibles entre agents." },
     "sync-health": { label: "État de la synchro", eyebrow: "Fiabilité de bout en bout", title: "État de la synchronisation", description: "Suivez chaque événement, du connecteur boutique jusqu’à sa preuve de traitement Cloud." },
     messages: { label: "Messages internes", eyebrow: "Conseils opérationnels", title: "Messages internes", description: "Consultez les informations opérationnelles, alertes de compte et conseils destinés à votre espace." },
-    features: { label: "Fonctionnalités", eyebrow: "Droits calculés par le Cloud", title: "Fonctionnalités disponibles", description: "Les accès sont recalculés côté serveur à chaque changement d’offre." },
+    features: { label: "Offre & données", eyebrow: "Droits calculés par le Cloud", title: "Offre, accès et données", description: "Gérez votre abonnement et vérifiez où résident les données et la logique métier." },
     configuration: { label: "Configuration", eyebrow: "Personnalisation contrôlée", title: "Boutique, emails et connecteur", description: "Configurez uniquement l’outil dont vous avez besoin, sans parcourir une longue page." },
   },
 };
@@ -207,10 +239,13 @@ export default function Dashboard() {
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [status, setStatus] = useState<"loading" | "connected" | "disconnected" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
+  const [syncDelayed, setSyncDelayed] = useState(false);
+  const [lastSuccessfulSyncAt, setLastSuccessfulSyncAt] = useState<Date | null>(null);
   const [activeView, setActiveView] = useState<DashboardView>("overview");
+  const [billingNotice, setBillingNotice] = useState<string | null>(null);
 
-  const load = async () => {
-    setStatus("loading");
+  const load = async (silent = false): Promise<boolean> => {
+    if (!silent) setStatus("loading");
     setError(null);
     try {
       const response = await fetch("/api/cloud/capabilities", { cache: "no-store" });
@@ -218,22 +253,141 @@ export default function Dashboard() {
       if (response.status === 401) {
         setCapabilities(null);
         setStatus("disconnected");
+        setSyncDelayed(false);
         if (payload.detail && payload.detail !== "community_not_connected") setError(payload.detail);
-        return;
+        return false;
       }
       if (!response.ok) throw new Error(payload.detail || ui("Cloud unavailable", "Cloud indisponible"));
       setCapabilities(payload);
       setStatus("connected");
+      setSyncDelayed(false);
+      setLastSuccessfulSyncAt(new Date());
+      return true;
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : ui("Cloud unavailable", "Cloud indisponible"));
-      setStatus("error");
+      if (silent) setSyncDelayed(true);
+      else setStatus("error");
+      return false;
     }
   };
 
   useEffect(() => {
     setActiveView(viewFromHash());
-    void load();
+    let stopped = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    const currentUrl = new URL(window.location.href);
+    const billingResult = currentUrl.searchParams.get("billing");
+    const checkoutSessionId = currentUrl.searchParams.get("session_id");
+    const clearCheckoutIntents = () => {
+      for (const storage of [window.localStorage, window.sessionStorage]) {
+        try {
+          for (let index = storage.length - 1; index >= 0; index -= 1) {
+            const key = storage.key(index);
+            if (key?.startsWith("nc-community-checkout-intent:")) storage.removeItem(key);
+          }
+        } catch {
+          // Browser storage can be disabled independently of the authenticated
+          // Cloud confirmation; successful confirmation still remains valid.
+        }
+      }
+    };
+    const cleanBillingUrl = (removeSession: boolean) => {
+      currentUrl.searchParams.delete("billing");
+      if (removeSession) currentUrl.searchParams.delete("session_id");
+      window.history.replaceState(null, "", `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash || "#features"}`);
+    };
+    const confirmCheckout = async (attempt: number) => {
+      if (!checkoutSessionId || stopped) return;
+      setBillingNotice(ui("Confirming your subscription…", "Confirmation de votre abonnement…"));
+      let response: Response;
+      try {
+        response = await fetch("/api/cloud/subscription/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: checkoutSessionId }),
+        });
+      } catch {
+        setBillingNotice(attempt < 5
+          ? ui("Cloud confirmation is temporarily unavailable; retrying automatically.", "La confirmation Cloud est temporairement indisponible ; nouvelle tentative automatique.")
+          : ui("Automatic confirmation did not complete. Reload this page to retry safely.", "La confirmation automatique n’a pas abouti. Rechargez cette page pour réessayer en sécurité."));
+        if (attempt < 5 && !stopped) {
+          const delay = Math.min(30_000, 2_000 * (2 ** attempt));
+          retryTimer = setTimeout(() => void confirmCheckout(attempt + 1), delay);
+        }
+        return;
+      }
+      const payload = await response.json().catch(() => ({})) as { confirmed?: boolean; detail?: string };
+      if (response.ok && payload.confirmed) {
+        clearCheckoutIntents();
+        cleanBillingUrl(true);
+        setBillingNotice(ui("Subscription confirmed. Cloud entitlements are active in this Community interface.", "Abonnement confirmé. Les droits Cloud sont actifs dans cette interface Community."));
+        await load();
+        return;
+      }
+      if (payload.detail === "community_scope_required" || response.status === 401) {
+        setBillingNotice(ui("Reconnect this installation once to confirm billing securely.", "Reconnectez cette installation une fois pour confirmer la facturation en sécurité."));
+        return;
+      }
+      setBillingNotice(attempt < 5
+        ? ui("Payment received. Entitlements are still being synchronized; confirmation will retry automatically.", "Paiement reçu. Les droits sont encore en cours de synchronisation ; la confirmation sera retentée automatiquement.")
+        : ui("Payment was received but automatic confirmation did not complete. Reload this page to retry safely.", "Le paiement a été reçu, mais la confirmation automatique n’a pas abouti. Rechargez cette page pour réessayer en sécurité."));
+      if (attempt < 5 && !stopped) {
+        const delay = Math.min(30_000, 2_000 * (2 ** attempt));
+        retryTimer = setTimeout(() => void confirmCheckout(attempt + 1), delay);
+      }
+    };
+
+    if (billingResult === "success" && checkoutSessionId) {
+      setActiveView("features");
+      void load();
+      void confirmCheckout(0);
+    } else {
+      if (billingResult === "cancel") {
+        setBillingNotice(ui("Checkout cancelled. Your current plan and local data are unchanged. You can safely resume the same selection.", "Paiement annulé. Votre offre actuelle et vos données locales restent inchangées. Vous pouvez reprendre le même choix en sécurité."));
+      } else if (billingResult === "upgrade-return" || billingResult === "portal-return") {
+        setBillingNotice(ui("Billing updated. Cloud entitlements are being refreshed.", "Facturation mise à jour. Les droits Cloud sont en cours d’actualisation."));
+      }
+      if (billingResult) {
+        setActiveView("features");
+        cleanBillingUrl(true);
+      }
+      void load();
+    }
+    return () => {
+      stopped = true;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, []);
+
+  useEffect(() => {
+    if (status !== "connected" || !capabilities) return;
+    const refreshSeconds = Math.min(300, Math.max(30, Number(capabilities.manifest?.refresh_after_seconds || 60)));
+    let stopped = false;
+    let failures = 0;
+    let timer: number | undefined;
+    const schedule = (delay: number) => {
+      timer = window.setTimeout(async () => {
+        const refreshed = await load(true);
+        failures = refreshed ? 0 : Math.min(5, failures + 1);
+        if (!stopped) {
+          const baseDelay = refreshSeconds * 1000 * (2 ** failures);
+          const jitter = Math.round(baseDelay * (Math.random() * 0.2 - 0.1));
+          schedule(Math.min(300_000, Math.max(10_000, baseDelay + jitter)));
+        }
+      }, delay);
+    };
+    schedule(refreshSeconds * 1000);
+    const refresh = () => void load(true);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stopped = true;
+      if (timer) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [status, capabilities?.manifest?.refresh_after_seconds]);
 
   useEffect(() => {
     if (status !== "connected") return;
@@ -265,8 +419,16 @@ export default function Dashboard() {
   };
 
   const emailLimit = capabilities?.limits.emails.limit;
-  const emailUsed = capabilities?.limits.emails.used ?? 0;
-  const emailRatio = emailLimit ? Math.min(100, Math.round((emailUsed / emailLimit) * 100)) : 0;
+  const emailUsed = capabilities?.limits.emails.used;
+  const emailRemaining = capabilities?.limits.emails.remaining;
+  const emailRemainingLabel = emailRemaining !== null && emailRemaining !== undefined
+    ? emailRemaining
+    : emailLimit === null
+      ? ui("Unlimited", "Illimité")
+      : "—";
+  const emailRatio = emailLimit && emailUsed !== null && emailUsed !== undefined
+    ? Math.min(100, Math.round((emailUsed / emailLimit) * 100))
+    : 0;
   const nextEmailRelease = capabilities?.limits.emails.next_release_at
     ? new Date(capabilities.limits.emails.next_release_at).toLocaleString(language === "fr" ? "fr-FR" : "en-US", { dateStyle: "medium", timeStyle: "short" })
     : null;
@@ -302,9 +464,9 @@ export default function Dashboard() {
   }, [activeView, capabilities, status]);
 
   const upgradeAction = capabilities?.upgrade.available ? (
-    <a className="button secondary-blue" href="/api/upgrade" target="_blank" rel="noreferrer">
+    <button className="button secondary-blue" type="button" onClick={() => selectView("features")}>
       {ui("Compare plans", "Comparer les offres")}
-    </a>
+    </button>
   ) : null;
 
   return (
@@ -354,7 +516,7 @@ export default function Dashboard() {
               <button className={language === "fr" ? "active" : ""} type="button" aria-pressed={language === "fr"} onClick={() => setLanguage("fr")}>FR</button>
             </div>
             {capabilities ? (
-              <span className="cloud-status"><span className="status-dot" />{ui("Cloud synced", "Cloud synchronisé")}</span>
+              <span className={`cloud-status${syncDelayed ? " delayed" : ""}`} title={lastSuccessfulSyncAt ? `${ui("Last successful sync", "Dernière synchronisation réussie")} ${lastSuccessfulSyncAt.toLocaleString(language === "fr" ? "fr-FR" : "en-US")}` : undefined}><span className="status-dot" />{syncDelayed ? ui("Cloud sync delayed", "Synchronisation Cloud retardée") : ui("Cloud synced", "Cloud synchronisé")}</span>
             ) : null}
             {status === "connected" ? (
               <button className="button ghost" type="button" onClick={logout}>{ui("Disconnect", "Déconnecter")}</button>
@@ -410,7 +572,7 @@ export default function Dashboard() {
                   <div className="edition-summary">
                     <p className="eyebrow">{ui("Active edition", "Édition active")}</p>
                     <div className="edition-title">
-                      <h2>{capabilities.plan.edition === "community" ? "Community" : "Cloud"}</h2>
+                      <h2>{capabilities.plan.code === "community" ? "Community" : `Community · ${capabilities.plan.code.toUpperCase()}`}</h2>
                       <span className="status-pill"><span className="status-dot" />{capabilities.subscription.status}</span>
                     </div>
                     <p>{ui("API contract", "Contrat API")} {capabilities.schema_version} · {ui("access recalculated server-side", "droits recalculés côté serveur")}</p>
@@ -427,9 +589,9 @@ export default function Dashboard() {
                       <small>{supervisorEnabled ? `1 supervisor + ${specializedAgents.length} ${ui("specialists", "spécialisés")}` : `${specializedAgents.length} ${ui("specialists", "spécialisés")}`}</small>
                     </article>
                     <article className="metric quota-metric">
-                      <div><p>Emails</p><strong>{emailUsed}<em>/ {emailLimit ?? "∞"}</em></strong></div>
+                      <div><p>Emails</p><strong>{emailUsed ?? "—"}<em>/ {emailLimit ?? "∞"}</em></strong></div>
                       <div className="meter" aria-label={`${emailRatio}% ${ui("of email quota used", "du quota email utilisé")}`}><span style={{ width: `${emailRatio}%` }} /></div>
-                      <small>{capabilities.limits.emails.remaining ?? ui("Unlimited", "Illimité")} {ui("available", "disponibles")}</small>
+                      <small>{emailRemainingLabel} {ui("available", "disponibles")}</small>
                     </article>
                   </div>
                 </section>
@@ -503,13 +665,17 @@ export default function Dashboard() {
             {activeView === "usage" ? (
               <section className="view-enter usage-view">
                 <div className="usage-primary">
-                  <div className="usage-number"><span>{ui("Emails used", "Emails utilisés")}</span><strong>{emailUsed}</strong><small>{ui("of", "sur")} {emailLimit ?? "∞"} · {ui("rolling window", "fenêtre glissante")}</small></div>
+                  <div className="usage-number"><span>{ui("Emails used", "Emails utilisés")}</span><strong>{emailUsed ?? "—"}</strong><small>{ui("of", "sur")} {emailLimit ?? "∞"} · {ui("current plan window", "fenêtre de l’offre actuelle")}</small></div>
                   <div className="usage-meter"><div className="meter"><span style={{ width: `${emailRatio}%` }} /></div><strong>{emailRatio}%</strong></div>
-                  <p>{capabilities.limits.emails.remaining ?? ui("Unlimited", "Illimité")} {ui("emails remain available in this window.", "emails restent disponibles pour cette fenêtre.")}</p>
+                  <p>{capabilities.limits.emails.remaining === null
+                    ? capabilities.limits.emails.limit === null
+                      ? ui("This plan has no fixed email cap.", "Cette offre n’a pas de plafond email fixe.")
+                      : ui("Usage is temporarily unavailable; Cloud still enforces the plan limit.", "La consommation est temporairement indisponible ; le Cloud applique toujours la limite de l’offre.")
+                    : `${capabilities.limits.emails.remaining} ${ui("emails remain available in this window.", "emails restent disponibles pour cette fenêtre.")}`}</p>
                   <div className="quota-window-explainer">
-                    <strong>{nextEmailRelease ? ui("Next capacity release", "Prochaine capacité libérée") : ui("Rolling quota is current", "Quota glissant à jour")}</strong>
-                    <span>{nextEmailRelease || ui("No email is currently waiting to leave the counting window.", "Aucun email n’attend actuellement de sortir de la fenêtre de comptage.")}</span>
-                    <small>{ui(`Each successful send stops counting individually after ${capabilities.limits.emails.window_hours || 24} hours; the total does not reset all at once.`, `Chaque envoi réussi cesse d’être compté individuellement après ${capabilities.limits.emails.window_hours || 24} heures ; le total ne se réinitialise pas d’un seul coup.`)}</small>
+                    <strong>{capabilities.limits.emails.window === "rolling_24h" ? nextEmailRelease ? ui("Next capacity release", "Prochaine capacité libérée") : ui("Rolling quota is current", "Quota glissant à jour") : ui("Monthly plan quota", "Quota mensuel de l’offre")}</strong>
+                    <span>{capabilities.limits.emails.window === "rolling_24h" ? nextEmailRelease || ui("No email is currently waiting to leave the counting window.", "Aucun email n’attend actuellement de sortir de la fenêtre de comptage.") : ui("Cloud remains authoritative for usage and quota enforcement.", "Le Cloud reste l’autorité pour la consommation et le contrôle du quota.")}</span>
+                    <small>{capabilities.limits.emails.window === "rolling_24h" ? ui(`Each successful send stops counting individually after ${capabilities.limits.emails.window_hours || 24} hours; the total does not reset all at once.`, `Chaque envoi réussi cesse d’être compté individuellement après ${capabilities.limits.emails.window_hours || 24} heures ; le total ne se réinitialise pas d’un seul coup.`) : ui("The billing period and limits are recalculated server-side after every plan change.", "La période de facturation et les limites sont recalculées côté serveur après chaque changement d’offre.")}</small>
                   </div>
                 </div>
                 <div className="usage-facts">
@@ -547,15 +713,14 @@ export default function Dashboard() {
             ) : null}
 
             {activeView === "features" ? (
-              <section className="view-enter features-view">
-                <div className="section-toolbar"><span>{enabledFeatures.length} {ui("active permissions", "droits actifs")}</span><span>{ui("Source", "Source")} : NeuroCheckout Cloud</span></div>
-                <div className="feature-matrix">
-                  {enabledFeatures.map(([feature], index) => (
-                    <article key={feature}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{displayFeature(feature)}</strong><small>{ui("Available in this installation", "Disponible dans cette installation")}</small></div><i aria-label={ui("Available", "Disponible")}>✓</i></article>
-                  ))}
-                </div>
-                {capabilities.upgrade.available ? <div className="usage-upgrade"><p>{ui("A Cloud plan can activate new permissions without replacing this interface.", "Une offre Cloud peut activer de nouveaux droits sans remplacer cette interface.")}</p>{upgradeAction}</div> : null}
-              </section>
+              <PlanAndData
+                capabilities={capabilities}
+                language={language}
+                billingNotice={billingNotice}
+                onRefresh={async () => {
+                  if (!await load(true)) throw new Error("entitlement_refresh_failed");
+                }}
+              />
             ) : null}
 
             {activeView === "configuration" ? <div className="view-enter"><CloudConfiguration /></div> : null}
