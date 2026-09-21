@@ -1,8 +1,7 @@
 # Install NeuroCheckout Community
 
-This `v0.1.0-preview.5` guide targets staging only. Local-data pilots stay
-disabled; agents, scheduling and email delivery remain in Cloud. Staging emails
-are captured by Mailpit. Follow the README's staging test checklist after setup.
+This guide covers the current signed technical preview. Agents, scheduling,
+quota enforcement and email delivery remain in NeuroCheckout Cloud.
 
 NeuroCheckout Community is a self-hosted interface. NeuroCheckout Cloud keeps
 the business rules, Supervisor coordination, specialist-agent execution,
@@ -15,7 +14,7 @@ quotas, delivery and sensitive processing.
 - Git;
 - GnuPG 2.x;
 - Node.js 22.13 or newer and npm 10 or newer;
-- outbound HTTPS access to `staging.neurocheckout.com` and `community-api-staging.neurocheckout.com`;
+- outbound HTTPS access to the Cloud hosts printed by the setup assistant;
 - an available loopback port, `3400` by default;
 - an HTTPS reverse proxy for any non-local installation.
 
@@ -36,7 +35,7 @@ npm --version
 Install a fixed signed release, not the moving development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.5 --depth 1 \
+git clone --branch v0.1.0-preview.16 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -44,7 +43,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.5
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.16
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -63,17 +62,17 @@ is invalid.
 ## 1. Register the installation
 
 1. Create an account at
-   [staging.neurocheckout.com/register](https://staging.neurocheckout.com/register), or
-   [sign in](https://staging.neurocheckout.com/login). Verify the account email if
+   [NeuroCheckout registration](https://www.neurocheckout.com/register), or
+   [sign in](https://www.neurocheckout.com/login). Verify the account email if
    requested.
 2. Open the
-   [plan selection page](https://staging.neurocheckout.com/onboarding/subscription)
+   [plan selection page](https://www.neurocheckout.com/onboarding/subscription)
    and select **Activate Community** or **Continue free with Community**. No
    payment card is required.
 3. In the Cloud member dashboard, create or connect the store that this
    installation will manage.
 4. Open
-   [NeuroCheckout Cloud → Community installations](https://staging.neurocheckout.com/dashboard/community).
+   [NeuroCheckout Cloud → Community installations](https://www.neurocheckout.com/dashboard/community).
 5. Select that store and create an installation with its exact callback URL:
 
    - local evaluation: `http://localhost:3400/api/auth/callback`;
@@ -97,7 +96,7 @@ installation in Cloud before replacing it for the same store.
 From the repository root:
 
 ```bash
-npm run setup -- --environment=staging
+npm run setup -- --environment=preview
 ```
 
 The assistant asks only for the public client ID and exact callback URL. It
@@ -108,7 +107,7 @@ For an unattended installation, pass the two public values explicitly:
 
 ```bash
 npm run setup -- \
-  --environment=staging \
+  --environment=preview \
   --client-id=nc_public_client_id_from_cloud \
   --redirect-uri=https://community.example.com/api/auth/callback
 ```
@@ -118,9 +117,6 @@ The resulting private file contains:
 ```dotenv
 NC_COMMUNITY_CLIENT_ID=nc_public_client_id_from_cloud
 NC_COMMUNITY_REDIRECT_URI=https://community.example.com/api/auth/callback
-NC_CLOUD_API_BASE_URL=https://community-api-staging.neurocheckout.com
-NC_CLOUD_AUTHORIZATION_URL=https://staging.neurocheckout.com/community/authorize
-NC_CLOUD_UPGRADE_URL=https://staging.neurocheckout.com/pricing
 NC_COMMUNITY_SESSION_SECRET=automatically_generated_random_value
 NC_COMMUNITY_COOKIE_SECURE=true
 ```
@@ -192,7 +188,7 @@ community.example.com {
 ```
 
 Register `https://community.example.com/api/auth/callback` in Cloud before
-starting the OAuth connection. Run `npm run setup -- --environment=staging` again if the callback
+starting the OAuth connection. Run `npm run setup -- --environment=preview` again if the callback
 changes; it preserves the existing session secret.
 
 ## 6. Validate the connection
@@ -235,7 +231,7 @@ npm ci
 npm run dev
 ```
 
-For a production-like local run, use the same native path as end users:
+For a release-like local run, use the same native path as end users:
 
 ```bash
 npm run build
@@ -250,7 +246,7 @@ npm run start
 With version `.4` or later started using `npm start`, select **Update securely**
 beside the version notice and confirm. Git, GnuPG, gzip, sha256sum and npm must
 be available to the service user. Allow outbound HTTPS to GitHub and the npm
-registry, and reserve disk space for dependencies and a second production build.
+registry, and reserve disk space for dependencies and a second optimized build.
 Keep the terminal or service running during preparation.
 
 The server gets the target from Cloud, checks that it is authorized, verifies
@@ -349,6 +345,5 @@ by deleting the Community container.
   image, then reconnect if the release added an OAuth scope or raised the
   minimum dashboard version.
 - **`npm start` reports a missing build:** run `npm run install:native` again.
-- **Doctor reports Cloud unreachable:** verify outbound HTTPS access to
-  `staging.neurocheckout.com` and `community-api-staging.neurocheckout.com`;
-  no inbound Cloud connection is required.
+- **Doctor reports Cloud unreachable:** verify outbound HTTPS access to the
+  Cloud hosts printed by setup; no inbound Cloud connection is required.

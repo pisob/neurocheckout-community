@@ -25,6 +25,7 @@ let relayReference = "";
 let signalBatches = 0;
 let relayReads = 0;
 let heartbeats = 0;
+let refreshRequests = 0;
 const updateDirectory = mkdtempSync(join(tmpdir(), "nc-update-api-test-"));
 const stateDirectory = join(updateDirectory, "private-state");
 initializeLocalData(stateDirectory, "synthetic-shop");
@@ -36,6 +37,11 @@ const observed = {
   tokenExchange: false,
   capabilities: false,
   shopList: false,
+  planSelection: false,
+  checkout: false,
+  checkoutConfirmation: false,
+  upgrade: false,
+  billingPortal: false,
 };
 
 function json(response, status, payload) {
@@ -52,6 +58,18 @@ async function requestBody(request) {
 const cloud = createServer(async (request, response) => {
   if (request.method === "POST" && request.url === "/api/v1/public/oauth/token") {
     const body = JSON.parse(await requestBody(request));
+    if (body.grant_type === "refresh_token") {
+      assert.equal(body.client_id, "community-smoke-client");
+      assert.equal(body.refresh_token, "smoke-refresh-token");
+      refreshRequests += 1;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      return json(response, 200, {
+        access_token: "smoke-refreshed-access-token",
+        refresh_token: "smoke-refreshed-refresh-token",
+        expires_in: 900,
+        scope: "openid capabilities:read shops:read billing:write",
+      });
+    }
     assert.equal(body.grant_type, "authorization_code");
     assert.equal(body.client_id, "community-smoke-client");
     assert.equal(body.code, "smoke-authorization-code");
@@ -62,8 +80,8 @@ const cloud = createServer(async (request, response) => {
     return json(response, 200, {
       access_token: "smoke-access-token",
       refresh_token: "smoke-refresh-token",
-      expires_in: 900,
-      scope: "openid capabilities:read shops:read",
+      expires_in: 1,
+      scope: "openid capabilities:read shops:read billing:write",
       availability_token: availabilityToken,
       local_data_credential: { token: relayToken, installation_id: "11111111-1111-4111-8111-111111111111", shop_id: "synthetic-shop" },
     });
@@ -100,7 +118,7 @@ const cloud = createServer(async (request, response) => {
     relayReads++;
     return json(response, 200, { accepted: true });
   }
-  assert.equal(request.headers.authorization, "Bearer smoke-access-token");
+  assert.equal(request.headers.authorization, "Bearer smoke-refreshed-access-token");
   assert.ok([packageVersion, "99.0.0"].includes(request.headers["x-neurocheckout-community-version"]));
 
   if (request.method === "GET" && request.url === "/api/v1/member/capabilities") {
@@ -122,6 +140,45 @@ const cloud = createServer(async (request, response) => {
     return json(response, 200, {
       items: [{ shop_uuid: "33333333-3333-4333-8333-333333333333", shop_id: "shop_smoke", platform: "woocommerce" }],
     });
+  }
+
+  if (request.method === "POST" && request.url === "/api/v1/member/onboarding/select-plan") {
+    const body = JSON.parse(await requestBody(request));
+    assert.deepEqual(body, { plan_code: "starter", billing_platform: "stripe" });
+    observed.planSelection = true;
+    return json(response, 200, { plan_code: "starter" });
+  }
+
+  if (request.method === "POST" && request.url === "/api/v1/billing/checkout-session") {
+    const body = JSON.parse(await requestBody(request));
+    assert.deepEqual(body, {
+      billing_cycle: "annual",
+      intent_id: "12345678-1234-4234-8234-123456789abc",
+      community_return_uri: `${communityOrigin}/`,
+    });
+    observed.checkout = true;
+    return json(response, 200, { checkout_url: "https://checkout.stripe.example/session" });
+  }
+
+  if (request.method === "POST" && request.url === "/api/v1/billing/checkout-session/confirm") {
+    const body = JSON.parse(await requestBody(request));
+    assert.deepEqual(body, { session_id: "cs_smoke_session_12345678" });
+    observed.checkoutConfirmation = true;
+    return json(response, 200, { confirmed: true });
+  }
+
+  if (request.method === "POST" && request.url === "/api/v1/billing/upgrade-session") {
+    const body = JSON.parse(await requestBody(request));
+    assert.deepEqual(body, { billing_cycle: "monthly", community_return_uri: `${communityOrigin}/` });
+    observed.upgrade = true;
+    return json(response, 200, { portal_url: "https://billing.stripe.example/upgrade" });
+  }
+
+  if (request.method === "POST" && request.url === "/api/v1/billing/payment-portal-session") {
+    const body = JSON.parse(await requestBody(request));
+    assert.deepEqual(body, { source: "community", community_return_uri: `${communityOrigin}/` });
+    observed.billingPortal = true;
+    return json(response, 200, { portal_url: "https://billing.stripe.example/portal" });
   }
 
   if (request.method === "GET" && request.url.startsWith("/api/v1/member/analytics/recent-emails?")) {
@@ -286,6 +343,7 @@ try {
   assert.equal(authorization.searchParams.get("client_id"), "community-smoke-client");
   assert.equal(authorization.searchParams.get("code_challenge_method"), "S256");
   assert.ok(authorization.searchParams.get("code_challenge"));
+  assert.ok(authorization.searchParams.get("scope").split(" ").includes("billing:write"));
   const state = authorization.searchParams.get("state");
   assert.ok(state);
   assert.ok(cookies.has("nc_community_oauth_state"));
@@ -297,6 +355,13 @@ try {
   assert.equal(callback.status, 307);
   assert.equal(new URL(callback.headers.get("location")).searchParams.get("connected"), "1");
   assert.ok(cookies.has("nc_community_session"));
+
+  const concurrentRefresh = await Promise.all([
+    communityFetch("/api/cloud/capabilities"),
+    communityFetch("/api/cloud/shops"),
+  ]);
+  assert.deepEqual(concurrentRefresh.map((response) => response.status), [200, 200]);
+  assert.equal(refreshRequests, 1, "concurrent requests must share one refresh-token rotation");
 
   const emailPath='/api/cloud/recent-emails?shop_uuid=33333333-3333-4333-8333-333333333333';
   const emails=await communityFetch(emailPath);assert.equal(emails.status,200);
@@ -313,6 +378,40 @@ try {
   const journeyAudit = await communityFetch("/api/cloud/journey-audit?shop_uuid=33333333-3333-4333-8333-333333333333&days=30&limit=10&session_page=1&session_filter=cart");
   assert.equal(journeyAudit.status, 200);
   assert.equal((await journeyAudit.json()).event_summary.cart_snapshots, 1);
+
+  const mutationHeaders = { Origin: communityOrigin, "Content-Type": "application/json" };
+  const billingRequests = [
+    ["/api/cloud/subscription/select-plan", { plan_code: "starter" }, "plan_code", "starter"],
+    ["/api/cloud/subscription/checkout", { billing_cycle: "annual", intent_id: "12345678-1234-4234-8234-123456789abc" }, "checkout_url", "https://checkout.stripe.example/session"],
+    ["/api/cloud/subscription/confirm", { session_id: "cs_smoke_session_12345678" }, "confirmed", true],
+    ["/api/cloud/subscription/upgrade", { billing_cycle: "monthly" }, "portal_url", "https://billing.stripe.example/upgrade"],
+    ["/api/cloud/subscription/portal", {}, "portal_url", "https://billing.stripe.example/portal"],
+  ];
+  for (const [path, body, key, expected] of billingRequests) {
+    const billingResponse = await communityFetch(path, { method: "POST", headers: mutationHeaders, body: JSON.stringify(body) });
+    assert.equal(billingResponse.status, 200);
+    assert.equal((await billingResponse.json())[key], expected);
+  }
+  for (const [path, body] of [
+    ["/api/cloud/subscription/select-plan", { plan_code: "starter" }],
+    ["/api/cloud/subscription/checkout", { billing_cycle: "annual", intent_id: "12345678-1234-4234-8234-123456789abc" }],
+    ["/api/cloud/subscription/confirm", { session_id: "cs_smoke_session_12345678" }],
+    ["/api/cloud/subscription/upgrade", { billing_cycle: "monthly" }],
+    ["/api/cloud/subscription/portal", {}],
+  ]) {
+    const foreignMutation = await communityFetch(path, {
+      method: "POST",
+      headers: { Origin: "https://foreign.invalid", "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    assert.equal(foreignMutation.status, 403, `${path} must reject a foreign origin`);
+  }
+  const invalidCheckout = await communityFetch("/api/cloud/subscription/checkout", {
+    method: "POST",
+    headers: mutationHeaders,
+    body: JSON.stringify({ billing_cycle: "weekly" }),
+  });
+  assert.equal(invalidCheckout.status, 400);
 
   await waitForHeartbeat(0);
   await waitForRelay(0);
@@ -388,8 +487,13 @@ try {
     tokenExchange: true,
     capabilities: true,
     shopList: true,
+    planSelection: true,
+    checkout: true,
+    checkoutConfirmation: true,
+    upgrade: true,
+    billingPortal: true,
   });
-  console.log("OAuth, proxy, origin checks, persistent heartbeat and encrypted local-data API/restart smoke test passed.");
+  console.log("OAuth, billing return, proxy, origin checks, persistent heartbeat and encrypted local-data API/restart smoke test passed.");
 } catch (error) {
   if (serverOutput) process.stderr.write(serverOutput);
   throw error;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 
 import packageMetadata from "@/package.json";
 import { cloudApiBaseUrl } from "@/lib/config";
@@ -15,12 +16,45 @@ import {
 
 export const COMMUNITY_DASHBOARD_VERSION = packageMetadata.version;
 
+const refreshFlights = new Map<string, { promise: Promise<OAuthSession>; reuseUntil: number | null }>();
+
+function refreshSessionOnce(session: OAuthSession): Promise<OAuthSession> {
+  const key = createHash("sha256").update(session.refresh_token).digest("hex");
+  const now = Date.now();
+  for (const [candidate, flight] of refreshFlights) {
+    if (flight.reuseUntil !== null && flight.reuseUntil <= now) refreshFlights.delete(candidate);
+  }
+  const existing = refreshFlights.get(key);
+  if (existing) return existing.promise;
+
+  const flight: { promise: Promise<OAuthSession>; reuseUntil: number | null } = {
+    promise: Promise.resolve(session),
+    reuseUntil: null,
+  };
+  const promise = refreshOAuthSession(session)
+    .then((replacement) => {
+      flight.reuseUntil = Date.now() + 10_000;
+      return replacement;
+    })
+    .catch((error) => {
+      refreshFlights.delete(key);
+      throw error;
+    });
+  flight.promise = promise;
+  // Keep the successful rotation briefly so concurrent requests carrying the
+  // same pre-rotation cookie all receive the same replacement token pair.
+  // An in-flight refresh has no expiry: a slow Cloud response must not allow a
+  // second use of the single-use refresh token.
+  refreshFlights.set(key, flight);
+  return promise;
+}
+
 async function resolveSession(request: NextRequest): Promise<{ session: OAuthSession; refreshed: boolean } | null> {
   let session = unsealSession(request.cookies.get(COMMUNITY_SESSION_COOKIE)?.value);
   if (!session) return null;
   let refreshed = false;
   if (session.expires_at <= Date.now() + 30_000) {
-    session = await refreshOAuthSession(session);
+    session = await refreshSessionOnce(session);
     refreshed = true;
   }
   return { session, refreshed };
@@ -53,7 +87,7 @@ export async function authenticatedCloudFetch(
     let cloudResponse = await send(session.access_token);
     if (cloudResponse.status === 401 && !refreshed) {
       await cloudResponse.body?.cancel();
-      session = await refreshOAuthSession(session);
+      session = await refreshSessionOnce(session);
       refreshed = true;
       resolved = { session, refreshed };
       cloudResponse = await send(session.access_token);

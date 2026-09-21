@@ -1,44 +1,41 @@
-# NeuroCheckout Community v0.1.0-preview.15
+# NeuroCheckout Community v0.1.0-preview.16
 
-Official signed prerelease adding end-to-end synchronization diagnostics and
-durable email-delivery evidence to NeuroCheckout Community.
+Official signed prerelease adding subscription continuity to the self-hosted
+Community interface.
 
-## Synchronization reliability
+## Plans and billing
 
-- The new **Synchronization health** workspace follows the active store from
-  its connector and encrypted local vault through Cloud reconciliation and
-  delivery evidence.
-- Connector freshness, the latest received and processed signals, local events
-  awaiting acknowledgement, Cloud queue activity, incomplete records and
-  failed records are visible without exposing raw cart or customer data.
-- Temporary network or Cloud failures are retried automatically. The manual
-  **Retry synchronization** action safely wakes the same idempotent loops and
-  does not duplicate acknowledged events or bypass validation.
-- The dashboard refreshes synchronization health automatically every 15 seconds
-  and surfaces the latest actionable diagnostic.
+- Community remains the self-hosted interface when an account activates
+  Starter or Pro.
+- The new **Plan & data** workspace starts secure checkout, opens billing
+  management and refreshes Cloud-calculated entitlements.
+- Checkout returns only to the OAuth-registered Community origin and uses the
+  dedicated `billing:write` permission.
+- Durable checkout intents and server-side reservations prevent duplicate
+  subscriptions across retries, tabs and ambiguous Stripe responses.
+- Checkout confirmation retries safely without losing the recovery URL.
 
-## Email evidence and quotas
+## Continuity and security
 
-- Browse, filter and paginate up to 50 recent delivery records using **All**,
-  **Sent**, **Delivered**, **Opened**, **Clicked**, **Converted** and **Bounced**.
-- Converted-email evidence remains visible through its own filter and permanent
-  status count even after it leaves the latest-ten preview window.
-- The latest ten original email copies remain encrypted in the local vault and
-  can display their preserved HTML or text preview when available.
-- Email usage now explains the rolling quota and shows when the next individual
-  capacity unit becomes available.
+- Plan changes, cancellation, payment grace and suspension preserve the
+  encrypted local vault, configuration, connector settings and backups.
+- Suspended or expired accounts retain only the narrowly scoped billing routes
+  required to recover access; business features remain denied until Cloud
+  reactivates them.
+- All subscription mutations reject foreign origins. Return URLs are derived
+  from the configured OAuth callback rather than browser input.
+- Concurrent dashboard calls share refresh-token rotation, preventing false
+  disconnections while keeping Cloud authoritative.
+- Unknown or incomplete entitlement manifests fail closed.
 
-## Existing operational evidence
+## Data and usage clarity
 
-- Agent performance includes both open and click rates.
-- Journey audit provides owner-scoped funnel signals, prioritized journeys,
-  cart outcomes and recent audit snapshots.
-- Internal messages uses the Cloud member-notification service and synchronizes
-  read state.
-- Secure updates reject older, equal, unrecognized or blocked versions before
-  downloading or changing the installation.
-- Upgrade in place using the signed updater. Configuration, encryption keys,
-  the local vault and archived email previews are preserved.
+- The data-boundary view distinguishes encrypted local data, minimized Cloud
+  records, transient processing and Cloud-only business logic.
+- Paid-plan email usage comes from the authoritative Cloud quota gate and no
+  longer treats temporarily unknown usage as zero.
+- Entitlements refresh after billing returns, periodically and whenever the
+  browser becomes active, with a visible delayed-sync state.
 
 Verify the tag and attached archive using the instructions in `RELEASES.md`.
 Expected signing fingerprint:
