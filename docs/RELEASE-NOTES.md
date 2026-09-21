@@ -28,10 +28,12 @@ Community interface.
   disconnections while keeping Cloud authoritative.
 - Unknown or incomplete entitlement manifests fail closed.
 
-## Data and usage clarity
+## Data protection and usage clarity
 
-- The data-boundary view distinguishes encrypted local data, minimized Cloud
-  records, transient processing and Cloud-only business logic.
+- The plan workspace presents a public-safe protection summary without exposing
+  internal service names, architecture details or raw identifiers.
+- Unknown feature identifiers and service errors fail closed to approved,
+  user-facing copy.
 - Paid-plan email usage comes from the authoritative Cloud quota gate and no
   longer treats temporarily unknown usage as zero.
 - Entitlements refresh after billing returns, periodically and whenever the

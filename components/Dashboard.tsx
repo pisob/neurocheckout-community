@@ -11,6 +11,7 @@ import SynchronizationHealth from "@/components/SynchronizationHealth";
 import ConvertedOrders from "@/components/ConvertedOrders";
 import LocalUpdate from "@/components/LocalUpdate";
 import { agentAvatar, SUPERVISOR_AVATAR } from "@/lib/agent-visuals";
+import { publicAgentLabel, publicEnumLabel, publicErrorMessage } from "@/lib/public-presentation";
 import { useUiLanguage, type UiLanguage } from "@/lib/ui-language";
 
 export type Capabilities = {
@@ -96,11 +97,8 @@ export type Capabilities = {
     return_to_community?: boolean;
   };
   data_residency?: {
-    local_encrypted: string[];
-    cloud_persistent_minimized: string[];
-    cloud_transient_processing: string[];
-    cloud_only_logic: string[];
     preserved_on_plan_change: boolean;
+    [key: string]: unknown;
   };
 };
 
@@ -119,7 +117,7 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
     "journey-audit": { label: "Journey audit", eyebrow: "Customer journey evidence", title: "Customer journey audit", description: "Review useful journeys, likely revenue leaks and the handoffs other agents can take over." },
     "sync-health": { label: "Sync health", eyebrow: "End-to-end reliability", title: "Synchronization health", description: "Follow each event from the store connector to its Cloud processing evidence." },
     messages: { label: "Internal messages", eyebrow: "Operational guidance", title: "Internal messages", description: "Read operational updates, account notices and guidance issued for your workspace." },
-    features: { label: "Plan & data", eyebrow: "Cloud-calculated access", title: "Plan, access and data", description: "Manage your subscription and verify where data and business logic live." },
+    features: { label: "Plan & data", eyebrow: "Secure account access", title: "Plan, access and data", description: "Manage your subscription and review the safeguards applied to your data." },
     configuration: { label: "Configuration", eyebrow: "Controlled customization", title: "Store, email and connector", description: "Configure only the tool you need from a focused workspace." },
   },
   fr: {
@@ -132,7 +130,7 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
     "journey-audit": { label: "Audit du parcours", eyebrow: "Preuves du parcours client", title: "Audit du parcours client", description: "Examinez les parcours utiles, les fuites de revenu probables et les relais possibles entre agents." },
     "sync-health": { label: "État de la synchro", eyebrow: "Fiabilité de bout en bout", title: "État de la synchronisation", description: "Suivez chaque événement, du connecteur boutique jusqu’à sa preuve de traitement Cloud." },
     messages: { label: "Messages internes", eyebrow: "Conseils opérationnels", title: "Messages internes", description: "Consultez les informations opérationnelles, alertes de compte et conseils destinés à votre espace." },
-    features: { label: "Offre & données", eyebrow: "Droits calculés par le Cloud", title: "Offre, accès et données", description: "Gérez votre abonnement et vérifiez où résident les données et la logique métier." },
+    features: { label: "Offre & données", eyebrow: "Accès sécurisé au compte", title: "Offre, accès et données", description: "Gérez votre abonnement et consultez les garanties appliquées à vos données." },
     configuration: { label: "Configuration", eyebrow: "Personnalisation contrôlée", title: "Boutique, emails et connecteur", description: "Configurez uniquement l’outil dont vous avez besoin, sans parcourir une longue page." },
   },
 };
@@ -185,10 +183,6 @@ const AGENT_ROLES: Record<UiLanguage, Record<string, string>> = {
 
 const SUPPORT_AGENT = "contextual_support_order_aware";
 const SUPERVISOR_AGENT = "agent_supervisor";
-
-function displayFeature(value: string): string {
-  return value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
-}
 
 function viewFromHash(): DashboardView {
   if (typeof window === "undefined") return "overview";
@@ -254,10 +248,20 @@ export default function Dashboard() {
         setCapabilities(null);
         setStatus("disconnected");
         setSyncDelayed(false);
-        if (payload.detail && payload.detail !== "community_not_connected") setError(payload.detail);
+        if (payload.detail && payload.detail !== "community_not_connected") {
+          setError(publicErrorMessage(
+            payload.detail,
+            { en: "Reconnect this installation to continue.", fr: "Reconnectez cette installation pour continuer." },
+            language,
+          ));
+        }
         return false;
       }
-      if (!response.ok) throw new Error(payload.detail || ui("Cloud unavailable", "Cloud indisponible"));
+      if (!response.ok) throw new Error(publicErrorMessage(
+        payload.detail,
+        { en: "NeuroCheckout is temporarily unavailable.", fr: "NeuroCheckout est temporairement indisponible." },
+        language,
+      ));
       setCapabilities(payload);
       setStatus("connected");
       setSyncDelayed(false);
@@ -499,7 +503,7 @@ export default function Dashboard() {
 
         <div className="boundary-note">
           <span className="status-dot" />
-          <div><strong>{ui("Self-hosted interface", "Interface auto-hébergée")}</strong><p>{ui("Business logic and decisions remain secured in NeuroCheckout Cloud.", "Logique métier et décisions sécurisées dans NeuroCheckout Cloud.")}</p></div>
+          <div><strong>{ui("Self-hosted interface", "Interface auto-hébergée")}</strong><p>{ui("Securely connected to NeuroCheckout services.", "Connectée de manière sécurisée aux services NeuroCheckout.")}</p></div>
         </div>
       </aside>
 
@@ -573,9 +577,9 @@ export default function Dashboard() {
                     <p className="eyebrow">{ui("Active edition", "Édition active")}</p>
                     <div className="edition-title">
                       <h2>{capabilities.plan.code === "community" ? "Community" : `Community · ${capabilities.plan.code.toUpperCase()}`}</h2>
-                      <span className="status-pill"><span className="status-dot" />{capabilities.subscription.status}</span>
+                      <span className="status-pill"><span className="status-dot" />{publicEnumLabel(capabilities.subscription.status, language, ui("Status unavailable", "Statut indisponible"))}</span>
                     </div>
-                    <p>{ui("API contract", "Contrat API")} {capabilities.schema_version} · {ui("access recalculated server-side", "droits recalculés côté serveur")}</p>
+                    <p>{ui("Permissions verified securely for this account", "Autorisations vérifiées de manière sécurisée pour ce compte")}</p>
                   </div>
                   <div className="metric-rail" aria-label={ui("Account limits", "Limites du compte")}>
                     <article className="metric">
@@ -586,7 +590,7 @@ export default function Dashboard() {
                     <article className="metric">
                       <p>Agents</p>
                       <strong>{activeAgentCount || capabilities.limits.active_agents || "∞"}</strong>
-                      <small>{supervisorEnabled ? `1 supervisor + ${specializedAgents.length} ${ui("specialists", "spécialisés")}` : `${specializedAgents.length} ${ui("specialists", "spécialisés")}`}</small>
+                      <small>{supervisorEnabled ? `${ui("Coordination", "Coordination")} + ${specializedAgents.length} ${ui("specialists", "spécialisés")}` : `${specializedAgents.length} ${ui("specialists", "spécialisés")}`}</small>
                     </article>
                     <article className="metric quota-metric">
                       <div><p>Emails</p><strong>{emailUsed ?? "—"}<em>/ {emailLimit ?? "∞"}</em></strong></div>
@@ -598,7 +602,7 @@ export default function Dashboard() {
 
                 <div className="overview-columns">
                   <section className="workspace-panel">
-                    <div className="panel-heading"><div><p className="eyebrow">{ui("Orchestration", "Orchestration")}</p><h2>{ui("Agent network", "Réseau d’agents")}</h2></div><button type="button" onClick={() => selectView("agents")}>{ui("View all", "Voir les")} {activeAgentCount}</button></div>
+                    <div className="panel-heading"><div><p className="eyebrow">{ui("Automated services", "Services automatisés")}</p><h2>{ui("Available agents", "Agents disponibles")}</h2></div><button type="button" onClick={() => selectView("agents")}>{ui("View all", "Voir les")} {activeAgentCount}</button></div>
                     <div className="agent-preview-grid">
                       {visibleAgents.slice(0, 4).map((agent, index) => (
                         <article key={agent} className={`agent-preview${agent === SUPERVISOR_AGENT ? " supervisor-preview" : ""}`}>
@@ -606,7 +610,7 @@ export default function Dashboard() {
                             <img src={agentAvatar(agent)} alt="" width="38" height="38" />
                             <small>{String(index + 1).padStart(2, "0")}</small>
                           </span>
-                          <div><strong>{agent === SUPERVISOR_AGENT ? "Supervisor" : AGENT_LABELS[language][agent] || displayFeature(agent)}</strong><small>{agent === SUPERVISOR_AGENT ? ui("Central coordination", "Coordination centrale") : AGENT_ROLES[language][agent] || "Agent"}</small></div>
+                          <div><strong>{agent === SUPERVISOR_AGENT ? ui("Service coordination", "Coordination du service") : AGENT_LABELS[language][agent] || publicAgentLabel(agent, language)}</strong><small>{agent === SUPERVISOR_AGENT ? ui("Automated coordination", "Coordination automatisée") : AGENT_ROLES[language][agent] || "Agent"}</small></div>
                           <i aria-label={ui("Active", "Actif")} />
                         </article>
                       ))}
@@ -630,16 +634,16 @@ export default function Dashboard() {
 
             {activeView === "agents" ? (
               <section className="view-enter agents-view">
-                <div className="section-toolbar"><span>{specializedAgents.length} {ui("active specialist agents", "agents spécialisés actifs")}</span><span>Supervisor {supervisorEnabled ? ui("active", "actif") : ui("inactive", "inactif")}</span></div>
+                <div className="section-toolbar"><span>{specializedAgents.length} {ui("active specialist agents", "agents spécialisés actifs")}</span><span>{ui("Coordination", "Coordination")} {supervisorEnabled ? ui("active", "active") : ui("inactive", "inactive")}</span></div>
                 {supervisorEnabled ? (
                   <article className="supervisor-band">
                     <div className="supervisor-avatar">
                       <img src={SUPERVISOR_AVATAR} alt="" width="58" height="58" />
                     </div>
                     <div>
-                      <p className="eyebrow">{ui("Coordination layer", "Couche de coordination")}</p>
-                      <h2>{capabilities.agents.supervisor?.display_name || "Supervisor"}</h2>
-                      <p>{capabilities.agents.supervisor?.description || ui("Coordinates specialist agents and makes their decisions more reliable.", "Coordonne les agents spécialisés et fiabilise leurs décisions.")}</p>
+                      <p className="eyebrow">{ui("Automated service", "Service automatisé")}</p>
+                      <h2>{ui("Service coordination", "Coordination du service")}</h2>
+                      <p>{ui("Keeps enabled features working together for your store.", "Assure le fonctionnement coordonné des fonctionnalités activées pour votre boutique.")}</p>
                     </div>
                     <span className="status-pill"><span className="status-dot" />{ui("Active", "Actif")}</span>
                   </article>
@@ -651,11 +655,10 @@ export default function Dashboard() {
                       <div className="agent-cell-identity">
                         <img src={agentAvatar(agent)} alt="" width="62" height="62" />
                         <div>
-                          <h2>{AGENT_LABELS[language][agent] || displayFeature(agent)}</h2>
+                          <h2>{AGENT_LABELS[language][agent] || publicAgentLabel(agent, language)}</h2>
                           <p>{AGENT_ROLES[language][agent] || ui("Specialist agent", "Agent spécialisé")}</p>
                         </div>
                       </div>
-                      <code>{agent}</code>
                     </article>
                   ))}
                 </div>
@@ -682,7 +685,7 @@ export default function Dashboard() {
                   <div><span>{ui("Allowed stores", "Boutiques autorisées")}</span><strong>{capabilities.limits.shops ?? "∞"}</strong></div>
                   <div><span>{ui("Available agents", "Agents disponibles")}</span><strong>{activeAgentCount || capabilities.limits.active_agents || "∞"}</strong></div>
                   <div><span>{ui("Quota scope", "Périmètre du quota")}</span><strong>{capabilities.limits.emails.scope || ui("Account", "Compte")}</strong></div>
-                  <div><span>{ui("Subscription status", "Statut abonnement")}</span><strong>{capabilities.subscription.status}</strong></div>
+                  <div><span>{ui("Subscription status", "Statut abonnement")}</span><strong>{publicEnumLabel(capabilities.subscription.status, language, ui("Status unavailable", "Statut indisponible"))}</strong></div>
                 </div>
                 {capabilities.upgrade.available ? <div className="usage-upgrade"><p>{ui("Higher limits are activated automatically after subscription.", "Les limites supérieures sont activées automatiquement après souscription.")}</p>{upgradeAction}</div> : null}
               </section>

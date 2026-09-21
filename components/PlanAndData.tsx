@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { Capabilities } from "@/components/Dashboard";
+import { publicErrorMessage, publicFeatureLabel } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 
 type Props = {
@@ -61,29 +62,6 @@ const STATUS_COPY: Record<string, { en: string; fr: string; tone: string }> = {
   cancelled: { en: "Subscription cancelled", fr: "Abonnement annulé", tone: "blocked" },
 };
 
-const DATA_LABELS: Record<string, { en: string; fr: string }> = {
-  product_and_variant_details: { en: "Product and variant details", fr: "Détails des produits et variantes" },
-  cart_and_line_item_details: { en: "Carts and line items", fr: "Paniers et lignes d’article" },
-  customer_contact_required_for_cart_recovery: { en: "Contact needed for cart recovery", fr: "Contact requis pour la relance panier" },
-  sent_email_archive: { en: "Sent email archive", fr: "Archive des emails envoyés" },
-  connector_configuration: { en: "Connector configuration", fr: "Configuration du connecteur" },
-  account_and_subscription: { en: "Account and subscription", fr: "Compte et abonnement" },
-  entitlements_and_quotas: { en: "Entitlements and quotas", fr: "Droits et quotas" },
-  event_references_and_delivery_evidence: { en: "Event references and delivery evidence", fr: "Références d’événement et preuves d’envoi" },
-  aggregated_performance_and_attribution: { en: "Aggregated performance and attribution", fr: "Performance et attribution agrégées" },
-  fresh_cart_context_for_agent_decisions: { en: "Fresh context for agent decisions", fr: "Contexte frais pour les décisions des agents" },
-  email_generation_context: { en: "Email generation context", fr: "Contexte de génération des emails" },
-  agents_and_prompts: { en: "Agents and prompts", fr: "Agents et prompts" },
-  supervisor_and_orchestration: { en: "Supervisor and orchestration", fr: "Supervisor et orchestration" },
-  scheduling_and_business_workers: { en: "Scheduling and business workers", fr: "Planification et workers métier" },
-  final_generation_and_delivery: { en: "Final generation and delivery", fr: "Génération finale et envoi" },
-  billing_and_quota_enforcement: { en: "Billing and quota enforcement", fr: "Facturation et contrôle des quotas" },
-};
-
-function display(value: string): string {
-  return value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
-}
-
 async function payload(response: Response): Promise<JsonPayload> {
   const parsed = await response.json().catch(() => ({}));
   return parsed && typeof parsed === "object" && !Array.isArray(parsed)
@@ -109,13 +87,16 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
   useEffect(() => setNotice(billingNotice), [billingNotice]);
 
   const status = STATUS_COPY[capabilities.subscription.status] || {
-    en: display(capabilities.subscription.status),
-    fr: display(capabilities.subscription.status),
+    en: "Status unavailable",
+    fr: "Statut indisponible",
     tone: "attention",
   };
   const enabledFeatures = useMemo(
-    () => Object.entries(capabilities.features).filter(([, enabled]) => enabled),
-    [capabilities.features],
+    () => Object.entries(capabilities.features)
+      .filter(([, enabled]) => enabled)
+      .map(([feature]) => ({ feature, label: publicFeatureLabel(feature, language) }))
+      .filter((item): item is { feature: string; label: string } => Boolean(item.label)),
+    [capabilities.features, language],
   );
   const dataResidency = capabilities.data_residency;
   const authoritativeContract = capabilities.manifest?.authority === "neurocheckout_cloud"
@@ -155,7 +136,11 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
         "Stripe n’a pas renvoyé de résultat définitif. Attendez une minute, puis reprenez le même choix en sécurité.",
       );
     }
-    return detail || ui("Billing action failed.", "L’action de facturation a échoué.");
+    return publicErrorMessage(
+      detail,
+      { en: "Billing action failed.", fr: "L’action de facturation a échoué." },
+      language,
+    );
   };
 
   const startSubscription = async () => {
@@ -244,12 +229,40 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
     }
   };
 
-  const groups = dataResidency ? [
-    { key: "local_encrypted", title: ui("Encrypted in Community", "Chiffré dans Community"), items: dataResidency.local_encrypted },
-    { key: "cloud_persistent_minimized", title: ui("Minimized in Cloud", "Minimisé dans le Cloud"), items: dataResidency.cloud_persistent_minimized },
-    { key: "cloud_transient_processing", title: ui("Processed transiently", "Traité temporairement"), items: dataResidency.cloud_transient_processing },
-    { key: "cloud_only_logic", title: ui("Cloud-only business logic", "Logique métier Cloud uniquement"), items: dataResidency.cloud_only_logic },
-  ] : [];
+  const protectionSummary = [
+    {
+      key: "local-protection",
+      title: ui("Local protection", "Protection locale"),
+      items: [
+        ui("Encrypted local storage", "Stockage local chiffré"),
+        ui("Administrator-controlled backups", "Sauvegardes contrôlées par l’administrateur"),
+      ],
+    },
+    {
+      key: "limited-sync",
+      title: ui("Limited synchronization", "Synchronisation limitée"),
+      items: [
+        ui("Only data required by enabled services", "Uniquement les données nécessaires aux services activés"),
+        ui("Authenticated exchanges", "Échanges authentifiés"),
+      ],
+    },
+    {
+      key: "protected-service",
+      title: ui("Protected service", "Service protégé"),
+      items: [
+        ui("Access restricted to the authorized account", "Accès limité au compte autorisé"),
+        ui("Permissions verified before each action", "Autorisations vérifiées avant chaque action"),
+      ],
+    },
+    {
+      key: "continuity",
+      title: ui("Data continuity", "Continuité des données"),
+      items: [
+        ui("Local data preserved across plan changes", "Données locales conservées lors des changements d’offre"),
+        ui("Billing recovery does not erase local data", "La récupération de facturation n’efface pas les données locales"),
+      ],
+    },
+  ];
 
   return (
     <section className="view-enter plan-data-view">
@@ -258,8 +271,8 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
           <p className="eyebrow">{ui("Permanent self-hosted interface", "Interface auto-hébergée permanente")}</p>
           <h2>{capabilities.plan.code.toUpperCase()} · {status[language]}</h2>
           <p>{ui(
-            "Your interface and encrypted local data stay here. Agents, decisions and delivery remain secured in NeuroCheckout Cloud.",
-            "Votre interface et vos données locales chiffrées restent ici. Les agents, décisions et envois restent sécurisés dans NeuroCheckout Cloud.",
+            "Your self-hosted interface keeps its local data encrypted and connects securely to NeuroCheckout services.",
+            "Votre interface auto-hébergée conserve ses données locales chiffrées et se connecte de manière sécurisée aux services NeuroCheckout.",
           )}</p>
         </div>
         <span className="subscription-state"><i />{status[language]}</span>
@@ -307,20 +320,20 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
       </div>
 
       <header className="data-boundary-heading">
-        <div><p className="eyebrow">{ui("Data boundary", "Frontière des données")}</p><h2>{ui("Where data and logic live", "Où résident les données et la logique")}</h2></div>
-        <span>{ui("Cloud-authoritative contract", "Contrat autoritaire Cloud")} · {capabilities.manifest?.version || capabilities.schema_version}</span>
+        <div><p className="eyebrow">{ui("Privacy safeguards", "Garanties de confidentialité")}</p><h2>{ui("How your data is protected", "Comment vos données sont protégées")}</h2></div>
+        <span>{ui("Verified secure connection", "Connexion sécurisée vérifiée")}</span>
       </header>
       {dataResidency ? <div className="data-boundary-grid">
-        {groups.map((group, index) => (
+        {protectionSummary.map((group, index) => (
           <section key={group.key}>
             <span>{String(index + 1).padStart(2, "0")}</span>
             <h3>{group.title}</h3>
-            <ul>{group.items.map((item) => <li key={item}>{DATA_LABELS[item]?.[language] || display(item)}</li>)}</ul>
+            <ul>{group.items.map((item) => <li key={item}>{item}</li>)}</ul>
           </section>
         ))}
       </div> : <p className="config-error" role="alert">{ui(
-        "The Cloud did not provide an authoritative data-boundary manifest. No fallback claim is displayed.",
-        "Le Cloud n’a pas fourni de manifeste autoritaire de frontière des données. Aucune affirmation de secours n’est affichée.",
+        "Data-protection information is temporarily unavailable.",
+        "Les informations de protection des données sont temporairement indisponibles.",
       )}</p>}
 
       <header className="data-boundary-heading feature-heading">
@@ -328,8 +341,8 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
         <span>{ui("Recalculated server-side", "Recalculés côté serveur")}</span>
       </header>
       <div className="feature-matrix">
-        {enabledFeatures.map(([feature], index) => (
-          <article key={feature}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{display(feature)}</strong><small>{ui("Available in this installation", "Disponible dans cette installation")}</small></div><i aria-label={ui("Available", "Disponible")}>✓</i></article>
+        {enabledFeatures.map(({ feature, label }, index) => (
+          <article key={feature}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{label}</strong><small>{ui("Available in this installation", "Disponible dans cette installation")}</small></div><i aria-label={ui("Available", "Disponible")}>✓</i></article>
         ))}
       </div>
     </section>

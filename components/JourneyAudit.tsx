@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { publicEnumLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 
 type Shop = {
@@ -112,10 +113,6 @@ function formatDate(value: string | null | undefined, language: UiLanguage): str
   return Number.isNaN(parsed.getTime()) ? "—" : parsed.toLocaleString(language === "fr" ? "fr-FR" : "en-US");
 }
 
-function readable(value: string | null | undefined): string {
-  return String(value || "").replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
-}
-
 function resolvedRevenue(summary: EventSummary, fallbackCurrency: string | null | undefined, language: UiLanguage): string {
   const amounts = summary.resolved_revenue_by_currency || [];
   if (amounts.length) return amounts.map((item) => formatMoney(item.amount, item.currency_code, language)).join(" + ");
@@ -137,7 +134,11 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
   const loadShops = useCallback(async () => {
     const response = await fetch("/api/cloud/shops", { cache: "no-store" });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(String(body?.detail || ui("Stores unavailable.", "Boutiques indisponibles.")));
+    if (!response.ok) throw new Error(publicErrorMessage(
+      body?.detail,
+      { en: "Stores unavailable.", fr: "Boutiques indisponibles." },
+      language,
+    ));
     const items = Array.isArray(body?.items) ? body.items as Shop[] : [];
     setShops(items);
     setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
@@ -163,7 +164,11 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant journey audit access.", "Reconnectez cette installation une fois pour autoriser l’audit de parcours."));
-        throw new Error(String(body?.detail || ui("Journey audit unavailable.", "Audit de parcours indisponible.")));
+        throw new Error(publicErrorMessage(
+          body?.detail,
+          { en: "Journey audit unavailable.", fr: "Audit de parcours indisponible." },
+          language,
+        ));
       }
       const nextPayload = body as JourneyPayload;
       const sessions = Array.isArray(nextPayload.recent_sessions) ? nextPayload.recent_sessions : [];
@@ -219,7 +224,7 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
 
       {!loading && payload ? (
         <>
-          <div className="journey-state-line"><span className="status-pill"><span className="status-dot" />{readable(payload.state)}</span><span>{formatNumber(payload.journey_pagination?.total_items || payload.recent_sessions.length, language)} {ui("journeys in this view", "parcours dans cette vue")}</span></div>
+          <div className="journey-state-line"><span className="status-pill"><span className="status-dot" />{publicEnumLabel(payload.state, language, ui("Available", "Disponible"))}</span><span>{formatNumber(payload.journey_pagination?.total_items || payload.recent_sessions.length, language)} {ui("journeys in this view", "parcours dans cette vue")}</span></div>
           <div className="journey-summary" aria-label={ui("Journey summary", "Synthèse du parcours") }>
             <div><span>{ui("Generated audits", "Audits générés")}</span><strong>{formatNumber(payload.audit_count, language)}</strong><small>{ui("Actionable snapshots", "Snapshots exploitables")}</small></div>
             <div><span>{ui("Journey events", "Événements parcours")}</span><strong>{formatNumber(summary.total_events, language)}</strong><small>{formatNumber(summary.unique_sessions, language)} {ui("sessions", "sessions")}</small></div>
@@ -239,7 +244,7 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
                 <div className="journey-list-head"><span>{ui("Recent journeys", "Parcours récents")}</span><span>{ui("Priority", "Priorité")}</span></div>
                 {payload.recent_sessions.map((session, index) => {
                   const customer = session.customer_display?.primary || session.customer_display?.masked_email || ui("Protected visitor", "Visiteur protégé");
-                  return <button className={selectedSession?.session_key === session.session_key ? "active" : ""} key={session.session_key} type="button" onClick={() => setSelectedSessionKey(session.session_key)}><span className="analytics-index">{String(index + 1).padStart(2, "0")}</span><span><strong>{customer}</strong><small>{readable(session.lifecycle_state) || ui("Observed journey", "Parcours observé")} · {formatDate(session.last_seen, language)}</small></span><span><strong>{readable(session.priority?.level) || ui("Normal", "Normale")}</strong><small>{formatNumber(session.event_count, language)} {ui("events", "événements")}</small></span></button>;
+                  return <button className={selectedSession?.session_key === session.session_key ? "active" : ""} key={session.session_key} type="button" onClick={() => setSelectedSessionKey(session.session_key)}><span className="analytics-index">{String(index + 1).padStart(2, "0")}</span><span><strong>{customer}</strong><small>{publicEnumLabel(session.lifecycle_state, language, ui("Observed journey", "Parcours observé"))} · {formatDate(session.last_seen, language)}</small></span><span><strong>{publicEnumLabel(session.priority?.level, language, ui("Normal", "Normale"))}</strong><small>{formatNumber(session.event_count, language)} {ui("events", "événements")}</small></span></button>;
                 })}
                 <div className="journey-pagination"><button className="text-action" disabled={page <= 1} type="button" onClick={() => setPage((current) => Math.max(1, current - 1))}>{ui("Previous", "Précédent")}</button><span>{page} / {totalPages}</span><button className="text-action" disabled={page >= totalPages} type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>{ui("Next", "Suivant")}</button></div>
               </div>
@@ -250,11 +255,11 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
                   <h2>{selectedSession.customer_display?.primary || selectedSession.customer_display?.masked_email || ui("Protected visitor", "Visiteur protégé")}</h2>
                   <p>{selectedSession.customer_display?.secondary || `${ui("Cart", "Panier")} ${selectedSession.cart_id || selectedSession.customer_display?.cart_id || "—"}`}</p>
                   <dl>
-                    <div><dt>{ui("Lifecycle", "Cycle")}</dt><dd>{readable(selectedSession.lifecycle_state) || "—"}</dd></div>
-                    <div><dt>{ui("Last signal", "Dernier signal")}</dt><dd>{readable(selectedSession.last_event_type) || "—"}</dd></div>
+                    <div><dt>{ui("Lifecycle", "Cycle")}</dt><dd>{publicEnumLabel(selectedSession.lifecycle_state, language)}</dd></div>
+                    <div><dt>{ui("Last signal", "Dernier signal")}</dt><dd>{publicEnumLabel(selectedSession.last_event_type, language, ui("Activity received", "Activité reçue"))}</dd></div>
                     <div><dt>{ui("Cart value", "Valeur panier")}</dt><dd>{formatMoney(selectedSession.estimated_cart_value, selectedSession.currency_code || selectedShop?.currency_code, language)}</dd></div>
-                    <div><dt>{ui("Action state", "État de l’action")}</dt><dd>{readable(selectedSession.action_status?.delivery_state || selectedSession.action_status?.state) || "—"}</dd></div>
-                    <div><dt>{ui("Outcome", "Résultat")}</dt><dd>{readable(selectedSession.outcome?.status) || ui("In progress", "En cours")}</dd></div>
+                    <div><dt>{ui("Action state", "État de l’action")}</dt><dd>{publicEnumLabel(selectedSession.action_status?.delivery_state || selectedSession.action_status?.state, language)}</dd></div>
+                    <div><dt>{ui("Outcome", "Résultat")}</dt><dd>{publicEnumLabel(selectedSession.outcome?.status, language, ui("In progress", "En cours"))}</dd></div>
                     <div><dt>{ui("Priority score", "Score de priorité")}</dt><dd>{selectedSession.priority?.score ?? "—"}</dd></div>
                   </dl>
                   {(selectedSession.priority?.reasons || []).length ? <div className="journey-reasons"><strong>{ui("Why it matters", "Pourquoi agir")}</strong><ul>{selectedSession.priority?.reasons?.map((reason) => <li key={reason}>{reason}</li>)}</ul></div> : null}
@@ -263,7 +268,7 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
             </div>
           ) : <div className="operational-state"><p className="eyebrow">{ui("Waiting for signals", "En attente de signaux")}</p><h2>{ui("No journey matches this view yet", "Aucun parcours ne correspond encore à cette vue")}</h2><p>{ui("The connector will populate this audit automatically as customers browse the store.", "Le connecteur alimentera automatiquement cet audit pendant la navigation des clients.")}</p></div>}
 
-          {payload.recent_audits.length ? <section className="journey-audits"><div><p className="eyebrow">{ui("Recent audits", "Audits récents")}</p><h2>{ui("Revenue leaks and agent handoffs", "Fuites de revenu et relais agents")}</h2></div>{payload.recent_audits.map((audit) => <article key={audit.id}><span className="status-pill">{readable(audit.status) || ui("Ready", "Prêt")}</span><div><strong>{audit.journey_summary?.summary_text || readable(audit.journey_summary?.lifecycle_state) || ui("Journey snapshot", "Snapshot de parcours")}</strong><small>{formatDate(audit.created_at, language)}</small></div><div><strong>{audit.revenue_leaks?.[0]?.summary || ui("No critical leak detected", "Aucune fuite critique détectée")}</strong><small>{audit.recommended_actions?.[0]?.next_step || audit.recommended_actions?.[0]?.label || ui("Continue monitoring", "Poursuivre la surveillance")}</small></div></article>)}</section> : null}
+          {payload.recent_audits.length ? <section className="journey-audits"><div><p className="eyebrow">{ui("Recent audits", "Audits récents")}</p><h2>{ui("Revenue leaks and recommended actions", "Fuites de revenu et actions recommandées")}</h2></div>{payload.recent_audits.map((audit) => <article key={audit.id}><span className="status-pill">{publicEnumLabel(audit.status, language, ui("Ready", "Prêt"))}</span><div><strong>{audit.journey_summary?.summary_text || publicEnumLabel(audit.journey_summary?.lifecycle_state, language, ui("Journey snapshot", "Résumé du parcours"))}</strong><small>{formatDate(audit.created_at, language)}</small></div><div><strong>{audit.revenue_leaks?.[0]?.summary || ui("No critical leak detected", "Aucune fuite critique détectée")}</strong><small>{audit.recommended_actions?.[0]?.next_step || audit.recommended_actions?.[0]?.label || ui("Continue monitoring", "Poursuivre la surveillance")}</small></div></article>)}</section> : null}
 
           <p className="journey-privacy">{ui("Raw names, emails, tokens, cookies and session IDs are not exposed in Community. Masked identifiers are used only to help the merchant investigate a journey.", "Les noms, emails bruts, jetons, cookies et identifiants de session ne sont pas exposés dans Community. Les identifiants masqués servent uniquement à aider le marchand à examiner un parcours.")}</p>
         </>

@@ -1,11 +1,11 @@
 # Install NeuroCheckout Community
 
-This guide covers the current signed technical preview. Agents, scheduling,
-quota enforcement and email delivery remain in NeuroCheckout Cloud.
+This guide covers the current signed technical preview. Community connects to
+managed NeuroCheckout services through its authenticated server-side relay.
 
-NeuroCheckout Community is a self-hosted interface. NeuroCheckout Cloud keeps
-the business rules, Supervisor coordination, specialist-agent execution,
-quotas, delivery and sensitive processing.
+NeuroCheckout Community is a self-hosted interface. Internal service
+architecture, operational identifiers and raw service errors are not exposed
+in the interface.
 
 ## Requirements
 

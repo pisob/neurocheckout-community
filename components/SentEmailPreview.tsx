@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { sentEmailPreview, sentEmailRecoveryLink } from "@/lib/sent-email-preview";
+import { publicAgentLabel } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 
 export type SentEmail = {
@@ -42,7 +43,7 @@ export default function SentEmailPreview({ items, language }: { items: SentEmail
       <dl>
         <div><dt>{ui("To", "À")}</dt><dd>{selected.recipient_email || selected.customer.email_masked || "—"}</dd></div>
         <div><dt>{ui("Sent", "Envoyé le")}</dt><dd>{date(selected.sent_at)}</dd></div>
-        <div><dt>Agent</dt><dd>{selected.agent_name === "abandoned_cart" ? "A-C-R" : selected.agent_name?.replaceAll("_", " ") || "—"}</dd></div>
+        <div><dt>Agent</dt><dd>{selected.agent_name ? publicAgentLabel(selected.agent_name, language) : "—"}</dd></div>
         <div><dt>{ui("Status", "Statut")}</dt><dd>{statuses[selected.status || "sent"] || "—"}</dd></div>
         <div><dt>{ui("Opened", "Ouvert le")}</dt><dd>{date(selected.opened_at)}</dd></div>
         <div><dt>{ui("Clicked", "Cliqué le")}</dt><dd>{date(selected.clicked_at)}</dd></div>

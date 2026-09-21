@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { publicAgentLabel, publicEnumLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 import SentEmailPreview, { type SentEmail } from "./SentEmailPreview";
 
@@ -87,7 +88,6 @@ const AGENT_LABELS: Record<UiLanguage, Record<string, string>> = {
 };
 
 function shopUuid(shop: Shop): string { return String(shop.shop_uuid || shop.id || shop.canonical_shop_id || "").trim(); }
-function readable(value?: string | null): string { return String(value || "").replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()); }
 function formatMoney(value: number | null | undefined, currency?: string | null): string {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
   const code = String(currency || "").toUpperCase();
@@ -114,7 +114,11 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
   const loadShops = useCallback(async () => {
     const response = await fetch("/api/cloud/shops", { cache: "no-store" });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(String(body?.detail || ui("Stores unavailable.", "Boutiques indisponibles.")));
+    if (!response.ok) throw new Error(publicErrorMessage(
+      body?.detail,
+      { en: "Stores unavailable.", fr: "Boutiques indisponibles." },
+      language,
+    ));
     const items = Array.isArray(body?.items) ? body.items as Shop[] : [];
     setShops(items);
     setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
@@ -133,8 +137,8 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
         if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant analytics access.", "Reconnectez cette installation une fois pour autoriser les statistiques."));
         const detail = isRecord(rawBody) ? String(rawBody.detail || "") : "";
         throw new Error(detail === "cloud_response_invalid"
-          ? ui("Cloud access is not yet open for this analytics route.", "L’accès Cloud n’est pas encore ouvert pour cette route statistique.")
-          : String(detail || ui("Converted orders unavailable.", "Commandes converties indisponibles.")));
+          ? ui("Converted orders are temporarily unavailable.", "Les commandes converties sont temporairement indisponibles.")
+          : publicErrorMessage(detail, { en: "Converted orders unavailable.", fr: "Commandes converties indisponibles." }, language));
       }
       if (!body) throw new Error(ui("Cloud returned an invalid converted-order response.", "Le Cloud a renvoyé une réponse de commandes converties invalide."));
       setPayload(body);
@@ -158,8 +162,8 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
         if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant analytics access.", "Reconnectez cette installation une fois pour autoriser les statistiques."));
         const detail = isRecord(rawBody) ? String(rawBody.detail || "") : "";
         throw new Error(detail === "cloud_response_invalid"
-          ? ui("Cloud access is not yet open for the email activity route.", "L’accès Cloud n’est pas encore ouvert pour l’activité email.")
-          : String(detail || ui("Recent emails unavailable.", "Emails récents indisponibles.")));
+          ? ui("Email activity is temporarily unavailable.", "L’activité email est temporairement indisponible.")
+          : publicErrorMessage(detail, { en: "Recent emails unavailable.", fr: "Emails récents indisponibles." }, language));
       }
       if (!body) throw new Error(ui("Cloud returned an invalid email activity response.", "Le Cloud a renvoyé une réponse d’activité email invalide."));
       setEmailPayload(body);
@@ -187,7 +191,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
       sent: ui("Sent", "Envoyé"), delivered: ui("Delivered", "Livré"), opened: ui("Opened", "Ouvert"),
       clicked: ui("Clicked", "Cliqué"), converted: ui("Converted", "Converti"), bounced: ui("Bounced", "Rejeté"),
     };
-    return labels[String(status || "sent").toLowerCase()] || readable(status);
+    return labels[String(status || "sent").toLowerCase()] || publicEnumLabel(status, language);
   };
   const refreshEvidence = () => { void loadOrders(); void loadRecentEmails(); };
   const emailFilters: Array<{ value: EmailStatus; label: string }> = [
@@ -233,7 +237,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
                     <span className="analytics-index">{String(index + 1).padStart(2, "0")}</span>
                     <span><strong>{item.order_id || ui("Order without reference", "Commande sans référence")}</strong><small>{formatDate(item.converted_at)}</small></span>
                     <span><strong>{ui("Protected customer", "Client protégé")}</strong><small>{item.customer.email_masked || ui("Protected", "Protégé")}</small></span>
-                    <span><strong>{formatMoney(item.order_total, currency)}</strong><small>{AGENT_LABELS[language][String(item.attribution_agent_name || "")] || readable(item.attribution_agent_name)}</small></span>
+                    <span><strong>{formatMoney(item.order_total, currency)}</strong><small>{AGENT_LABELS[language][String(item.attribution_agent_name || "")] || publicAgentLabel(item.attribution_agent_name, language)}</small></span>
                   </button>
                 ))}
               </div>
@@ -247,9 +251,9 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
                   <dl>
                     <div><dt>{ui("Customer", "Client")}</dt><dd>{ui("Protected customer", "Client protégé")}<small>{selected.customer.email_masked || ui("Contact protected", "Contact protégé")}</small></dd></div>
                     <div><dt>{ui("Cart reference", "Référence panier")}</dt><dd>{selected.cart_id || "—"}</dd></div>
-                    <div><dt>{ui("Primary attribution", "Attribution principale")}</dt><dd>{AGENT_LABELS[language][String(selected.attribution_agent_name || "")] || readable(selected.attribution_agent_name) || "—"}</dd></div>
+                    <div><dt>{ui("Primary attribution", "Attribution principale")}</dt><dd>{selected.attribution_agent_name ? AGENT_LABELS[language][selected.attribution_agent_name] || publicAgentLabel(selected.attribution_agent_name, language) : "—"}</dd></div>
                   </dl>
-                  {selected.influence_agent_names.length > 0 ? <div className="influence-list"><span>{ui("Contributing agents", "Agents contributeurs")}</span>{selected.influence_agent_names.map((agent) => <i key={agent}>{AGENT_LABELS[language][agent] || readable(agent)}</i>)}</div> : null}
+                  {selected.influence_agent_names.length > 0 ? <div className="influence-list"><span>{ui("Contributing agents", "Agents contributeurs")}</span>{selected.influence_agent_names.map((agent) => <i key={agent}>{AGENT_LABELS[language][agent] || publicAgentLabel(agent, language)}</i>)}</div> : null}
                 </aside>
               ) : null}
             </div>
