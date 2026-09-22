@@ -1,29 +1,31 @@
-# NeuroCheckout Community v0.1.0-preview.17
+# NeuroCheckout Community v0.1.0-preview.18
 
-Official signed security prerelease hardening public presentation throughout
-the self-hosted Community interface.
+Official signed prerelease improving secure-update reliability on slow or
+rate-limited Internet connections.
 
-## Public presentation boundary
+## Reliable secure updates
 
-- The **Plan & data** workspace now shows a concise explanation of data
-  protection instead of implementation-specific service architecture.
-- Feature, agent, status, metric and journey identifiers are translated through
-  an explicit public allowlist before display.
-- Unknown identifiers fail closed to neutral user-facing labels.
+- **Update securely** downloads canonical release assets without depending on
+  the anonymous GitHub API quota.
+- Transient download and rate-limit failures are retried with bounded timeouts.
+- A private persistent npm cache reduces repeated registry downloads and helps
+  slow installations complete successfully.
+- The interface now reports the secure-download phase explicitly.
 
-## Error and identifier protection
+## Security guarantees preserved
 
-- Raw Cloud errors are no longer rendered directly by dashboard workspaces.
-- Delivery failures and unknown service values use localized, approved copy
-  without exposing internal component names or operational identifiers.
-- Administrative secrets remain visible only in the explicit one-time
-  generation flow where the administrator requested them.
+- Every update still requires the canonical signed Git tag and the pinned
+  NeuroCheckout Community OpenPGP signer.
+- The archive signature, SHA-256 checksum and exact equality with the signed
+  Git tree are all verified before dependencies are installed.
+- Health checks, transactional activation and automatic rollback remain
+  mandatory; failed candidates never replace the working installation.
 
 ## Regression protection
 
-- Native release checks reject known internal architecture labels in public UI
-  sources and direct rendering of raw subscription status values.
-- Type checking, production build, integration smoke tests and security scans
+- Automated tests cover canonical asset URLs, transient retry behavior,
+  terminal failures, size limits and the absence of anonymous GitHub API calls.
+- Type checking, production build, integration smoke tests and CodeQL scans
   cover the release candidate.
 
 Verify the tag and attached archive using the instructions in `RELEASES.md`.
