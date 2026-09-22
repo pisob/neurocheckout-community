@@ -4,6 +4,18 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.17 - 2026-09-22
+
+- Replace the implementation-oriented data and logic map with a concise,
+  user-facing data-protection summary.
+- Apply allowlisted public labels to feature, agent, status, metric and journey
+  identifiers throughout the Community interface.
+- Replace raw Cloud and delivery errors with localized, non-sensitive messages
+  while preserving useful recovery guidance.
+- Keep unknown identifiers fail-closed instead of rendering internal values.
+- Add release tests that prevent internal architecture labels and direct raw
+  status or error rendering from being reintroduced.
+
 ## 0.1.0-preview.16 - 2026-09-21
 
 - Keep the self-hosted Community interface available when an account activates
