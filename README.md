@@ -2,8 +2,8 @@
 
 NeuroCheckout Community is the official self-hosted dashboard for connecting an
 online store to NeuroCheckout Cloud. Product and cart details are kept in an
-encrypted local vault, while agents, scheduling, quotas and email delivery are
-managed by NeuroCheckout Cloud.
+encrypted local vault, while enabled services are provided through an
+authenticated NeuroCheckout connection.
 
 Official repository: https://github.com/pisob/neurocheckout-community
 
@@ -77,9 +77,9 @@ validates that return origin against the installation's OAuth callback.
 
 Changing, cancelling or temporarily suspending a plan does not delete the
 encrypted local vault, connector configuration or backups. Access to paid
-features follows the current Cloud entitlement contract. Agents, prompts,
-Supervisor coordination, decisions, scheduling, final generation, delivery,
-billing and quota enforcement always remain in NeuroCheckout Cloud.
+features follows the permissions verified for the current account. Internal
+service architecture, operational identifiers and raw service errors are not
+displayed by Community.
 
 If payment is suspended, Community keeps only the capabilities and billing
 portal routes required to restore payment. If a subscription expires or is

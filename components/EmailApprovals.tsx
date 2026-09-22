@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { publicAgentLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 
 type ApprovalStatus = "pending" | "failed" | "sent" | "rejected" | "expired";
@@ -66,7 +67,11 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
             "Reconnectez cette installation une fois pour autoriser les validations email.",
           ));
         }
-        throw new Error(String(payload?.detail || ui("Unable to load approvals.", "Impossible de charger les validations.")));
+        throw new Error(publicErrorMessage(
+          payload?.detail,
+          { en: "Unable to load approvals.", fr: "Impossible de charger les validations." },
+          language,
+        ));
       }
       const nextItems = Array.isArray(payload?.items) ? payload.items as ApprovalItem[] : [];
       setItems(nextItems);
@@ -112,7 +117,11 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
         { method: "POST", cache: "no-store" },
       );
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(String(payload?.detail || "email_approval_action_failed"));
+      if (!response.ok) throw new Error(publicErrorMessage(
+        payload?.detail,
+        { en: "The approval action could not be completed.", fr: "L’action de validation n’a pas pu être effectuée." },
+        language,
+      ));
       setNotice(kind === "approve"
         ? ui("Email approved and handed to Cloud delivery.", "Email approuvé et transmis à l’envoi Cloud.")
         : ui("Email rejected. No delivery was triggered.", "Email rejeté. Aucun envoi n’a été déclenché."));
@@ -175,7 +184,7 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
               <dl className="approval-facts">
                 <div><dt>{ui("Recipient", "Destinataire")}</dt><dd>{selected.recipient_email}</dd></div>
                 <div><dt>{ui("Store", "Boutique")}</dt><dd>{selected.shop_id}</dd></div>
-                <div><dt>{ui("Agent", "Agent")}</dt><dd>{selected.agent_name || "—"}</dd></div>
+                <div><dt>{ui("Agent", "Agent")}</dt><dd>{selected.agent_name ? publicAgentLabel(selected.agent_name, language) : "—"}</dd></div>
                 <div><dt>{ui("Expires", "Expiration")}</dt><dd>{formatDate(selected.expires_at)}</dd></div>
               </dl>
               <div className="email-document">
@@ -185,7 +194,7 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
                   <pre>{selected.body_text || ui("No preview content is available.", "Aucun contenu d’aperçu n’est disponible.")}</pre>
                 )}
               </div>
-              {selected.last_error ? <p className="config-error">{selected.last_error}</p> : null}
+              {selected.last_error ? <p className="config-error">{ui("The last delivery attempt did not complete.", "La dernière tentative d’envoi n’a pas abouti.")}</p> : null}
               {selected.status === "pending" || selected.status === "failed" ? (
                 <div className="approval-actions">
                   <button className="button primary" type="button" disabled={Boolean(busyId)} onClick={() => void act("approve")}>{ui("Approve and send", "Approuver et envoyer")}</button>

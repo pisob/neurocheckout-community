@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 
 type Recommendation = {
@@ -102,7 +103,11 @@ export default function OptimizationRecommendations({
       const raw: unknown = await response.json().catch(() => ({}));
       if (!response.ok) {
         const detail = isRecord(raw) ? String(raw.detail || "") : "";
-        throw new Error(detail || ui("Optimization recommendations are unavailable.", "Les recommandations d’optimisation sont indisponibles."));
+        throw new Error(publicErrorMessage(
+          detail,
+          { en: "Optimization recommendations are unavailable.", fr: "Les recommandations d’optimisation sont indisponibles." },
+          language,
+        ));
       }
       const next = normalizePayload(raw);
       if (!next) throw new Error(ui("Cloud returned an invalid optimization response.", "Le Cloud a renvoyé une réponse d’optimisation invalide."));
@@ -137,8 +142,12 @@ export default function OptimizationRecommendations({
         if (response.status === 403 || detail === "community_scope_required") setNeedsReconnect(true);
         throw new Error(
           response.status === 403
-            ? ui("Reconnect this installation once to authorize Supervisor settings.", "Reconnectez cette installation une fois pour autoriser les réglages du Supervisor.")
-            : detail || ui("The Supervisor setting could not be saved.", "Le réglage du Supervisor n’a pas pu être enregistré."),
+            ? ui("Reconnect this installation once to authorize automatic settings.", "Reconnectez cette installation une fois pour autoriser les réglages automatiques.")
+            : publicErrorMessage(
+              detail,
+              { en: "The automatic setting could not be saved.", fr: "Le réglage automatique n’a pas pu être enregistré." },
+              language,
+            ),
         );
       }
       if (!isRecord(raw) || !isRecord(raw.settings)) throw new Error(ui("Cloud did not confirm the setting.", "Le Cloud n’a pas confirmé le réglage."));
@@ -154,7 +163,7 @@ export default function OptimizationRecommendations({
         },
       } : current);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : ui("The Supervisor setting could not be saved.", "Le réglage du Supervisor n’a pas pu être enregistré."));
+      setError(saveError instanceof Error ? saveError.message : ui("The automatic setting could not be saved.", "Le réglage automatique n’a pas pu être enregistré."));
     } finally {
       setSaving(false);
     }
@@ -176,11 +185,11 @@ export default function OptimizationRecommendations({
     return {
       recommendation: ui(`${pending} recommendation${pending === 1 ? " is" : "s are"} awaiting action.`, `${pending} recommandation${pending === 1 ? " attend" : "s attendent"} une action.`),
       automation: automatic
-        ? ui(`Supervisor takeover is active after ${delay} days.`, `La prise en charge par le Supervisor est active après ${delay} jours.`)
-        : ui("Supervisor takeover is disabled.", "La prise en charge par le Supervisor est désactivée."),
+        ? ui(`Automatic application is active after ${delay} days.`, `L’application automatique est active après ${delay} jours.`)
+        : ui("Automatic application is disabled.", "L’application automatique est désactivée."),
       next: automatic
         ? ui("The Cloud will apply eligible pending recommendations automatically.", "Le Cloud appliquera automatiquement les recommandations en attente éligibles.")
-        : ui("Review the recommendations in NeuroCheckout Cloud or enable Supervisor automation.", "Consultez les recommandations dans NeuroCheckout Cloud ou activez l’automatisation du Supervisor."),
+        : ui("Review the recommendations or enable automatic application.", "Consultez les recommandations ou activez leur application automatique."),
     };
   }, [language, payload]);
 
@@ -214,11 +223,11 @@ export default function OptimizationRecommendations({
 
           <div className="supervisor-takeover">
             <div>
-              <p className="eyebrow">{ui("Supervisor takeover", "Prise en charge par le Supervisor")}</p>
+              <p className="eyebrow">{ui("Automatic application", "Application automatique")}</p>
               <h3>{ui("Keep optimization moving without losing control", "Faites avancer l’optimisation sans perdre le contrôle")}</h3>
               <p>{ui(
-                `Eligible recommendations still pending after ${payload.settings.supervisor_auto_apply_after_days} days can be applied automatically by the Supervisor. This setting only affects future pending recommendations.`,
-                `Les recommandations éligibles encore en attente après ${payload.settings.supervisor_auto_apply_after_days} jours peuvent être appliquées automatiquement par le Supervisor. Ce réglage concerne uniquement les futures recommandations en attente.`,
+                `Eligible recommendations still pending after ${payload.settings.supervisor_auto_apply_after_days} days can be applied automatically. This setting only affects future pending recommendations.`,
+                `Les recommandations éligibles encore en attente après ${payload.settings.supervisor_auto_apply_after_days} jours peuvent être appliquées automatiquement. Ce réglage concerne uniquement les futures recommandations en attente.`,
               )}</p>
             </div>
             <button
@@ -236,7 +245,7 @@ export default function OptimizationRecommendations({
 
           <div className="optimization-status-grid">
             <article><p className="eyebrow">{ui("Recommendation status", "État des recommandations")}</p><strong>{statusCopy.recommendation}</strong></article>
-            <article><p className="eyebrow">{ui("Supervisor automation", "Automatisation du Supervisor")}</p><strong>{statusCopy.automation}</strong></article>
+            <article><p className="eyebrow">{ui("Automatic recommendations", "Recommandations automatiques")}</p><strong>{statusCopy.automation}</strong></article>
             <article><p className="eyebrow">{ui("Next action", "Prochaine action")}</p><strong>{statusCopy.next}</strong></article>
           </div>
 

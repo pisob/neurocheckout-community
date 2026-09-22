@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AgentNetwork from "@/components/AgentNetwork";
 import OptimizationRecommendations from "@/components/OptimizationRecommendations";
+import { publicAgentLabel, publicEnumLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 
 type Shop = {
@@ -99,10 +100,6 @@ function formatMoney(value: number | null | undefined, currency?: string | null)
   return formatMetric(value, 2);
 }
 
-function readableMetric(value?: string | null): string {
-  return String(value || "").replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
-}
-
 export default function AgentPerformance({ language, supervisorEnabled }: { language: UiLanguage; supervisorEnabled: boolean }) {
   const ui = (english: string, french: string) => language === "fr" ? french : english;
   const [shops, setShops] = useState<Shop[]>([]);
@@ -116,7 +113,11 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
   const loadShops = useCallback(async () => {
     const response = await fetch("/api/cloud/shops", { cache: "no-store" });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(String(body?.detail || ui("Stores unavailable.", "Boutiques indisponibles.")));
+    if (!response.ok) throw new Error(publicErrorMessage(
+      body?.detail,
+      { en: "Stores unavailable.", fr: "Boutiques indisponibles." },
+      language,
+    ));
     const items = Array.isArray(body?.items) ? body.items as Shop[] : [];
     setShops(items);
     setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
@@ -139,8 +140,8 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
         if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant analytics access.", "Reconnectez cette installation une fois pour autoriser les statistiques."));
         const detail = isRecord(rawBody) ? String(rawBody.detail || "") : "";
         throw new Error(detail === "cloud_response_invalid"
-          ? ui("Cloud access is not yet open for this analytics route.", "L’accès Cloud n’est pas encore ouvert pour cette route statistique.")
-          : String(detail || ui("Performance unavailable.", "Performances indisponibles.")));
+          ? ui("Performance is temporarily unavailable.", "Les performances sont temporairement indisponibles.")
+          : publicErrorMessage(detail, { en: "Performance unavailable.", fr: "Performances indisponibles." }, language));
       }
       if (!body) throw new Error(ui("Cloud returned an invalid performance response.", "Le Cloud a renvoyé une réponse de performance invalide."));
       setPayload(body);
@@ -215,8 +216,8 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
                   {payload.items.map((item, index) => (
                     <button className={selected?.agent_name === item.agent_name ? "active" : ""} key={item.agent_name} type="button" onClick={() => setSelectedAgent(item.agent_name)}>
                       <span className="analytics-index">{String(index + 1).padStart(2, "0")}</span>
-                      <span className="analytics-agent-name"><strong>{LABELS[language][item.agent_name] || readableMetric(item.agent_name)}</strong><small>{item.mode === "conversion" ? ui("Conversion", "Conversion") : ui("Operations", "Pilotage")}</small></span>
-                      <span><strong>{item.mode === "conversion" ? formatMoney(item.attributed_revenue ?? item.assisted_revenue, currency) : formatMetric(item.impact_value)}</strong><small>{item.mode === "conversion" ? ui("attributed", "attribué") : readableMetric(item.impact_label)}</small></span>
+                      <span className="analytics-agent-name"><strong>{LABELS[language][item.agent_name] || publicAgentLabel(item.agent_name, language)}</strong><small>{item.mode === "conversion" ? ui("Conversion", "Conversion") : ui("Operations", "Pilotage")}</small></span>
+                      <span><strong>{item.mode === "conversion" ? formatMoney(item.attributed_revenue ?? item.assisted_revenue, currency) : formatMetric(item.impact_value)}</strong><small>{item.mode === "conversion" ? ui("attributed", "attribué") : publicEnumLabel(item.impact_label, language, ui("Impact", "Impact"))}</small></span>
                       <span><strong>{item.open_rate === null || item.open_rate === undefined ? "—" : `${formatMetric(item.open_rate)}%`} / {item.click_rate === null || item.click_rate === undefined ? "—" : `${formatMetric(item.click_rate)}%`}</strong><small>{ui("open / click", "ouverture / clic")}</small></span>
                     </button>
                   ))}
@@ -225,8 +226,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
                 {selected ? (
                   <aside className="analytics-inspector">
                     <p className="eyebrow">{selected.mode === "conversion" ? ui("Conversion agent", "Agent de conversion") : ui("Operational agent", "Agent de pilotage")}</p>
-                    <h2>{LABELS[language][selected.agent_name] || readableMetric(selected.agent_name)}</h2>
-                    <code>{selected.agent_name}</code>
+                    <h2>{LABELS[language][selected.agent_name] || publicAgentLabel(selected.agent_name, language)}</h2>
                     <dl>
                       {selected.mode === "conversion" ? (
                         <>
@@ -237,12 +237,12 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
                         </>
                       ) : (
                         <>
-                          <div><dt>{readableMetric(selected.impact_label) || ui("Impact", "Impact")}</dt><dd>{formatMetric(selected.impact_value)}{selected.impact_unit === "percent" ? "%" : ""}</dd></div>
-                          <div><dt>{readableMetric(selected.ops_label) || ui("Operations", "Opérations")}</dt><dd>{formatMetric(selected.ops_value)}{selected.ops_unit === "percent" ? "%" : ""}</dd></div>
+                          <div><dt>{publicEnumLabel(selected.impact_label, language, ui("Impact", "Impact"))}</dt><dd>{formatMetric(selected.impact_value)}{selected.impact_unit === "percent" ? "%" : ""}</dd></div>
+                          <div><dt>{publicEnumLabel(selected.ops_label, language, ui("Operations", "Opérations"))}</dt><dd>{formatMetric(selected.ops_value)}{selected.ops_unit === "percent" ? "%" : ""}</dd></div>
                         </>
                       )}
                     </dl>
-                    <div className="confidence-line"><span>{ui("Data confidence", "Confiance des données")}</span><strong>{selected.roi_confidence_level ? readableMetric(selected.roi_confidence_level) : ui("Operational", "Opérationnelle")}</strong></div>
+                    <div className="confidence-line"><span>{ui("Data confidence", "Confiance des données")}</span><strong>{selected.roi_confidence_level ? publicEnumLabel(selected.roi_confidence_level, language, ui("Available", "Disponible")) : ui("Operational", "Opérationnelle")}</strong></div>
                   </aside>
                 ) : null}
               </div>

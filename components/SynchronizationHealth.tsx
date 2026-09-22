@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 
 type Shop = { id?: string; shop_uuid?: string; canonical_shop_id?: string; shop_id: string; platform?: string };
@@ -58,7 +59,11 @@ export default function SynchronizationHealth({ language, connectors }: { langua
   const loadShops = useCallback(async () => {
     const response = await fetch("/api/cloud/shops", { cache: "no-store" });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(String(body?.detail || ui("Stores unavailable.", "Boutiques indisponibles.")));
+    if (!response.ok) throw new Error(publicErrorMessage(
+      body?.detail,
+      { en: "Stores unavailable.", fr: "Boutiques indisponibles." },
+      language,
+    ));
     const items = Array.isArray(body?.items) ? body.items as Shop[] : [];
     setShops(items);
     setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
@@ -77,7 +82,11 @@ export default function SynchronizationHealth({ language, connectors }: { langua
         cloudResponse.json().catch(() => ({})),
         localResponse.json().catch(() => ({})),
       ]);
-      if (!cloudResponse.ok) throw new Error(String(cloudBody?.detail || ui("Cloud synchronization status unavailable.", "État de synchronisation Cloud indisponible.")));
+      if (!cloudResponse.ok) throw new Error(publicErrorMessage(
+        cloudBody?.detail,
+        { en: "Synchronization status unavailable.", fr: "État de synchronisation indisponible." },
+        language,
+      ));
       setCloud(cloudBody as CloudHealth);
       setLocal(localBody as LocalHealth);
     } catch (loadError) {
@@ -100,7 +109,11 @@ export default function SynchronizationHealth({ language, connectors }: { langua
     try {
       const response = await fetch("/api/local-data/sync-health", { method: "POST" });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(String(body?.detail || ui("Synchronization could not be restarted.", "La synchronisation n’a pas pu être relancée.")));
+      if (!response.ok) throw new Error(publicErrorMessage(
+        body?.detail,
+        { en: "Synchronization could not be restarted.", fr: "La synchronisation n’a pas pu être relancée." },
+        language,
+      ));
       setNotice(ui("Reconciliation scheduled. Pending events remain protected until acknowledged.", "Réconciliation programmée. Les événements en attente restent protégés jusqu’à leur accusé de réception."));
       setTimeout(() => void loadHealth(true), 2500);
     } catch (retryError) {
@@ -123,9 +136,9 @@ export default function SynchronizationHealth({ language, connectors }: { langua
   const issueCopy: Record<string, string> = {
     community_unavailable: ui("Community was temporarily unreachable; retry is automatic.", "Community était temporairement indisponible ; la reprise est automatique."),
     consumer_failed: ui("Cloud processing is being retried automatically.", "Le traitement Cloud est relancé automatiquement."),
-    worker_recovered: ui("An interrupted worker was recovered without losing its event.", "Un worker interrompu a été récupéré sans perdre son événement."),
+    worker_recovered: ui("An interrupted operation resumed without losing data.", "Une opération interrompue a repris sans perte de données."),
     cart_amount_missing: ui("A cart arrived without a usable amount.", "Un panier est arrivé sans montant exploitable."),
-    record_invalid: ui("A connector record did not satisfy the synchronization contract.", "Une donnée du connecteur ne respecte pas le contrat de synchronisation."),
+    record_invalid: ui("A connector record requires review.", "Une donnée du connecteur doit être vérifiée."),
   };
   const localMatches = Boolean(local?.shop_id && local.shop_id === selectedShop?.shop_id);
   const localReady = Boolean(localMatches && local?.configured && local?.ready);

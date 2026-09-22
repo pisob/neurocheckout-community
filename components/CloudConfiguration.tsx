@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useUiLanguage } from "@/lib/ui-language";
+import { publicErrorMessage } from "@/lib/public-presentation";
+import { useUiLanguage, type UiLanguage } from "@/lib/ui-language";
 
 type Shop = {
   id?: string;
@@ -81,12 +82,11 @@ function shopUuid(shop: Shop): string {
   return String(shop.shop_uuid || shop.id || shop.canonical_shop_id || "").trim();
 }
 
-function detail(payload: unknown, fallback: string): string {
-  if (typeof payload === "object" && payload && "detail" in payload) {
-    const value = String((payload as { detail?: unknown }).detail || "").trim();
-    if (value) return value;
-  }
-  return fallback;
+function detail(payload: unknown, fallback: string, language: UiLanguage): string {
+  const value = typeof payload === "object" && payload && "detail" in payload
+    ? (payload as { detail?: unknown }).detail
+    : undefined;
+  return publicErrorMessage(value, { en: fallback, fr: fallback }, language);
 }
 
 function normalizeLocaleCode(value: string): string {
@@ -151,7 +151,7 @@ export default function CloudConfiguration() {
     setError(null);
     const response = await fetch("/api/cloud/shops", { cache: "no-store" });
     const payload = (await readJson(response)) as { items?: Shop[] };
-    if (!response.ok) throw new Error(detail(payload, ui("Stores unavailable", "Boutiques indisponibles")));
+    if (!response.ok) throw new Error(detail(payload, ui("Stores unavailable", "Boutiques indisponibles"), language));
     const items = Array.isArray(payload.items) ? payload.items : [];
     setShops(items);
     setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
@@ -162,7 +162,7 @@ export default function CloudConfiguration() {
     const normalizedLocale = normalizeLocaleCode(locale);
     const profileResponse = await fetch(`/api/cloud/email-profile?shop_uuid=${encodeURIComponent(uuid)}&locale=${encodeURIComponent(normalizedLocale)}`, { cache: "no-store" });
     const profilePayload = (await readJson(profileResponse)) as { item?: EmailProfile };
-    if (!profileResponse.ok || !profilePayload.item) throw new Error(detail(profilePayload, ui("Email settings unavailable", "Réglages email indisponibles")));
+    if (!profileResponse.ok || !profilePayload.item) throw new Error(detail(profilePayload, ui("Email settings unavailable", "Réglages email indisponibles"), language));
     setEmailProfile(profilePayload.item);
     setRequiredTermsInput((profilePayload.item.required_terms || []).join(", "));
     setForbiddenTermsInput((profilePayload.item.forbidden_terms || []).join(", "));
@@ -173,7 +173,7 @@ export default function CloudConfiguration() {
     if (!uuid) return;
     const byokResponse = await fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(uuid)}&provider=${encodeURIComponent(provider)}`, { cache: "no-store" });
     const byokPayload = (await readJson(byokResponse)) as ByokStatus;
-    if (!byokResponse.ok) throw new Error(detail(byokPayload, ui("BYOK status unavailable", "Statut BYOK indisponible")));
+    if (!byokResponse.ok) throw new Error(detail(byokPayload, ui("BYOK status unavailable", "Statut BYOK indisponible"), language));
     setByok(byokPayload);
   };
 
@@ -271,7 +271,7 @@ export default function CloudConfiguration() {
         }),
       });
       const payload = (await readJson(response)) as { item?: EmailProfile };
-      if (!response.ok || !payload.item) throw new Error(detail(payload, ui("Settings rejected", "Réglages refusés")));
+      if (!response.ok || !payload.item) throw new Error(detail(payload, ui("Settings rejected", "Réglages refusés"), language));
       setEmailProfile(payload.item);
       setRequiredTermsInput(payload.item.required_terms.join(", "));
       setForbiddenTermsInput(payload.item.forbidden_terms.join(", "));
@@ -299,7 +299,7 @@ export default function CloudConfiguration() {
         }),
       });
       const profilePayload = (await readJson(profileResponse)) as { item?: EmailProfile };
-      if (!profileResponse.ok || !profilePayload.item) throw new Error(detail(profilePayload, ui("Settings rejected", "Réglages refusés")));
+      if (!profileResponse.ok || !profilePayload.item) throw new Error(detail(profilePayload, ui("Settings rejected", "Réglages refusés"), language));
       setEmailProfile(profilePayload.item);
       setRequiredTermsInput(profilePayload.item.required_terms.join(", "));
       setForbiddenTermsInput(profilePayload.item.forbidden_terms.join(", "));
@@ -309,7 +309,7 @@ export default function CloudConfiguration() {
         body: JSON.stringify({ template_key: templateKey, locale: emailProfile.locale }),
       });
       const payload = (await readJson(response)) as { items?: EmailPreview[] };
-      if (!response.ok || !Array.isArray(payload.items)) throw new Error(detail(payload, ui("Preview unavailable", "Prévisualisation indisponible")));
+      if (!response.ok || !Array.isArray(payload.items)) throw new Error(detail(payload, ui("Preview unavailable", "Prévisualisation indisponible"), language));
       setPreviews(payload.items);
       setNotice(ui("Rules saved. Previews are for validation only; no customer email was sent.", "Règles enregistrées. Les aperçus sont uniquement destinés à votre validation et aucun email client n’a été envoyé."));
     } catch (previewError) {
@@ -330,7 +330,7 @@ export default function CloudConfiguration() {
         body: JSON.stringify({ api_key: apiKey, provider: aiProvider, test_after_save: true }),
       });
       const payload = (await readJson(response)) as ByokStatus;
-      if (!response.ok) throw new Error(detail(payload, ui("Key rejected", "Clé refusée")));
+      if (!response.ok) throw new Error(detail(payload, ui("Key rejected", "Clé refusée"), language));
       setApiKey("");
       setByok(payload);
       setNotice(`${providerDetails.label} · ${ui("key encrypted, saved and selected", "clé chiffrée, enregistrée et sélectionnée")}${payload.key_last4 ? ` · …${payload.key_last4}` : ""}.`);
@@ -348,7 +348,7 @@ export default function CloudConfiguration() {
     try {
       const response = await fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(selectedShopUuid)}&provider=${encodeURIComponent(aiProvider)}`, { method: "DELETE" });
       const payload = (await readJson(response)) as ByokStatus;
-      if (!response.ok) throw new Error(detail(payload, ui("Revocation rejected", "Révocation refusée")));
+      if (!response.ok) throw new Error(detail(payload, ui("Revocation rejected", "Révocation refusée"), language));
       await loadByokStatus(selectedShopUuid, aiProvider);
       setNotice(`${providerDetails.label} · ${ui("key revoked immediately", "clé révoquée immédiatement")}.`);
     } catch (revokeError) {
@@ -384,7 +384,7 @@ export default function CloudConfiguration() {
         body: JSON.stringify({ provider: aiProvider, mode: "byok" }),
       });
       const payload = await readJson(response);
-      if (!response.ok) throw new Error(detail(payload, ui("Provider selection rejected", "Sélection du fournisseur refusée")));
+      if (!response.ok) throw new Error(detail(payload, ui("Provider selection rejected", "Sélection du fournisseur refusée"), language));
       await loadByokStatus(selectedShopUuid, aiProvider);
       setNotice(`${providerDetails.label} · ${ui("active provider for this store", "fournisseur actif pour cette boutique")}.`);
     } catch (activateError) {
@@ -405,7 +405,7 @@ export default function CloudConfiguration() {
         body: JSON.stringify({ shop_uuid: selectedShopUuid, operation, dpa_accepted: dpaAccepted }),
       });
       const payload = (await readJson(response)) as { api_key?: string };
-      if (!response.ok || !payload.api_key) throw new Error(detail(payload, ui("Connector key rejected", "Clé connecteur refusée")));
+      if (!response.ok || !payload.api_key) throw new Error(detail(payload, ui("Connector key rejected", "Clé connecteur refusée"), language));
       setConnectorKey(payload.api_key);
       await activateLocalSync();
       setNotice(ui("Key created and encrypted local synchronization started. Copy the connector key now; it will not be displayed again.", "Clé créée et synchronisation locale chiffrée démarrée. Copiez maintenant la clé connecteur : elle ne sera plus affichée."));
@@ -427,7 +427,7 @@ export default function CloudConfiguration() {
         body: JSON.stringify({ shop_uuid: selectedShopUuid }),
       });
       const payload = await readJson(response);
-      if (!response.ok) throw new Error(detail(payload, ui("Local synchronization unavailable", "Synchronisation locale indisponible")));
+      if (!response.ok) throw new Error(detail(payload, ui("Local synchronization unavailable", "Synchronisation locale indisponible"), language));
       setLocalSyncActive(true);
       setNotice(ui("Encrypted local synchronization is starting automatically.", "La synchronisation locale chiffrée démarre automatiquement."));
     } finally {

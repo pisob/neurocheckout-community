@@ -65,6 +65,42 @@ const dashboardSource = readFileSync(
 assert.match(dashboardSource, /ensureEncryptedLocalSynchronization/);
 assert.match(dashboardSource, /has_active_api_key === true/);
 assert.match(dashboardSource, /setTimeout\(\(\) => void activate\(\), 30_000\)/);
+assert.doesNotMatch(dashboardSource, /\{capabilities\.subscription\.status\}/);
+assert.doesNotMatch(dashboardSource, /Contrat API|API contract/);
+
+const planAndDataSource = readFileSync(
+  fileURLToPath(new URL("../components/PlanAndData.tsx", import.meta.url)),
+  "utf8",
+);
+for (const forbiddenPublicDetail of [
+  "Agents and prompts",
+  "Supervisor and orchestration",
+  "Scheduling and business workers",
+  "Cloud-authoritative contract",
+  "Where data and logic live",
+]) {
+  assert.equal(planAndDataSource.includes(forbiddenPublicDetail), false);
+}
+assert.match(planAndDataSource, /publicFeatureLabel/);
+assert.match(planAndDataSource, /publicErrorMessage/);
+
+const publicSurfaceSources = [
+  "Dashboard.tsx",
+  "EmailApprovals.tsx",
+  "AgentPerformance.tsx",
+  "CloudConfiguration.tsx",
+  "OptimizationRecommendations.tsx",
+  "SynchronizationHealth.tsx",
+  "ConvertedOrders.tsx",
+  "MemberMessages.tsx",
+  "JourneyAudit.tsx",
+].map((file) => readFileSync(
+  fileURLToPath(new URL(`../components/${file}`, import.meta.url)),
+  "utf8",
+));
+for (const source of publicSurfaceSources) {
+  assert.doesNotMatch(source, /(?:payload|body|cloudBody)\?\.detail\s*\|\|/);
+}
 
 const setupTestDirectory = mkdtempSync(join(tmpdir(), "nc-native-staging-setup-"));
 try {

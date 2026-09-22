@@ -114,8 +114,8 @@ export default function AgentNetwork({
     <section className="community-network" aria-label={ui("Coordinated agent network", "Réseau coordonné des agents")}>
       <header className="community-network-header">
         <div>
-          <p>{ui("Live orchestration map", "Carte d’orchestration active")}</p>
-          <h2>{ui(`Neural coordination · ${visibleAgents.length} active agents`, `Coordination neuronale · ${visibleAgents.length} agents actifs`)}</h2>
+          <p>{ui("Live service map", "Carte des services actifs")}</p>
+          <h2>{ui(`Coordinated activity · ${visibleAgents.length} active agents`, `Activité coordonnée · ${visibleAgents.length} agents actifs`)}</h2>
         </div>
         <span className="community-network-status"><i />{ui("Cloud coordinated", "Coordonné par le Cloud")}</span>
       </header>
@@ -158,8 +158,8 @@ export default function AgentNetwork({
             <span className="community-supervisor-avatar">
               <img src="/branding/neurocheckout-logo-300.png" alt="" width="56" height="56" />
             </span>
-            <strong>Supervisor</strong>
-            <small>{ui("Central coordinator", "Coordinateur central")}</small>
+            <strong>{ui("Coordination", "Coordination")}</strong>
+            <small>{ui("Automated service", "Service automatisé")}</small>
           </div>
         ) : null}
 

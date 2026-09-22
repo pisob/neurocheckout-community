@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 
 type MemberMessage = {
@@ -85,14 +86,18 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
             "Reconnectez cette installation une fois pour autoriser les messages membre.",
           ));
         }
-        const detail = String(payload?.detail || "");
+        const detail = typeof payload?.detail === "string" ? payload.detail : "";
         if (detail === "cloud_response_invalid") {
           throw new Error(ui(
             "The Cloud message service returned an invalid response. Please retry in a moment.",
             "Le service de messages Cloud a renvoyé une réponse invalide. Réessayez dans un instant.",
           ));
         }
-        throw new Error(detail || ui("Unable to load messages.", "Impossible de charger les messages."));
+        throw new Error(publicErrorMessage(
+          detail,
+          { en: "Unable to load messages.", fr: "Impossible de charger les messages." },
+          language,
+        ));
       }
       const dynamicItems = Array.isArray(payload?.items) ? payload.items as MemberMessage[] : [];
       const readIds = localReadIds();
@@ -145,7 +150,11 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
       const response = await fetch(`/api/cloud/notifications/${encodeURIComponent(item.id)}/read`, { method: "POST", cache: "no-store" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(String(payload?.detail || ui("Unable to mark this message as read.", "Impossible de marquer ce message comme lu.")));
+        throw new Error(publicErrorMessage(
+          payload?.detail,
+          { en: "Unable to mark this message as read.", fr: "Impossible de marquer ce message comme lu." },
+          language,
+        ));
       }
       if (payload?.id === item.id) {
         setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, ...payload, unread: false } : candidate));
