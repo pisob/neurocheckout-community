@@ -52,11 +52,11 @@ export default function LocalUpdate({ french }: { french: boolean }) {
       triggerButtonRef.current?.focus();
     };
   }, [confirming]);
-  const busy = pending || ["queued", "verifying", "building", "restarting"].includes(phase);
+  const busy = pending || ["queued", "verifying", "downloading", "building", "restarting"].includes(phase);
   const labels: Record<string, string> = french ? {
-    queued: "Mise à jour en attente…", verifying: "Vérification de la release…", building: "Préparation de la mise à jour…", restarting: "Redémarrage…", failed: "Échec de la mise à jour. Réessayez ou consultez le guide.", rolled_back: "L’ancienne version a été restaurée.", interrupted: "La mise à jour a été interrompue.", complete: "Mise à jour terminée.",
+    queued: "Mise à jour en attente…", verifying: "Vérification de la release…", downloading: "Téléchargement sécurisé…", building: "Préparation de la mise à jour…", restarting: "Redémarrage…", failed: "Échec de la mise à jour. Réessayez ou consultez le guide.", rolled_back: "L’ancienne version a été restaurée.", interrupted: "La mise à jour a été interrompue.", complete: "Mise à jour terminée.",
   } : {
-    queued: "Update queued…", verifying: "Verifying release…", building: "Preparing update…", restarting: "Restarting…", failed: "Update failed. Retry or consult the guide.", rolled_back: "The previous version was restored.", interrupted: "Update interrupted.", complete: "Update complete.",
+    queued: "Update queued…", verifying: "Verifying release…", downloading: "Downloading securely…", building: "Preparing update…", restarting: "Restarting…", failed: "Update failed. Retry or consult the guide.", rolled_back: "The previous version was restored.", interrupted: "Update interrupted.", complete: "Update complete.",
   };
   async function update() {
     setConfirming(false);
