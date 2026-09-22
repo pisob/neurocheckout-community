@@ -20,7 +20,7 @@ for (const bad of ["", signature.replaceAll(FINGERPRINT, "A".repeat(40)), signat
 const assetName = "neurocheckout-community-0.1.0-preview.17.tar.gz";
 const assetUrl = releaseAssetUrl("0.1.0-preview.17", assetName);
 assert.equal(assetUrl, `https://github.com/pisob/neurocheckout-community/releases/download/v0.1.0-preview.17/${assetName}`);
-assert.equal(assetUrl.includes("api.github.com"), false);
+assert.equal(new URL(assetUrl).hostname, "github.com");
 assert.throws(() => releaseAssetUrl("../main", assetName));
 assert.throws(() => releaseAssetUrl("0.1.0-preview.17", "unexpected.tar.gz"));
 
