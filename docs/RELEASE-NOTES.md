@@ -1,43 +1,30 @@
-# NeuroCheckout Community v0.1.0-preview.16
+# NeuroCheckout Community v0.1.0-preview.17
 
-Official signed prerelease adding subscription continuity to the self-hosted
-Community interface.
+Official signed security prerelease hardening public presentation throughout
+the self-hosted Community interface.
 
-## Plans and billing
+## Public presentation boundary
 
-- Community remains the self-hosted interface when an account activates
-  Starter or Pro.
-- The new **Plan & data** workspace starts secure checkout, opens billing
-  management and refreshes Cloud-calculated entitlements.
-- Checkout returns only to the OAuth-registered Community origin and uses the
-  dedicated `billing:write` permission.
-- Durable checkout intents and server-side reservations prevent duplicate
-  subscriptions across retries, tabs and ambiguous Stripe responses.
-- Checkout confirmation retries safely without losing the recovery URL.
+- The **Plan & data** workspace now shows a concise explanation of data
+  protection instead of implementation-specific service architecture.
+- Feature, agent, status, metric and journey identifiers are translated through
+  an explicit public allowlist before display.
+- Unknown identifiers fail closed to neutral user-facing labels.
 
-## Continuity and security
+## Error and identifier protection
 
-- Plan changes, cancellation, payment grace and suspension preserve the
-  encrypted local vault, configuration, connector settings and backups.
-- Suspended or expired accounts retain only the narrowly scoped billing routes
-  required to recover access; business features remain denied until Cloud
-  reactivates them.
-- All subscription mutations reject foreign origins. Return URLs are derived
-  from the configured OAuth callback rather than browser input.
-- Concurrent dashboard calls share refresh-token rotation, preventing false
-  disconnections while keeping Cloud authoritative.
-- Unknown or incomplete entitlement manifests fail closed.
+- Raw Cloud errors are no longer rendered directly by dashboard workspaces.
+- Delivery failures and unknown service values use localized, approved copy
+  without exposing internal component names or operational identifiers.
+- Administrative secrets remain visible only in the explicit one-time
+  generation flow where the administrator requested them.
 
-## Data protection and usage clarity
+## Regression protection
 
-- The plan workspace presents a public-safe protection summary without exposing
-  internal service names, architecture details or raw identifiers.
-- Unknown feature identifiers and service errors fail closed to approved,
-  user-facing copy.
-- Paid-plan email usage comes from the authoritative Cloud quota gate and no
-  longer treats temporarily unknown usage as zero.
-- Entitlements refresh after billing returns, periodically and whenever the
-  browser becomes active, with a visible delayed-sync state.
+- Native release checks reject known internal architecture labels in public UI
+  sources and direct rendering of raw subscription status values.
+- Type checking, production build, integration smoke tests and security scans
+  cover the release candidate.
 
 Verify the tag and attached archive using the instructions in `RELEASES.md`.
 Expected signing fingerprint:
