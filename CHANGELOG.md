@@ -4,6 +4,8 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.18 - 2026-09-22
+
 - Keep the **Update securely** workflow independent from GitHub's anonymous API
   quota by downloading release assets directly from their canonical URLs.
 - Retry transient and rate-limited asset downloads with bounded timeouts while
