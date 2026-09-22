@@ -102,6 +102,13 @@ for (const source of publicSurfaceSources) {
   assert.doesNotMatch(source, /(?:payload|body|cloudBody)\?\.detail\s*\|\|/);
 }
 
+const verifiedUpdateSource = readFileSync(
+  fileURLToPath(new URL("./verified-update.mjs", import.meta.url)),
+  "utf8",
+);
+assert.doesNotMatch(verifiedUpdateSource, /api\.github\.com/);
+assert.match(verifiedUpdateSource, /releases\/download/);
+
 const setupTestDirectory = mkdtempSync(join(tmpdir(), "nc-native-staging-setup-"));
 try {
   const output = join(setupTestDirectory, ".env.local");

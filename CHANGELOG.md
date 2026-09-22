@@ -4,6 +4,14 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+- Keep the **Update securely** workflow independent from GitHub's anonymous API
+  quota by downloading release assets directly from their canonical URLs.
+- Retry transient and rate-limited asset downloads with bounded timeouts while
+  preserving signed-tag, OpenPGP, checksum and archive-tree verification.
+- Reuse a private content-addressed npm cache, suppress nonessential registry
+  calls and allow slow dependency installation to finish without weakening
+  rollback behavior.
+
 ## 0.1.0-preview.17 - 2026-09-22
 
 - Replace the implementation-oriented data and logic map with a concise,
