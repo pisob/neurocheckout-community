@@ -102,6 +102,10 @@ for (const source of publicSurfaceSources) {
   assert.doesNotMatch(source, /(?:payload|body|cloudBody)\?\.detail\s*\|\|/);
 }
 
+const agentPerformanceSource = publicSurfaceSources[2];
+assert.match(agentPerformanceSource, /net_roi_display_mode/);
+assert.doesNotMatch(agentPerformanceSource, /roi_profit_net\s*[<>]=?/);
+
 const verifiedUpdateSource = readFileSync(
   fileURLToPath(new URL("./verified-update.mjs", import.meta.url)),
   "utf8",

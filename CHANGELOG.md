@@ -4,6 +4,9 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+- Keep the Community performance summary consistent with the presentation mode
+  supplied by NeuroCheckout Cloud.
+
 ## 0.1.0-preview.18 - 2026-09-22
 
 - Keep the **Update securely** workflow independent from GitHub's anonymous API
