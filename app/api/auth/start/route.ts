@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       "openid", "profile", "capabilities:read", "account:read",
       "shops:read", "shops:write", "templates:read", "templates:write",
       "byok:read", "byok:write", "connectors:write", "emails:read",
-      "emails:write", "analytics:read",
+      "emails:write", "analytics:read", "partners:read", "partners:write",
     ];
     // New write scopes stay on the preview Cloud until their matching private
     // routes are promoted. Existing public installations remain compatible.
