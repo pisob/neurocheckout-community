@@ -1,29 +1,29 @@
-# NeuroCheckout Community v0.1.0-preview.19
+# NeuroCheckout Community v0.1.0-preview.20
 
-Official signed prerelease aligning the Community performance summary with the
-presentation supplied by NeuroCheckout Cloud.
+Official signed prerelease adding the Partner program to the self-hosted
+Community interface.
 
-## Performance presentation
+## Partner workspace
 
-- Community follows the presentation mode supplied by the authenticated Cloud
-  response for the estimated net ROI summary.
-- Supporting performance evidence remains visible consistently across the two
-  interfaces.
-- Existing installations retain the previous presentation when the optional
-  mode is not supplied.
+- Submit and follow a partner application in English or French.
+- Copy the approved referral link and review attributed stores and engagement.
+- Follow commission balances, Stripe onboarding and payout requests.
+- Use a responsive workspace on desktop and mobile.
 
 ## Security boundary preserved
 
-- Agent calculations remain Cloud-authoritative.
-- Community receives only the user-facing result required for display.
+- Attribution, commission validation and payouts remain Cloud-authoritative.
+- Dedicated read and write permissions restrict partner operations.
+- Internal record identifiers, payment-account references and customer contact
+  details are excluded from Community responses.
 - Signed-tag, archive-signature, checksum, transactional activation and
   automatic rollback protections are unchanged.
 
 ## Regression protection
 
-- Native checks cover the performance contract and its safe fallback.
-- Type checking, production build, integration smoke tests and CodeQL scans
-  cover the release candidate.
+- Native checks cover secure updates, encrypted local data and relay behavior.
+- Type checking, production build, responsive browser tests and CodeQL scans
+  cover the partner workspace.
 
 Verify the tag and attached archive using the instructions in `RELEASES.md`.
 Expected signing fingerprint:

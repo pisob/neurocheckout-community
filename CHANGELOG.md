@@ -4,6 +4,16 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.20 - 2026-09-23
+
+- Add a bilingual Partner program workspace for applications, referral evidence,
+  commissions, Stripe onboarding and payout requests.
+- Keep attribution, commission validation and payouts authoritative in
+  NeuroCheckout Cloud behind dedicated read and write permissions.
+- Exclude internal identifiers, customer contact details and payment-account
+  references from the Community data contract.
+- Validate and bound partner inputs, filters and Stripe return destinations.
+
 ## 0.1.0-preview.19 - 2026-09-23
 
 - Keep the Community performance summary consistent with the presentation mode
