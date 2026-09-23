@@ -4,6 +4,8 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.19 - 2026-09-23
+
 - Keep the Community performance summary consistent with the presentation mode
   supplied by NeuroCheckout Cloud.
 
