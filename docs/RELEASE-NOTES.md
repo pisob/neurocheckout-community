@@ -1,30 +1,27 @@
-# NeuroCheckout Community v0.1.0-preview.18
+# NeuroCheckout Community v0.1.0-preview.19
 
-Official signed prerelease improving secure-update reliability on slow or
-rate-limited Internet connections.
+Official signed prerelease aligning the Community performance summary with the
+presentation supplied by NeuroCheckout Cloud.
 
-## Reliable secure updates
+## Performance presentation
 
-- **Update securely** downloads canonical release assets without depending on
-  the anonymous GitHub API quota.
-- Transient download and rate-limit failures are retried with bounded timeouts.
-- A private persistent npm cache reduces repeated registry downloads and helps
-  slow installations complete successfully.
-- The interface now reports the secure-download phase explicitly.
+- Community follows the presentation mode supplied by the authenticated Cloud
+  response for the estimated net ROI summary.
+- Supporting performance evidence remains visible consistently across the two
+  interfaces.
+- Existing installations retain the previous presentation when the optional
+  mode is not supplied.
 
-## Security guarantees preserved
+## Security boundary preserved
 
-- Every update still requires the canonical signed Git tag and the pinned
-  NeuroCheckout Community OpenPGP signer.
-- The archive signature, SHA-256 checksum and exact equality with the signed
-  Git tree are all verified before dependencies are installed.
-- Health checks, transactional activation and automatic rollback remain
-  mandatory; failed candidates never replace the working installation.
+- Agent calculations remain Cloud-authoritative.
+- Community receives only the user-facing result required for display.
+- Signed-tag, archive-signature, checksum, transactional activation and
+  automatic rollback protections are unchanged.
 
 ## Regression protection
 
-- Automated tests cover canonical asset URLs, transient retry behavior,
-  terminal failures, size limits and the absence of anonymous GitHub API calls.
+- Native checks cover the performance contract and its safe fallback.
 - Type checking, production build, integration smoke tests and CodeQL scans
   cover the release candidate.
 
