@@ -96,6 +96,20 @@ permission. After updating from a release that did not request this permission,
 disconnect and reconnect the installation once before starting or managing a
 subscription from Community.
 
+## Partner program
+
+When the Cloud capability is enabled, open **Partner program** to submit an
+application, copy an approved referral link, review attributed stores and
+commissions, connect Stripe and request a payout. Partner attribution,
+commission validation and payout approval remain authoritative in
+NeuroCheckout Cloud.
+
+Community receives only the account's member-facing partner evidence. Payment
+account identifiers, internal record identifiers, customer contact details and
+private metadata are excluded. The feature uses separate `partners:read` and
+`partners:write` OAuth permissions. After upgrading from an older release,
+disconnect and reconnect once to grant these permissions.
+
 ## Connect an ecommerce platform
 
 Install the official connector for your platform and follow its README:

@@ -5,6 +5,7 @@ import CloudConfiguration from "@/components/CloudConfiguration";
 import EmailApprovals from "@/components/EmailApprovals";
 import MemberMessages from "@/components/MemberMessages";
 import PlanAndData from "@/components/PlanAndData";
+import PartnerProgram from "@/components/PartnerProgram";
 import AgentPerformance from "@/components/AgentPerformance";
 import JourneyAudit from "@/components/JourneyAudit";
 import SynchronizationHealth from "@/components/SynchronizationHealth";
@@ -102,7 +103,7 @@ export type Capabilities = {
   };
 };
 
-type DashboardView = "overview" | "agents" | "agent-performance" | "converted-orders" | "usage" | "email-approvals" | "journey-audit" | "sync-health" | "messages" | "features" | "configuration";
+type DashboardView = "overview" | "agents" | "agent-performance" | "converted-orders" | "usage" | "email-approvals" | "journey-audit" | "sync-health" | "messages" | "partner-program" | "features" | "configuration";
 
 type ViewCopy = Record<DashboardView, { label: string; eyebrow: string; title: string; description: string }>;
 
@@ -117,6 +118,7 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
     "journey-audit": { label: "Journey audit", eyebrow: "Customer journey evidence", title: "Customer journey audit", description: "Review useful journeys, likely revenue leaks and the handoffs other agents can take over." },
     "sync-health": { label: "Sync health", eyebrow: "End-to-end reliability", title: "Synchronization health", description: "Follow each event from the store connector to its Cloud processing evidence." },
     messages: { label: "Internal messages", eyebrow: "Operational guidance", title: "Internal messages", description: "Read operational updates, account notices and guidance issued for your workspace." },
+    "partner-program": { label: "Partner program", eyebrow: "Partner attribution", title: "Partner program", description: "Manage your referral link, attributed customers, commissions and payout requests." },
     features: { label: "Plan & data", eyebrow: "Secure account access", title: "Plan, access and data", description: "Manage your subscription and review the safeguards applied to your data." },
     configuration: { label: "Configuration", eyebrow: "Controlled customization", title: "Store, email and connector", description: "Configure only the tool you need from a focused workspace." },
   },
@@ -130,6 +132,7 @@ const VIEW_COPY: Record<UiLanguage, ViewCopy> = {
     "journey-audit": { label: "Audit du parcours", eyebrow: "Preuves du parcours client", title: "Audit du parcours client", description: "Examinez les parcours utiles, les fuites de revenu probables et les relais possibles entre agents." },
     "sync-health": { label: "État de la synchro", eyebrow: "Fiabilité de bout en bout", title: "État de la synchronisation", description: "Suivez chaque événement, du connecteur boutique jusqu’à sa preuve de traitement Cloud." },
     messages: { label: "Messages internes", eyebrow: "Conseils opérationnels", title: "Messages internes", description: "Consultez les informations opérationnelles, alertes de compte et conseils destinés à votre espace." },
+    "partner-program": { label: "Programme partenaire", eyebrow: "Attribution partenaire", title: "Programme partenaire", description: "Gérez votre lien de recommandation, les clients attribués, les commissions et les demandes de paiement." },
     features: { label: "Offre & données", eyebrow: "Accès sécurisé au compte", title: "Offre, accès et données", description: "Gérez votre abonnement et consultez les garanties appliquées à vos données." },
     configuration: { label: "Configuration", eyebrow: "Personnalisation contrôlée", title: "Boutique, emails et connecteur", description: "Configurez uniquement l’outil dont vous avez besoin, sans parcourir une longue page." },
   },
@@ -452,6 +455,7 @@ export default function Dashboard() {
     if (!capabilities) return view === "overview";
     if (view === "email-approvals") return capabilities.features.email_approvals === true;
     if (view === "messages") return capabilities.features.member_messages === true;
+    if (view === "partner-program") return capabilities.features.partner_program === true;
     if (view === "journey-audit") return capabilities.features.journey_audit === true;
     if (view === "sync-health") return capabilities.features.sync_health === true;
     if (view === "agent-performance") return capabilities.features.agent_performance === true;
@@ -713,6 +717,10 @@ export default function Dashboard() {
 
             {activeView === "messages" && capabilities.features.member_messages ? (
               <MemberMessages language={language} />
+            ) : null}
+
+            {activeView === "partner-program" && capabilities.features.partner_program ? (
+              <PartnerProgram language={language} />
             ) : null}
 
             {activeView === "features" ? (

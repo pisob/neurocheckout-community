@@ -26,7 +26,8 @@
     "setup:local-data": "node scripts/setup-local-data.mjs",
     "backup:local-data": "node scripts/backup-local-data.mjs",
     "verify:release": "./tools/verify-community-release.sh",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:partner-program-ui": "node scripts/test-partner-program-ui.mjs"
   },
   "dependencies": {
     "next": "16.3.4",
