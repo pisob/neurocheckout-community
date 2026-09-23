@@ -303,6 +303,7 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .analytics-summary > div:last-child { border-right: 0; }
 .analytics-summary span, .conversion-summary span { display: block; color: #688aa5; font-size: 8px; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
 .analytics-summary strong { display: block; margin-top: 21px; font-size: clamp(24px, 2.6vw, 36px); letter-spacing: -.04em; }
+.analytics-summary small { display: block; margin-top: 8px; color: var(--muted); font-size: 9px; line-height: 1.45; }
 
 .journey-state-line { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; }
 .journey-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }

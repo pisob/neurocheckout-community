@@ -42,7 +42,16 @@ type PerformanceItem = {
 type PerformancePayload = {
   shop: Shop & { currency_code?: string | null };
   period: { days: number; start_date?: string | null; end_date?: string | null; timezone?: string | null };
-  summary: Record<string, number | null>;
+  summary: {
+    attributed_revenue?: number | null;
+    orders_attributed?: number | null;
+    open_rate?: number | null;
+    click_rate?: number | null;
+    roi_profit_net?: number | null;
+    net_profit_estimated?: number | null;
+    total_cost?: number | null;
+    net_roi_display_mode?: "net_profit_first" | "roi_first" | null;
+  };
   items: PerformanceItem[];
   detail?: string;
 };
@@ -169,6 +178,17 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
   );
   const currency = payload?.shop.currency_code;
   const summary = payload?.summary || {};
+  const leadWithNetProfit = summary.net_roi_display_mode === "net_profit_first";
+  const netRoiPrimary = leadWithNetProfit
+    ? formatMoney(summary.net_profit_estimated, currency)
+    : `${formatMetric(summary.roi_profit_net, 2)}x`;
+  const netRoiSecondary = leadWithNetProfit
+    ? `ROI ${formatMetric(summary.roi_profit_net, 2)}x${summary.total_cost !== null && summary.total_cost !== undefined && summary.total_cost > 0
+      ? ` · ${ui("measured cost", "coût mesuré")} ${formatMoney(summary.total_cost, currency)}`
+      : ""}`
+    : summary.net_profit_estimated !== null && summary.net_profit_estimated !== undefined
+      ? `${ui("Estimated net profit", "Profit net estimé")} ${formatMoney(summary.net_profit_estimated, currency)}`
+      : null;
   const periodLabel = payload?.period.start_date && payload?.period.end_date
     ? `${payload.period.start_date} — ${payload.period.end_date}`
     : ui(`${days} days`, `${days} jours`);
@@ -194,7 +214,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
             <div><span>{ui("Attributed orders", "Commandes attribuées")}</span><strong>{formatMetric(summary.orders_attributed, 0)}</strong></div>
             <div><span>{ui("Open rate", "Taux d’ouverture")}</span><strong>{formatMetric(summary.open_rate)}%</strong></div>
             <div><span>{ui("Click rate", "Taux de clic")}</span><strong>{formatMetric(summary.click_rate)}%</strong></div>
-            <div><span>{ui("Estimated net ROI", "ROI net estimé")}</span><strong>{formatMetric(summary.roi_profit_net, 2)}x</strong></div>
+            <div><span>{ui("Estimated net ROI", "ROI net estimé")}</span><strong>{netRoiPrimary}</strong>{netRoiSecondary ? <small>{netRoiSecondary}</small> : null}</div>
           </div>
 
           {payload.items.length === 0 ? (
