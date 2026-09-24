@@ -1,13 +1,12 @@
-# NeuroCheckout Community v0.1.0-preview.21
+# NeuroCheckout Community v0.1.0-preview.22
 
-Official signed maintenance prerelease for the self-hosted Community update
-experience.
+Official signed maintenance prerelease for Community.
 
 ## Maintenance
 
-- Improve continuity across successive signed Community releases.
-- Preserve compatibility with supported existing installations.
-- Keep the update experience clear and resilient.
+- Improve email history navigation and preview consistency.
+- Refine mobile display and content availability messages.
+- Extend automated validation.
 
 ## Security boundary preserved
 
