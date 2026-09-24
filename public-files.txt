@@ -22,6 +22,7 @@ scripts/server-data-relay.mjs
 scripts/email-archive.mjs
 scripts/email-archive.d.mts
 scripts/test-email-archive.mjs
+scripts/test-email-history-archive.mjs
 scripts/test-sent-email-ui.mjs
 scripts/server-data-relay.d.mts
 scripts/test-server-data-relay.mjs
@@ -84,6 +85,7 @@ components/ConvertedOrders.tsx
 components/SentEmailPreview.tsx
 components/SynchronizationHealth.tsx
 lib/sent-email-preview.ts
+lib/email-history-archive.ts
 components/Dashboard.tsx
 components/EmailApprovals.tsx
 components/MemberMessages.tsx

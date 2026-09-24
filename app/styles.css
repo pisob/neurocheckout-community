@@ -762,7 +762,7 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 @media (max-width:500px) { .sent-email-inspector dl { grid-template-columns:1fr; } .sent-preview-dialog { padding:16px; } }
 
 .email-history-controls { display:flex; align-items:center; justify-content:space-between; gap:18px; border-bottom:1px solid var(--line); padding:14px 24px; }
-.email-status-filters { display:flex; gap:5px; overflow-x:auto; padding:2px; }
+.email-status-filters { display:flex; min-width:0; max-width:100%; gap:5px; overflow-x:auto; padding:2px; }
 .email-status-filters button { display:flex; align-items:center; gap:7px; min-width:max-content; border:1px solid transparent; border-radius:999px; background:transparent; color:var(--muted-strong); padding:8px 11px; font-size:10px; font-weight:700; cursor:pointer; transition:background .16s,border-color .16s,color .16s; }
 .email-status-filters button:hover,.email-status-filters button.active { border-color:rgb(98 200 255 / 32%); background:rgb(40 119 243 / 12%); color:#eefaff; }
 .email-status-filters button span { color:var(--cyan); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:9px; }

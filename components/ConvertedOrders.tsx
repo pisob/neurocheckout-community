@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { publicAgentLabel, publicEnumLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
@@ -110,6 +110,10 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
   const [emailLoading, setEmailLoading] = useState(true);
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
+  const emailRequest = useRef(0);
+  const orderRequest = useRef(0);
+  const [emailContext, setEmailContext] = useState("");
+  const currentEmailContext = `${selectedShopUuid}:${emailFilter}:${emailOffset}`;
 
   const loadShops = useCallback(async () => {
     const response = await fetch("/api/cloud/shops", { cache: "no-store" });
@@ -125,6 +129,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
   }, [language]);
 
   const loadOrders = useCallback(async () => {
+    const requestId = ++orderRequest.current;
     if (!selectedShopUuid) { setPayload(null); setLoading(false); return; }
     setLoading(true);
     setError("");
@@ -132,6 +137,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
       const query = new URLSearchParams({ shop_uuid: selectedShopUuid, limit: String(limit) });
       const response = await fetch(`/api/cloud/converted-orders?${query.toString()}`, { cache: "no-store" });
       const rawBody: unknown = await response.json().catch(() => ({}));
+      if (requestId !== orderRequest.current) return;
       const body = normalizeConvertedPayload(rawBody);
       if (!response.ok) {
         if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant analytics access.", "Reconnectez cette installation une fois pour autoriser les statistiques."));
@@ -144,12 +150,14 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
       setPayload(body);
       setSelectedIndex(0);
     } catch (loadError) {
+      if (requestId !== orderRequest.current) return;
       setPayload(null);
       setError(loadError instanceof Error ? loadError.message : ui("Converted orders unavailable.", "Commandes converties indisponibles."));
-    } finally { setLoading(false); }
+    } finally { if (requestId === orderRequest.current) setLoading(false); }
   }, [language, limit, selectedShopUuid]);
 
   const loadRecentEmails = useCallback(async () => {
+    const requestId = ++emailRequest.current;
     if (!recentEmailsEnabled || !selectedShopUuid) { setEmailPayload(null); setEmailLoading(false); return; }
     setEmailLoading(true);
     setEmailError("");
@@ -157,6 +165,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
       const query = new URLSearchParams({ shop_uuid: selectedShopUuid, limit: "10", offset: String(emailOffset), status: emailFilter });
       const response = await fetch(`/api/cloud/recent-emails?${query.toString()}`, { cache: "no-store" });
       const rawBody: unknown = await response.json().catch(() => ({}));
+      if (requestId !== emailRequest.current) return;
       const body = normalizeRecentEmailPayload(rawBody);
       if (!response.ok) {
         if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant analytics access.", "Reconnectez cette installation une fois pour autoriser les statistiques."));
@@ -166,16 +175,22 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
           : publicErrorMessage(detail, { en: "Recent emails unavailable.", fr: "Emails récents indisponibles." }, language));
       }
       if (!body) throw new Error(ui("Cloud returned an invalid email activity response.", "Le Cloud a renvoyé une réponse d’activité email invalide."));
+      if (shopUuid(body.shop) !== selectedShopUuid || body.offset !== emailOffset ||
+          (emailFilter !== "all" && body.items.some((item) => item.status !== emailFilter))) {
+        throw new Error(ui("Email activity is temporarily unavailable. Please refresh.", "L’activité email est temporairement indisponible. Veuillez actualiser."));
+      }
       setEmailPayload(body);
+      setEmailContext(`${selectedShopUuid}:${emailFilter}:${emailOffset}`);
     } catch (loadError) {
+      if (requestId !== emailRequest.current) return;
       setEmailPayload(null);
       setEmailError(loadError instanceof Error ? loadError.message : ui("Recent emails unavailable.", "Emails récents indisponibles."));
-    } finally { setEmailLoading(false); }
+    } finally { if (requestId === emailRequest.current) setEmailLoading(false); }
   }, [emailFilter, emailOffset, language, recentEmailsEnabled, selectedShopUuid]);
 
   useEffect(() => { void loadShops().catch((loadError) => { setError(loadError instanceof Error ? loadError.message : ui("Stores unavailable.", "Boutiques indisponibles.")); setLoading(false); setEmailLoading(false); }); }, [loadShops]);
-  useEffect(() => { void loadOrders(); }, [loadOrders]);
-  useEffect(() => { void loadRecentEmails(); }, [loadRecentEmails]);
+  useEffect(() => { void loadOrders(); return () => { ++orderRequest.current; }; }, [loadOrders]);
+  useEffect(() => { void loadRecentEmails(); return () => { ++emailRequest.current; }; }, [loadRecentEmails]);
   useEffect(() => { setEmailOffset(0); }, [selectedShopUuid]);
 
   const selected = payload?.items[selectedIndex] || null;
@@ -278,6 +293,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
             </div>
             {statusTotal("converted") > 0 ? <p className="conversion-presence"><span />{statusTotal("converted")} {ui("conversion evidence retained", "preuve(s) de conversion conservée(s)")}</p> : null}
           </div>
+          <p className="sent-preview-note">{ui("Each email appears under its current status. A dash means that no date is available for that event.", "Chaque email apparaît sous son statut actuel. Un tiret indique qu’aucune date n’est disponible pour cet événement.")}</p>
 
           {emailError ? <p className="email-activity-error" role="alert">{emailError}</p> : null}
           {emailLoading ? <div className="email-activity-state"><span className="loader" /><p>{ui("Loading sent emails…", "Chargement des emails envoyés…")}</p></div> : null}
@@ -286,9 +302,9 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
               ? ui("No customer email has been sent for this store yet.", "Aucun email client n’a encore été envoyé pour cette boutique.")
               : ui("No email matches this status in the recent history.", "Aucun email ne correspond à ce statut dans l’historique récent.")}</p></div>
           ) : null}
-          {!emailLoading && emailPayload && emailPayload.items.length > 0 ? (
+          {!emailLoading && !emailError && emailContext === currentEmailContext && emailPayload && emailPayload.items.length > 0 ? (
             <>
-              <SentEmailPreview items={emailPayload.items.slice(0,10)} language={language} />
+              <SentEmailPreview key={currentEmailContext} items={emailPayload.items.slice(0,10)} language={language} />
               <nav className="email-pagination" aria-label={ui("Email history pages", "Pages de l’historique email")}>
                 <button className="button ghost" type="button" disabled={emailOffset === 0} onClick={() => setEmailOffset(Math.max(0, emailOffset - 10))}>{ui("Previous", "Précédent")}</button>
                 <span>{ui("Page", "Page")} {emailPage} / {emailPages}</span>
