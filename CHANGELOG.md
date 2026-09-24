@@ -4,6 +4,12 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.21 - 2026-09-24
+
+- Improve continuity and clarity for signed Community updates.
+- Preserve compatibility across supported self-hosted installations.
+- Extend automated coverage for update lifecycle behavior.
+
 ## 0.1.0-preview.20 - 2026-09-23
 
 - Add a bilingual Partner program workspace for applications, referral evidence,
