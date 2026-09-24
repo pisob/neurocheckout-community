@@ -50,7 +50,7 @@ try {
   await wait(async () => {
     const status = JSON.parse(await readFile(join(directory, "status.json"), "utf8"));
     if (status.phase === "failed") throw new Error("Preparation failed");
-    return status.phase === "complete";
+    return status.phase === "complete" && status.version === "0.1.0-preview.3";
   }, 600000);
   const pointer = JSON.parse(await readFile(join(directory, "current.json"), "utf8"));
   const source = resolve(directory, pointer.path);

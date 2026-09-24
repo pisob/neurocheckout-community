@@ -4,7 +4,7 @@ import { dirname, resolve, relative, isAbsolute } from "node:path";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { loadEnvironmentFile } from "./env-file.mjs";
-import { isNewerVersion, prepareRelease } from "./verified-update.mjs";
+import { isNewerVersion, prepareRelease, validVersion } from "./verified-update.mjs";
 import { activateCandidate } from "./update-switch.mjs";
 
 const root = process.cwd();
@@ -32,8 +32,9 @@ let switching = false;
 let child;
 const pointer = resolve(directory, "current.json");
 const requestPath = resolve(directory, "request.json");
-async function status(phase) {
-  await writeFile(resolve(directory, "status.tmp"), JSON.stringify({ phase }), { mode: 0o600 });
+async function status(phase, version) {
+  const payload = validVersion(version) ? { phase, version } : { phase };
+  await writeFile(resolve(directory, "status.tmp"), JSON.stringify(payload), { mode: 0o600 });
   await rename(resolve(directory, "status.tmp"), resolve(directory, "status.json"));
 }
 function launch(source) {
@@ -81,7 +82,11 @@ try {
   }
 } catch { /* First start uses the installed build. */ }
 // An interrupted request is not silently retried at startup.
-try { await unlink(requestPath); await status("interrupted"); } catch (error) { if (error.code !== "ENOENT") throw error; }
+try {
+  const interrupted = JSON.parse(await readFile(requestPath, "utf8"));
+  await unlink(requestPath);
+  await status("interrupted", interrupted?.version);
+} catch (error) { if (error.code !== "ENOENT") throw error; }
 await rm(resolve(directory, "queue.lock"), { recursive: true, force: true });
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => { stopping = true; cancellation.abort(); });
 try {
@@ -102,9 +107,9 @@ try {
       }
       const currentMetadata = JSON.parse(await readFile(resolve(current, "package.json"), "utf8"));
       if (!isNewerVersion(request.version, currentMetadata.version)) throw new Error("update_not_newer");
-      const candidate = await prepareRelease(directory, request.version, status, cancellation.signal);
+      const candidate = await prepareRelease(directory, request.version, phase => status(phase, request.version), cancellation.signal);
       if (stopping) break;
-      await status("restarting");
+      await status("restarting", request.version);
       switching = true;
       const result = await activateCandidate(candidate, current, {
         stop: () => stop(child),
@@ -117,13 +122,13 @@ try {
       });
       if (result.phase === "complete") previous = current;
       current = result.current;
-      await status(result.phase);
+      await status(result.phase, request.version);
     } catch {
       if (switching && !stopping) {
         await stop(child);
         child = launch(current);
-        await status((await healthy(child)) ? "rolled_back" : "failed");
-      } else await status("failed");
+        await status((await healthy(child)) ? "rolled_back" : "failed", request?.version);
+      } else await status("failed", request?.version);
     } finally {
       switching = false;
       await unlink(requestPath).catch(() => {});
