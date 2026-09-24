@@ -45,7 +45,7 @@ try {
   await page.locator('.email-activity').screenshot({path:process.env.NC_TEST_SCREENSHOT});
  }
  await page.getByRole('button',{name:/Older message/}).click();
-  await page.locator('.sent-email-inspector').getByText('The original content was not archived.',{exact:false}).waitFor();
+  await page.locator('.sent-email-inspector').getByText('The original content is unavailable in this installation.',{exact:false}).waitFor();
   assert.equal(await page.getByRole('link', {name: 'Open original cart link'}).count(), 0);
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -53,5 +53,42 @@ try {
  await page.frameLocator('.sent-email-inspector iframe').getByText('Total: $147.24').waitFor();
  await page.waitForTimeout(300);
  assert.deepEqual(outbound,[]);assert.deepEqual(errors,[]);
+ // Exercise real tab changes with intentionally reordered server replies.
+ const statuses = ['sent', 'delivered', 'opened', 'clicked', 'converted', 'bounced'];
+ const history = statuses.map((status, index) => ({ ...items[0], delivery_id: `community-edge-${100+index}`,
+   subject: `Message ${status}`, status, body_html: `<p>Content ${status}</p>`, tracking_available: true }));
+ let releaseSlow, startedSlow;
+ const slowStarted = new Promise(resolve => { startedSlow = resolve; });
+ const slowGate = new Promise(resolve => { releaseSlow = resolve; });
+ let slowOnce = true;
+ await page.route('**/api/cloud/recent-emails?*', async route => {
+   const query = new URL(route.request().url()).searchParams;
+   const status = query.get('status');
+   if (status === 'sent' && slowOnce) { slowOnce = false; startedSlow(); await slowGate; }
+   const filtered = status === 'all' ? history : history.filter(item => item.status === status);
+   await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ shop, items: filtered,
+     count: filtered.length, total: filtered.length, limit: 10, offset: 0, has_more: false,
+     status_counts: Object.fromEntries(statuses.map(status => [status, 1])) }) });
+ });
+ await page.setViewportSize({width:1440,height:1100});
+ const tab = name => page.locator('.email-status-filters button').filter({ hasText: new RegExp(`^${name}\\s*\\d*$`) });
+ await tab('Sent').click();
+ await slowStarted;
+ await tab('Converted').click();
+ await page.locator('.sent-email-inspector h3').filter({hasText:'Message converted'}).waitFor();
+ releaseSlow();
+ await page.waitForTimeout(250);
+ assert.equal(await page.locator('.sent-email-inspector h3').innerText(), 'Message converted');
+ for (const status of statuses) {
+   await tab(status[0].toUpperCase()+status.slice(1)).click();
+   await page.locator('.sent-email-inspector h3').filter({hasText:`Message ${status}`}).waitFor();
+   assert.equal(await page.locator('.sent-email-list button').count(), 1);
+   await page.frameLocator('.sent-email-inspector iframe').getByText(`Content ${status}`, {exact:true}).waitFor();
+ }
+ await tab('All').click();
+ await page.getByRole('button', {name:/Message clicked/}).click();
+ await page.frameLocator('.sent-email-inspector iframe').getByText('Content clicked', {exact:true}).waitFor();
+ assert.deepEqual(errors, []);
+ console.log('Exclusive status tabs, delayed response rejection and preview identity passed.');
  console.log('Desktop/mobile, original preview, missing-copy state, modal keyboard and zero external requests passed.');
 }finally{await browser?.close();server.kill('SIGTERM');if(server.exitCode===null)await once(server,'exit');}

@@ -68,6 +68,9 @@ jobs:
       - name: Test encrypted email archive
         run: npm run test:email-archive
 
+      - name: Test email history
+        run: npm run test:email-history
+
       - name: Test encrypted staging local data
         run: npm run test:local-data
 

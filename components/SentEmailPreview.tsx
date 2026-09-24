@@ -17,18 +17,25 @@ function emailKey(item: SentEmail): string {
 }
 export default function SentEmailPreview({ items, language }: { items: SentEmail[]; language: UiLanguage }) {
   const fr = language === "fr", ui = (en: string, french: string) => fr ? french : en;
-  const [selectedKey, setSelectedKey] = useState(""), [documentHtml, setDocumentHtml] = useState("");
-  const [recoveryLink, setRecoveryLink] = useState<{ href: string; label: string } | null>(null);
+  const [selectedKey, setSelectedKey] = useState("");
+  const [prepared, setPrepared] = useState<{ email: SentEmail; html: string; link: { href: string; label: string } | null } | null>(null);
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null);
   const selected = items.find((item) => emailKey(item) === selectedKey) || items[0];
   useEffect(() => {
     if (!items.some((item) => emailKey(item) === selectedKey)) setSelectedKey(items[0] ? emailKey(items[0]) : "");
   }, [items, selectedKey]);
-  useEffect(() => { setDocumentHtml(selected?.body_html && selected.preview_available ? sentEmailPreview(selected.body_html, selected.preview_asset_base_url) : ""); }, [selected]);
-  useEffect(() => { setRecoveryLink(selected?.body_html && selected.preview_available ? sentEmailRecoveryLink(selected.body_html) : null); }, [selected]);
+  useEffect(() => {
+    dialog.current?.close();
+    if (!selected) { setPrepared(null); return; }
+    const html = selected.body_html && selected.preview_available ? selected.body_html : "";
+    setPrepared({ email: selected, html: html ? sentEmailPreview(html, selected.preview_asset_base_url) : "", link: html ? sentEmailRecoveryLink(html) : null });
+  }, [selected]);
+  // Never pair a previous message's HTML or cart URL with the new selection.
+  const documentHtml = prepared?.email === selected ? prepared.html : "";
+  const recoveryLink = prepared?.email === selected ? prepared.link : null;
   const date = (value?: string | null) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString(fr ? "fr-FR" : "en-US") : "—";
   const statuses: Record<string, string> = { sent: ui("Sent", "Envoyé"), delivered: ui("Delivered", "Livré"), opened: ui("Opened", "Ouvert"), clicked: ui("Clicked", "Cliqué"), converted: ui("Converted", "Converti"), bounced: ui("Bounced", "Rejeté") };
-  const preview = (large = false) => documentHtml ? <iframe className={large ? "sent-preview-frame expanded" : "sent-preview-frame"} sandbox="" referrerPolicy="no-referrer" title={ui("Sent email preview", "Aperçu de l’email envoyé")} srcDoc={documentHtml} /> : selected?.preview_available && selected.body_text ? <pre className="sent-preview-text">{selected.body_text}</pre> : <p className="email-activity-state">{ui("The original content was not archived. No preview can be reconstructed.", "Le contenu original n’a pas été archivé. Aucun aperçu ne peut être reconstitué.")}</p>;
+  const preview = (large = false) => documentHtml ? <iframe key={emailKey(selected)} className={large ? "sent-preview-frame expanded" : "sent-preview-frame"} sandbox="" referrerPolicy="no-referrer" title={ui("Sent email preview", "Aperçu de l’email envoyé")} srcDoc={documentHtml} /> : selected?.preview_available && selected.body_text ? <pre className="sent-preview-text">{selected.body_text}</pre> : <p className="email-activity-state">{selected?.preview_available && selected.body_html ? ui("Loading preview…", "Chargement de l’aperçu…") : ui("The original content is unavailable in this installation. Delivery and tracking details remain available.", "Le contenu original est indisponible dans cette installation. Les informations d’envoi et de suivi restent disponibles.")}</p>;
   if (!selected) return null;
   return <div className="sent-email-workspace">
     <div className="sent-email-list" aria-label={ui("Sent emails", "Emails envoyés")}>
