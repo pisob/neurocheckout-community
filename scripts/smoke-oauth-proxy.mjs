@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, mkdtempSync, rmSync, unlinkSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createServer } from "node:http";
 import { join } from "node:path";
@@ -128,6 +128,7 @@ const cloud = createServer(async (request, response) => {
       plan: { code: "community" },
       dashboard: {
         latest_version: "99.0.0", allowed_versions: [packageVersion, "99.0.0"],
+        current_version: request.headers["x-neurocheckout-community-version"],
         update_recommended: true, update_required: targetBlocked,
         version_status: targetBlocked ? "blocked" : "compatible",
       },
@@ -435,6 +436,17 @@ try {
   const capabilities = await communityFetch("/api/cloud/capabilities");
   assert.equal(capabilities.status, 200);
   assert.equal((await capabilities.json()).quotas.email.limit, 100);
+  writeFileSync(join(updateDirectory, "status.json"), JSON.stringify({ phase: "complete" }));
+  assert.equal((await (await communityFetch("/api/local-update")).json()).phase, "idle");
+  writeFileSync(join(updateDirectory, "status.json"), JSON.stringify({ phase: "complete", version: packageVersion }));
+  assert.equal((await (await communityFetch("/api/local-update")).json()).phase, "idle");
+  writeFileSync(join(updateDirectory, "target.json"), JSON.stringify({ version: "99.0.0" }));
+  writeFileSync(join(updateDirectory, "status.json"), JSON.stringify({ phase: "complete" }));
+  assert.equal((await (await communityFetch("/api/local-update")).json()).phase, "idle");
+  writeFileSync(join(updateDirectory, "status.json"), JSON.stringify({ phase: "failed" }));
+  assert.equal((await (await communityFetch("/api/local-update")).json()).phase, "failed");
+  writeFileSync(join(updateDirectory, "status.json"), JSON.stringify({ phase: "failed", version: "99.0.0" }));
+  assert.equal((await (await communityFetch("/api/local-update")).json()).phase, "failed");
   for (const origin of ["null", "https://foreign.invalid"]) {
     assert.equal((await communityFetch("/api/local-update", { method: "POST", headers: { Origin: origin } })).status, 403);
   }
@@ -444,7 +456,9 @@ try {
   assert.equal((await communityFetch("/api/local-update", { method: "POST", headers: { Origin: communityOrigin }, body: JSON.stringify({ version: "evil", command: "echo unsafe" }) })).status, 202);
   assert.deepEqual(JSON.parse(readFileSync(join(updateDirectory, "request.json"), "utf8")), { version: "99.0.0" });
   assert.equal((await communityFetch("/api/local-update", { method: "POST", headers: { Origin: communityOrigin } })).status, 409);
-  assert.equal((await (await communityFetch("/api/local-update")).json()).phase, "queued");
+  const queuedUpdate = await (await communityFetch("/api/local-update")).json();
+  assert.equal(queuedUpdate.phase, "queued");
+  assert.equal(queuedUpdate.version, "99.0.0");
   unlinkSync(join(updateDirectory, "request.json"));
 
   const shops = await communityFetch("/api/cloud/shops");
