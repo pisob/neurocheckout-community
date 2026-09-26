@@ -31,7 +31,7 @@
     "test:partner-program-ui": "node scripts/test-partner-program-ui.mjs"
   },
   "dependencies": {
-    "next": "16.3.4",
+    "next": "16.3.6",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
