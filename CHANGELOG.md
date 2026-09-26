@@ -4,6 +4,12 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.23 - 2026-09-26
+
+- Publish a signed validation preview using the existing Community client.
+- Refresh installation references. Cloud-managed availability depends on the
+  connected environment; no client behavior changes are introduced.
+
 ## 0.1.0-preview.22 - 2026-09-24
 
 - Improve email history navigation, preview consistency and mobile display.

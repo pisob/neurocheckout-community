@@ -1,12 +1,13 @@
-# NeuroCheckout Community v0.1.0-preview.22
+# NeuroCheckout Community v0.1.0-preview.23
 
-Official signed maintenance prerelease for Community.
+Official signed validation prerelease for Community.
 
 ## Maintenance
 
-- Improve email history navigation and preview consistency.
-- Refine mobile display and content availability messages.
-- Extend automated validation.
+- Refresh the signed installation reference for this validation preview.
+- The Community client behavior is unchanged from preview.22.
+- Cloud-managed availability depends on the connected environment. This preview
+  does not announce a production rollout of Cloud features.
 
 ## Security boundary preserved
 
