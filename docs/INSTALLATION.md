@@ -30,12 +30,53 @@ node --version
 npm --version
 ```
 
-## Obtain and verify the official release
+## 1. Create your account and obtain your Client ID first
+
+No local installation is required yet. Complete these browser steps **before**
+running the setup assistant.
+
+This guide's `--environment=preview` commands connect to **staging**. You need
+authorized access to `https://staging.neurocheckout.com`; a production account or
+Client ID cannot be substituted. If access is refused, request staging access
+from NeuroCheckout before proceeding.
+
+1. [Register](https://staging.neurocheckout.com/register) or
+   [sign in](https://staging.neurocheckout.com/login), then verify your email if requested.
+2. For a new free account, open [plan selection](https://staging.neurocheckout.com/onboarding/subscription)
+   and select **Activate Community** / **Continue free with Community**. No Stripe
+   checkout or payment card is required. If you already have an active trial or
+   paid plan, keep that plan and skip this step.
+3. Create or select your store in the Cloud dashboard.
+4. Open [Community installations](https://staging.neurocheckout.com/dashboard/community)
+   and create an installation for that store, with a name and this exact local
+   callback URL: `http://localhost:3400/api/auth/callback`.
+5. Copy the displayed public **Client ID**, beginning with `nc_`. For an existing
+   installation, retrieve its Client ID instead of registering a duplicate.
+
+The **Public Cloud client ID** is an OAuth installation identifier, not a
+password, connector API key, signing key or MCP URL. Browser sign-in and consent
+are still required. You will paste this identifier into the terminal in step 3.
+
+For an authorized production deployment, perform those browser steps on
+`https://www.neurocheckout.com` instead and use `--environment=production` during
+setup. Do not mix environments. For a hosted installation, register your own
+HTTPS callback, for example `https://community.example.com/api/auth/callback`,
+instead of the localhost URL.
+
+Community Free enables one store, Supervisor plus seven enabled specialist
+agents, and 100 emails per account over a rolling 24-hour window. An active
+trial or paid account retains its existing Cloud plan and quotas.
+
+One active store can be assigned to only one active Community installation.
+An account can keep at most two active installations. Revoke an existing
+installation in Cloud before replacing it for the same store.
+
+## 2. Obtain and verify the official release
 
 Install a fixed signed release, not the moving development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.21 --depth 1 \
+git clone --branch v0.1.0-preview.23 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -43,7 +84,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.21
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.23
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -59,39 +100,7 @@ cannot be verified. A trust warning after importing the dedicated release key
 into a new temporary keyring is expected and does not mean that the signature
 is invalid.
 
-## 1. Register the installation
-
-1. Create an account at
-   [NeuroCheckout registration](https://www.neurocheckout.com/register), or
-   [sign in](https://www.neurocheckout.com/login). Verify the account email if
-   requested.
-2. Open the
-   [plan selection page](https://www.neurocheckout.com/onboarding/subscription)
-   and select **Activate Community** or **Continue free with Community**. No
-   payment card is required.
-3. In the Cloud member dashboard, create or connect the store that this
-   installation will manage.
-4. Open
-   [NeuroCheckout Cloud → Community installations](https://www.neurocheckout.com/dashboard/community).
-5. Select that store and create an installation with its exact callback URL:
-
-   - local evaluation: `http://localhost:3400/api/auth/callback`;
-   - hosted installation: `https://community.example.com/api/auth/callback`.
-
-6. Copy the displayed public Client ID. Community uses OAuth 2.0 Authorization
-   Code with PKCE and therefore does not require a client secret.
-
-Community Free enables one store, Supervisor plus seven enabled specialist
-agents, and 100 emails per account over a rolling 24-hour window. If the
-account already has an active trial or paid Cloud plan, skip free-plan
-activation and go directly to **Community installations**. The self-hosted
-interface uses the existing Cloud plan and quotas.
-
-One active store can be assigned to only one active Community installation.
-An account can keep at most two active installations. Revoke an existing
-installation in Cloud before replacing it for the same store.
-
-## 2. Configure the dashboard automatically
+## 3. Configure the dashboard automatically
 
 From the repository root:
 
@@ -102,6 +111,11 @@ npm run setup -- --environment=preview
 The assistant asks only for the public client ID and exact callback URL. It
 generates a strong session secret, writes `.env.local` with permission `0600`
 and never displays the secret.
+
+At **Public Cloud client ID**, paste the identifier copied in step 1. At
+**Exact callback URL**, use the exact URL registered there. If the terminal is
+already waiting for the identifier, leave it open, finish step 1 in your browser
+and return to paste the Client ID. Do not enter a password or connector API key.
 
 For an unattended installation, pass the two public values explicitly:
 
@@ -125,7 +139,7 @@ For local HTTP, the assistant sets `NC_COMMUNITY_COOKIE_SECURE=false`. For a
 hosted HTTPS callback, it sets the value to `true`. Never commit `.env.local`
 or reuse the session secret between installations.
 
-## 3. Install and start without Docker
+## 4. Install and start without Docker
 
 ```bash
 npm run install:native
@@ -153,7 +167,7 @@ PORT=3500 npm start
 
 The registered OAuth callback must use the same port.
 
-## 4. Keep Community running with systemd
+## 5. Keep Community running with systemd
 
 The repository includes `deploy/neurocheckout-community.service`. It expects
 the repository at `/opt/neurocheckout-community`, a Linux account named
@@ -173,7 +187,7 @@ The unit starts only the Community interface, reads `.env.local` through the
 native launcher, restarts after a failure and does not expose port 3400 beyond
 the server loopback interface.
 
-## 5. Configure HTTPS
+## 6. Configure HTTPS
 
 Example Caddy configuration:
 
@@ -191,7 +205,7 @@ Register `https://community.example.com/api/auth/callback` in Cloud before
 starting the OAuth connection. Run `npm run setup -- --environment=preview` again if the callback
 changes; it preserves the existing session secret.
 
-## 6. Validate the connection
+## 7. Validate the connection
 
 Before opening the browser, the diagnostic must pass:
 
