@@ -13,14 +13,55 @@ Official repository: https://github.com/pisob/neurocheckout-community
 - Node.js 22.13 or newer;
 - npm 10 or newer;
 - Git and GnuPG 2.x;
-- an active NeuroCheckout account and a Community Client ID;
+- a NeuroCheckout account and a Community Client ID, obtained in steps 1–2 below;
 - continuous outbound HTTPS access while NeuroCheckout is operating.
 
 No inbound Internet port is required for a localhost installation. The computer
 or server hosting Community must remain online. If it becomes unavailable,
 dependent actions pause safely and resume automatically after reconnection.
 
-## Install an official preview
+## 1. Create your Cloud account before installing Community
+
+The commands below use `--environment=preview`, which connects to **Cloud
+staging**, not production. First confirm that you have authorized staging access.
+If access is refused, stop here and request access from NeuroCheckout; installing
+Community does not grant access to staging.
+
+1. [Create your staging account](https://staging.neurocheckout.com/register), or
+   [sign in to staging](https://staging.neurocheckout.com/login) if you already
+   have one. Verify your email if requested.
+2. For a new free account, open [plan selection](https://staging.neurocheckout.com/onboarding/subscription)
+   and choose **Activate Community** / **Continue free with Community**.
+   This free activation does not require Stripe checkout or a payment card.
+   **Already subscribed or in an active trial? Keep that plan; skip free activation.**
+3. In the Cloud dashboard, create or select the store that Community will manage.
+
+For production, use your account at `https://www.neurocheckout.com`, an authorized
+release and the [production instructions](docs/INSTALLATION.md). Do not mix a
+production Client ID with preview setup. Accounts and installations must belong
+to the environment you connect to.
+
+## 2. Register your installation and copy its public Client ID
+
+Community does **not** need to be installed or running for this step.
+
+1. Open [Community installations in staging](https://staging.neurocheckout.com/dashboard/community).
+2. Create an installation for your store and give it a recognizable name.
+3. For this local installation, register the exact callback URL:
+   `http://localhost:3400/api/auth/callback`.
+4. Copy the installation's **Client ID** (beginning with `nc_`). Keep it available
+   for step 4. For an existing installation, use its existing Client ID rather
+   than creating a duplicate for the same store.
+
+**What is “Public Cloud client ID”?** It is the public OAuth identifier of your
+Community installation, not a password, connector API key, signing key or MCP
+server. It identifies the installation; you still sign in and authorize access
+in the browser. You do not create this identifier yourself.
+
+Before continuing, you must have **both your Client ID and the exact callback
+URL**, from the same Cloud environment.
+
+## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
 and note the latest tag. The example below uses `v0.1.0-preview.23`:
@@ -53,19 +94,41 @@ signature from `NeuroCheckout Community Release <contact@neurocheckout.com>`.
 A trust warning is normal after importing a key for the first time; a bad
 signature is not.
 
-Run the guided setup using the public Client ID and callback URL shown in your
-NeuroCheckout account:
+## 4. Configure, install and start Community
+
+Run the guided setup from the `neurocheckout-community` directory:
 
 ```bash
 npm run setup -- --environment=preview
+```
+
+When prompted:
+
+- **Public Cloud client ID:** paste the Client ID copied in step 2, then press Enter.
+- **Exact callback URL:** enter `http://localhost:3400/api/auth/callback`, exactly
+  as registered in Cloud, then press Enter.
+
+If you are already stuck at the Client ID prompt, you can leave that terminal
+open, complete steps 1–2 in your browser, then return and paste the identifier.
+Do not enter your password, an API key or an MCP URL.
+
+After setup succeeds, run:
+
+```bash
 npm run install:native
 npm start
 ```
+
+## 5. Connect your installation to Cloud
 
 Open http://localhost:3400 and select **Connect to Cloud**. After connection,
 Community automatically creates its encrypted local vault and starts product and
 cart synchronization for the eligible store. No additional synchronization
 secret, server file or SSH access is required.
+
+Use the same staging account that owns the installation. Check your store and
+**Sync health**. If the store connector is not configured yet, follow
+[Connect an ecommerce platform](#connect-an-ecommerce-platform) below.
 
 ## Plans, billing and continuity
 
