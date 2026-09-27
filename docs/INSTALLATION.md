@@ -71,6 +71,18 @@ One active store can be assigned to only one active Community installation.
 An account can keep at most two active installations. Revoke an existing
 installation in Cloud before replacing it for the same store.
 
+### Exact callback URL: where will you install Community?
+
+- **On your computer:** use `http://localhost:3400/api/auth/callback`.
+- **On a server:** use the HTTPS address where you will open Community, then add
+  `/api/auth/callback`. Example:
+  `https://community.example.com/api/auth/callback` (replace the example domain
+  with your own).
+
+This is not your store address. After Cloud sign-in, your browser uses this
+address to return to Community. Copy exactly the same URL into the setup
+assistant.
+
 ## 2. Obtain and verify the official release
 
 Install a fixed signed release, not the moving development branch:
