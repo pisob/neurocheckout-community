@@ -4,6 +4,11 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.24 - 2026-09-27
+
+- Clarify subscription action labels in English and French.
+- Improve installation guidance and browser regression coverage.
+
 ## 0.1.0-preview.23 - 2026-09-26
 
 - Publish a signed validation preview using the existing Community client.
