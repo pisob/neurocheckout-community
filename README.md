@@ -61,6 +61,18 @@ in the browser. You do not create this identifier yourself.
 Before continuing, you must have **both your Client ID and the exact callback
 URL**, from the same Cloud environment.
 
+### Exact callback URL: where will you install Community?
+
+- **On your computer:** use `http://localhost:3400/api/auth/callback`.
+- **On a server:** use the HTTPS address where you will open Community, then add
+  `/api/auth/callback`. Example:
+  `https://community.example.com/api/auth/callback` (replace the example domain
+  with your own).
+
+This is not your store address. After Cloud sign-in, your browser uses this
+address to return to Community. Copy exactly the same URL into the setup
+assistant.
+
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
