@@ -99,6 +99,11 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
     [capabilities.features, language],
   );
   const dataResidency = capabilities.data_residency;
+  const upgradeLabel = capabilities.upgrade.action === "upgrade" || selectedPlan === "pro"
+    ? ui("Upgrade to Pro", "Passer à Pro")
+    : selectedPlan === "starter"
+      ? ui("Upgrade to Starter", "Passer à Starter")
+      : ui("Change plan", "Changer d’offre");
   const authoritativeContract = capabilities.manifest?.authority === "neurocheckout_cloud"
     && capabilities.manifest.deny_by_default === true;
 
@@ -126,8 +131,8 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
     }
     if (detail === "billing_portal_required_for_existing_subscription") {
       return ui(
-        "This account already has a billing relationship. Use Manage billing instead.",
-        "Ce compte possède déjà une relation de facturation. Utilisez Gérer la facturation.",
+        "This account already has a billing relationship. Use Change plan — Upgrade / Downgrade instead.",
+        "Ce compte possède déjà une relation de facturation. Utilisez Changer d’offre — Upgrade / Downgrade.",
       );
     }
     if (detail === "stripe_checkout_state_uncertain_retry_same_intent") {
@@ -308,8 +313,8 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
           </select>
         </div>
         <div className="subscription-actions">
-          {capabilities.upgrade.available ? <button className="button primary" type="button" disabled={busy !== null || !authoritativeContract} onClick={() => void startSubscription()}>{busy === "checkout" ? ui("Opening…", "Ouverture…") : capabilities.upgrade.action === "upgrade" ? ui("Upgrade to Pro", "Passer à Pro") : ui("Continue securely", "Continuer en sécurité")}</button> : null}
-          {capabilities.subscription.can_manage_billing ? <button className="button ghost" type="button" disabled={busy !== null || !authoritativeContract} onClick={() => void openBillingPortal()}>{busy === "portal" ? ui("Opening…", "Ouverture…") : ui("Manage billing", "Gérer la facturation")}</button> : null}
+          {capabilities.upgrade.available ? <button className="button primary" type="button" disabled={busy !== null || !authoritativeContract} onClick={() => void startSubscription()}>{busy === "checkout" ? ui("Opening…", "Ouverture…") : upgradeLabel}</button> : null}
+          {capabilities.subscription.can_manage_billing ? <button className="button ghost" type="button" disabled={busy !== null || !authoritativeContract} onClick={() => void openBillingPortal()}>{busy === "portal" ? ui("Opening…", "Ouverture…") : ui("Change plan — Upgrade / Downgrade", "Changer d’offre — Upgrade / Downgrade")}</button> : null}
           <button className="button ghost" type="button" disabled={busy !== null} onClick={() => void refresh()}>{busy === "refresh" ? ui("Refreshing…", "Actualisation…") : ui("Refresh entitlements", "Actualiser les droits")}</button>
         </div>
       </div>
