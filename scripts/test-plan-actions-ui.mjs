@@ -41,6 +41,10 @@ try {
         };
       } else if (path.endsWith("/setup")) {
         body = { enabled: true, configured: true };
+      } else if (path.endsWith("/subscription/preview")) {
+        const query = new URL(request.url()).searchParams;
+        body = { plan_code: query.get("plan_code"), billing_cycle: query.get("billing_cycle"), amount: 123.45, currency: "USD", tax_behavior: "exclusive", limits: { shops: 4, agents: 8, emails: 1000 } };
+        if (scenario === "error") { status = 503; body = { detail: "private_exception_not_for_display" }; }
       } else if (path.includes("/subscription/") && request.method() === "POST") {
         mutations.push({ path, body: request.postDataJSON() });
         if (scenario === "error") { status = 503; body = { detail: "billing_unavailable" }; }
@@ -60,6 +64,20 @@ try {
       assert.equal(mutations.length, 0);
     } else {
       await button.click();
+      await page.getByRole("dialog").waitFor();
+      assert.equal(mutations.length, 0, "Opening the review must not change billing");
+      await page.getByRole("button", { name: "Not now", exact: true }).click();
+      assert.equal(mutations.length, 0, "Cancelling the review must not change billing");
+      await button.click();
+      if (scenario !== "portal") await page.getByText("Paid subscription, without a new 30-day trial.", { exact: false }).waitFor();
+      if (scenario === "error") {
+        await page.getByText("The current price could not be verified.", { exact: false }).waitFor();
+        assert(!(await page.locator('body').innerText()).includes('private_exception'));
+      } else {
+        await page.getByText('Recurring base price : $123.45 / month', { exact: true }).waitFor();
+        await page.getByText('New limits : 4 stores · 8 agents · 1000 emails per month', { exact: true }).waitFor();
+      }
+      await page.getByRole("button", { name: "Continue to secure billing", exact: true }).click();
       if (scenario === "error") {
         await page.locator(".config-error[role=alert]").last().waitFor();
         await page.waitForFunction(() => !document.querySelector(".subscription-actions .primary").disabled);

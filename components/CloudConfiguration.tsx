@@ -119,6 +119,11 @@ export default function CloudConfiguration() {
   const [error, setError] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<"shop" | "email" | "byok" | "connector">("shop");
 
+  useEffect(() => {
+    const tool = new URL(window.location.href).searchParams.get("tool");
+    if (tool === "shop" || tool === "email" || tool === "byok" || tool === "connector") setActiveTool(tool);
+  }, []);
+
   const selectedShop = useMemo(
     () => shops.find((shop) => shopUuid(shop) === selectedShopUuid) || null,
     [selectedShopUuid, shops],

@@ -16,6 +16,10 @@ const archive = {
 const result = enrichEmailHistory([item('broken'), item('good'), item('retry')], archive);
 assert.equal(result.length, 3);
 assert.equal(result[0].preview_available, false);
+assert.equal(result[0].preview_state, 'read_error');
+assert.equal(result[1].preview_state, 'available');
+assert.equal(enrichEmailHistory([item('missing')])[0].preview_state, 'unavailable');
+assert(!JSON.stringify(result).includes('unreadable'));
 for (const row of result.slice(1)) {
   assert.equal(row.subject, 'Archived subject');
   assert.equal(row.body_html, '<p>Original</p>');

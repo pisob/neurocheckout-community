@@ -1,34 +1,47 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
+import { publicErrorMessage } from "@/lib/public-presentation";
 
 export default function LocalUpdate({ french }: { french: boolean }) {
   const [available, setAvailable] = useState(false);
   const [phase, setPhase] = useState("idle");
   const [pending, setPending] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [versions, setVersions] = useState<{ current?: string; latest?: string }>({});
+  const [checkError, setCheckError] = useState("");
   const titleId = useId();
   const descriptionId = useId();
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const triggerButtonRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLElement>(null);
+  const requestedAt = useRef(0);
   useEffect(() => {
     let active = true;
     const poll = async () => {
       try {
         const response = await fetch("/api/local-update", { cache: "no-store" });
-        if (!response.ok) return;
+        if (!response.ok) throw new Error();
         const data = await response.json();
         if (!active) return;
         setAvailable(data.available);
-        setPhase(data.phase);
-        if (data.phase === "complete" && pending) window.location.reload();
-        if (["complete", "failed", "rolled_back", "interrupted"].includes(data.phase)) setPending(false);
-      } catch { /* Keep polling during the server restart. */ }
+        setCheckError("");
+        setVersions({ current: data.current_version, latest: data.latest_version });
+        const verified = data.completion_verified === true && data.current_version === data.latest_version && data.version === data.current_version;
+        setPhase(data.phase === "complete" && !verified ? "confirming" : data.phase);
+        if (verified && pending) window.location.reload();
+        if (verified || ["failed", "rolled_back", "interrupted"].includes(data.phase)) setPending(false);
+        if (pending && data.phase === "idle" && Date.now() - requestedAt.current > 15000) {
+          setPending(false);
+          setCheckError(french ? "Aucune mise à jour en cours n’est confirmée. Vous pouvez réessayer." : "No running update is confirmed. You can retry.");
+        }
+      } catch {
+        if (active) setCheckError(french ? "Vérification temporairement indisponible. Reconnexion automatique ; ne relancez pas l’installation pendant le redémarrage." : "Version check temporarily unavailable. Reconnecting automatically; do not restart installation during the restart.");
+      }
     };
     void poll();
     const timer = setInterval(poll, pending ? 3000 : 15000);
     return () => { active = false; clearInterval(timer); };
-  }, [pending]);
+  }, [pending, french]);
   useEffect(() => {
     if (!confirming) return;
     const previousOverflow = document.body.style.overflow;
@@ -52,24 +65,37 @@ export default function LocalUpdate({ french }: { french: boolean }) {
       triggerButtonRef.current?.focus();
     };
   }, [confirming]);
-  const busy = pending || ["queued", "verifying", "downloading", "building", "restarting"].includes(phase);
+  const busy = pending || ["queued", "verifying", "downloading", "building", "restarting", "confirming"].includes(phase);
   const labels: Record<string, string> = french ? {
+    confirming: "Vérification de la version démarrée…",
     queued: "Mise à jour en attente…", verifying: "Vérification de la release…", downloading: "Téléchargement sécurisé…", building: "Préparation de la mise à jour…", restarting: "Redémarrage…", failed: "Échec de la mise à jour. Réessayez ou consultez le guide.", rolled_back: "L’ancienne version a été restaurée.", interrupted: "La mise à jour a été interrompue.", complete: "Mise à jour terminée.",
   } : {
+    confirming: "Verifying the running version…",
     queued: "Update queued…", verifying: "Verifying release…", downloading: "Downloading securely…", building: "Preparing update…", restarting: "Restarting…", failed: "Update failed. Retry or consult the guide.", rolled_back: "The previous version was restored.", interrupted: "Update interrupted.", complete: "Update complete.",
   };
   async function update() {
+    requestedAt.current = Date.now();
     setConfirming(false);
     setPending(true); setPhase("queued");
     try {
       const response = await fetch("/api/local-update", { method: "POST" });
-      if (!response.ok) throw new Error();
-    } catch { setPending(false); setPhase("failed"); }
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setCheckError(publicErrorMessage(data.detail, { en: "Update could not start. Retry or open the update guide.", fr: "La mise à jour n’a pas pu démarrer. Réessayez ou ouvrez le guide." }, french ? "fr" : "en"));
+        setPending(false); setPhase("failed");
+      }
+    } catch {
+      // A lost response does not prove that queue publication failed.
+      setCheckError(french ? "Demande envoyée, confirmation en attente. Vérification automatique en cours." : "Request sent; awaiting confirmation. Checking automatically.");
+    }
   }
   return <div className="local-update-actions">
+    {versions.current || versions.latest ? <small>{french ? "Installée" : "Installed"} : {versions.current || "—"} · {french ? "Disponible" : "Available"} : {versions.latest || "—"}</small> : null}
     {available ? <button ref={triggerButtonRef} type="button" className="button secondary-blue" disabled={busy} onClick={() => setConfirming(true)}>{busy ? (french ? "Mise à jour en cours…" : "Updating…") : (french ? "Mettre à jour" : "Update securely")}</button> :
       <a className="button ghost" href="https://github.com/pisob/neurocheckout-community/blob/main/docs/INSTALLATION.md#upgrade" target="_blank" rel="noreferrer">{french ? "Guide de mise à jour" : "Update guide"}</a>}
     <span role="status" aria-live="polite">{labels[phase] || ""}</span>
+    {checkError ? <span role="status">{checkError}</span> : null}
+    {["failed", "rolled_back", "interrupted"].includes(phase) ? <a href="https://github.com/pisob/neurocheckout-community/blob/main/docs/INSTALLATION.md#upgrade" target="_blank" rel="noreferrer">{french ? "Ouvrir le guide" : "Open the guide"}</a> : null}
     {confirming ? <div className="update-modal-backdrop" onMouseDown={(event) => {
       if (event.target === event.currentTarget) setConfirming(false);
     }}>
