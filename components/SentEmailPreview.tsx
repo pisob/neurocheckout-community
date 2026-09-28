@@ -11,11 +11,14 @@ export type SentEmail = {
   opened_at?: string | null; clicked_at?: string | null; converted_at?: string | null;
   tracking_available?: boolean; preview_available?: boolean;
   preview_asset_base_url?: string;
+  preview_state?: "available" | "unavailable" | "read_error";
+  order_id?: string | null; cart_id?: string | null;
+  attributed_orders?: Array<{ order_id: string; cart_id?: string | null; order_total?: number | null }>;
 };
 function emailKey(item: SentEmail): string {
   return item.delivery_id || [item.sent_at, item.subject, item.recipient_email || item.customer.email_masked].join("|");
 }
-export default function SentEmailPreview({ items, language }: { items: SentEmail[]; language: UiLanguage }) {
+export default function SentEmailPreview({ items, language, currency }: { items: SentEmail[]; language: UiLanguage; currency?: string | null }) {
   const fr = language === "fr", ui = (en: string, french: string) => fr ? french : en;
   const [selectedKey, setSelectedKey] = useState("");
   const [prepared, setPrepared] = useState<{ email: SentEmail; html: string; link: { href: string; label: string } | null } | null>(null);
@@ -56,6 +59,12 @@ export default function SentEmailPreview({ items, language }: { items: SentEmail
         <div><dt>{ui("Clicked", "Cliqué le")}</dt><dd>{date(selected.clicked_at)}</dd></div>
         <div><dt>Conversion</dt><dd>{date(selected.converted_at)}</dd></div>
       </dl>
+      {!selected.subject ? <p className="sent-preview-note">{ui("The subject is missing from the available record. This does not prove that the delivered email had no subject.", "L’objet manque dans la preuve disponible. Cela ne prouve pas que l’email reçu était sans objet.")}</p> : null}
+      {selected.preview_state === "read_error" ? <p role="alert" className="config-error">{ui("The saved copy could not be read. Refresh this history and check synchronization if the problem persists. Do not resend the email to restore its preview.", "La copie enregistrée n’a pas pu être lue. Actualisez cet historique et vérifiez la synchronisation si le problème persiste. Ne renvoyez pas l’email pour restaurer son aperçu.")}</p> : null}
+      {selected.status === "converted" ? selected.attributed_orders?.length ? <div className="email-order-proof"><strong>{ui("Associated orders", "Commandes associées")}</strong><ul>{selected.attributed_orders.map(order => <li key={`${order.order_id}:${order.cart_id || ""}`}>
+        {ui("Order", "Commande")} {order.order_id}{order.cart_id ? ` · ${ui("Cart", "Panier")} ${order.cart_id}` : ""}
+        {typeof order.order_total === "number" && Number.isFinite(order.order_total) ? ` · ${currency && /^[A-Z]{3}$/.test(currency) ? new Intl.NumberFormat(fr ? "fr-FR" : "en-US", { style: "currency", currency }).format(order.order_total) : order.order_total}` : ""}
+      </li>)}</ul><p className="sent-preview-note">{ui("Matched by recorded attribution. Order totals must not be added across emails.", "Lien établi par l’attribution enregistrée. Les montants des commandes ne doivent pas être additionnés entre emails.")}</p></div> : <p className="sent-preview-note">{ui("A conversion is recorded for this email, but no exact order reference is available in the current evidence window. Do not infer an association from the recipient or date alone.", "Une conversion est enregistrée pour cet email, mais aucune référence de commande exacte n’est disponible dans la période de preuves consultée. Ne déduisez pas de lien à partir du destinataire ou de la date seuls.")}</p> : null}
       {selected.tracking_available === false ? <p className="sent-preview-note">{ui("Open, click and conversion tracking is not available for this delivery path.", "Le suivi des ouvertures, clics et conversions n’est pas disponible pour ce circuit d’envoi.")}</p> : null}
       <p className="sent-preview-note">{ui("Product images are displayed. Tracking pixels and links are disabled in this preview.", "Les images des produits sont affichées. Les pixels de suivi et les liens sont désactivés dans cet aperçu.")}</p>
       {recoveryLink ? <p className="sent-preview-note"><a className="button secondary-blue" href={recoveryLink.href} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{ui("Open original cart link", "Ouvrir le lien original du panier")}</a><br />{ui("Opens the sent email’s cart link in a new tab. This action may count as an email click.", "Ouvre le lien du mail envoyé dans un nouvel onglet. Cette action peut être comptabilisée comme un clic sur l’email.")}</p> : null}

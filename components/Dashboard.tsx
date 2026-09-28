@@ -11,6 +11,7 @@ import JourneyAudit from "@/components/JourneyAudit";
 import SynchronizationHealth from "@/components/SynchronizationHealth";
 import ConvertedOrders from "@/components/ConvertedOrders";
 import LocalUpdate from "@/components/LocalUpdate";
+import SetupChecklist from "@/components/SetupChecklist";
 import { agentAvatar, SUPERVISOR_AVATAR } from "@/lib/agent-visuals";
 import { publicAgentLabel, publicEnumLabel, publicErrorMessage } from "@/lib/public-presentation";
 import { useUiLanguage, type UiLanguage } from "@/lib/ui-language";
@@ -567,6 +568,7 @@ export default function Dashboard() {
 
             {activeView === "overview" ? (
               <div className="view-enter overview-view">
+                <SetupChecklist capabilities={capabilities} language={language} />
                 {(capabilities.connectors || []).filter((connector) => connector.status !== "current").map((connector) => (
                   <section className={`compatibility-alert${connector.status === "available" ? " recommended" : ""}`} role="alert" key={`${connector.shop_id}-${connector.platform}`}>
                     <strong>{connector.status === "available" ? ui("Connector update available", "Mise à jour du connecteur disponible") : ui("Connector update required", "Mise à jour du connecteur obligatoire")}</strong>

@@ -12,13 +12,24 @@ const PUBLIC_ERROR_COPY: Record<string, LocalizedCopy> = {
     fr: "Reconnectez cette installation une fois pour autoriser cette action.",
   },
   cloud_unavailable: {
-    en: "The NeuroCheckout service is temporarily unavailable.",
-    fr: "Le service NeuroCheckout est temporairement indisponible.",
+    en: "The NeuroCheckout service is temporarily unavailable. Wait a moment, then retry. Your settings are preserved.",
+    fr: "Le service NeuroCheckout est temporairement indisponible. Patientez un instant puis réessayez. Vos réglages sont conservés.",
   },
   cloud_response_invalid: {
     en: "The service returned an unexpected response. Please try again.",
     fr: "Le service a renvoyé une réponse inattendue. Veuillez réessayer.",
   },
+  community_checkout_policy_changed: {
+    en: "This previous payment link is no longer available. Wait for it to expire before retrying.",
+    fr: "Ce précédent lien de paiement n’est plus disponible. Attendez son expiration avant de réessayer.",
+  },
+  community_paid_upgrade_required: {
+    en: "Choose a paid plan in Plan & data. Community upgrades do not include a new trial.",
+    fr: "Choisissez une offre payante dans Offre et données. Le passage depuis Community n’inclut pas de nouvel essai.",
+  },
+  update_busy: { en: "An update is already running. Wait for the version check before retrying.", fr: "Une mise à jour est déjà en cours. Attendez la vérification de version avant de réessayer." },
+  no_authorized_update: { en: "Refresh the page to check the available version.", fr: "Actualisez la page pour vérifier la version disponible." },
+  manual_update_required: { en: "Use the installation guide to update this installation manually.", fr: "Utilisez le guide d’installation pour mettre cette installation à jour manuellement." },
 };
 
 const PUBLIC_FEATURE_COPY: Record<string, LocalizedCopy> = {

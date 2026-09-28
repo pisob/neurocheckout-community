@@ -89,6 +89,25 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .compatibility-alert p { margin: 4px 0 0; font-size: 11px; line-height: 1.5; }
 .local-update-actions { float: right; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-left: 16px; }
 .local-update-actions [role="status"] { font-size: 14px; max-width: 32ch; }
+.local-update-actions > small { flex-basis: 100%; overflow-wrap: anywhere; }
+.setup-checklist { margin-bottom: 24px; border-block: 1px solid var(--line); padding: 24px 0; }
+.setup-checklist header, .setup-checklist li > div { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.setup-checklist h2 { margin: 6px 0; }
+.setup-checklist p, .setup-checklist label, .email-status-help { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.setup-checklist ol { padding-left: 24px; }
+.setup-checklist li { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.setup-checklist li > div > span { white-space: nowrap; color: var(--cyan); font-size: 12px; }
+.setup-checklist li > p { margin: 8px 0; }
+.setup-checklist li a { color: var(--cyan); }
+.setup-checklist label { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.setup-checklist label input { width: auto; }
+.plan-review-dialog { width: min(620px, calc(100% - 32px)); max-height: 85dvh; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; padding: 24px; color: var(--text); background: #071b2b; }
+.plan-review-dialog::backdrop { background: rgb(1 10 18 / 80%); }
+.plan-review-dialog p { line-height: 1.65; font-size: 14px; }
+.plan-review-dialog .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
+.email-status-help { margin: 12px 0; }
+.email-status-help summary { cursor: pointer; color: var(--cyan); }
+@media (max-width: 640px) { .setup-checklist header { align-items: flex-start; flex-direction: column; } .plan-review-dialog { padding: 16px; } }
 .compatibility-alert::after { content: ""; display: block; clear: both; }
 @media (max-width: 640px) { .local-update-actions { float: none; margin: 12px 0; } }
 

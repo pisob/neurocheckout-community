@@ -57,7 +57,12 @@ export async function GET(request: NextRequest) {
       state = { phase: "idle" };
     }
   }
-  const response = NextResponse.json({ available: Boolean(directory), ...state });
+  const response = NextResponse.json({
+    available: Boolean(directory), ...state,
+    current_version: result.dashboard.current_version,
+    latest_version: result.dashboard.latest_version,
+    completion_verified: state.phase === "complete" && state.version === result.dashboard.current_version && state.version === result.dashboard.latest_version,
+  }, { headers: { "Cache-Control": "no-store, private" } });
   for (const cookie of result.response.cookies.getAll()) response.cookies.set(cookie);
   return response;
 }

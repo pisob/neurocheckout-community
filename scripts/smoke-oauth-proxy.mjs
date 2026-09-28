@@ -136,6 +136,13 @@ const cloud = createServer(async (request, response) => {
     });
   }
 
+  if (request.method === "GET" && request.url.startsWith("/api/v1/billing/plan-preview?")) {
+    const query = new URL(request.url, cloudOrigin).searchParams;
+    assert.equal(query.get('plan_code'), 'pro');
+    assert.equal(query.get('billing_cycle'), 'annual');
+    return json(response, 200, { plan_code: 'pro', billing_cycle: 'annual', amount: 100, currency: 'USD', is_invoice_quote: false });
+  }
+
   if (request.method === "GET" && request.url === "/api/v1/member/shops") {
     observed.shopList = true;
     return json(response, 200, {
@@ -459,9 +466,17 @@ try {
   const queuedUpdate = await (await communityFetch("/api/local-update")).json();
   assert.equal(queuedUpdate.phase, "queued");
   assert.equal(queuedUpdate.version, "99.0.0");
+  assert.equal(queuedUpdate.current_version, packageVersion);
+  assert.equal(queuedUpdate.latest_version, "99.0.0");
+  assert.equal(queuedUpdate.completion_verified, false);
   unlinkSync(join(updateDirectory, "request.json"));
 
   const shops = await communityFetch("/api/cloud/shops");
+  const previewResponse = await communityFetch('/api/cloud/subscription/preview?plan_code=pro&billing_cycle=annual');
+  assert.equal(previewResponse.status, 200);
+  assert.equal((await previewResponse.json()).amount, 100);
+  assert.match(previewResponse.headers.get('cache-control'), /no-store/);
+  assert.equal((await communityFetch('/api/cloud/subscription/preview?plan_code=private&billing_cycle=annual')).status, 400);
   assert.equal(shops.status, 200);
   assert.equal((await shops.json()).items[0].shop_id, "shop_smoke");
 

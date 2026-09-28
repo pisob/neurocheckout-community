@@ -1,0 +1,66 @@
+# Your first steps in Community
+
+After installation and connection, open **Overview** and follow the configuration
+checklist. Installing Community alone does not configure your store's automations.
+
+1. **Account:** check that your existing Cloud account is connected.
+2. **Store:** open Configuration and check the store assigned to this installation.
+3. **Connector:** install the official module in your PrestaShop, WooCommerce or
+   Magento store, configure it, and check that activity reaches Community.
+   Creating a connector key does not by itself install the module.
+4. **Emails:** review the sender settings, language and approval preferences.
+   Generate a preview before using the automations. You can mark this review in
+   the checklist; that acknowledgement is saved only in this browser and is not
+   proof of a successful email delivery.
+5. **Synchronization:** open synchronization health and check its current state.
+   Use **Check again** to refresh the checklist. An unavailable check does not
+   mean the configuration is complete.
+
+## Changing your plan
+
+Open **Plan & data**. Choose an available plan and billing period, or open
+**Change plan — Upgrade / Downgrade** for an existing subscription. Review the
+summary before continuing. Cancelling this review does not change billing.
+
+Upgrading from the free Community plan does not include a new 30-day trial.
+The review shows the current configured base price and offer limits when they
+can be verified. This is not an invoice quote: Stripe confirms taxes, currency
+conversion, discounts, adjustments and effective date before confirmation. If the
+desired offer is not listed, return without cancelling your current subscription.
+
+## Updating Community
+
+The update area shows the installed and available versions, followed by the
+current operation. A restart can briefly interrupt the connection. Wait for the
+version check; do not launch another installation while the update is running.
+If an update fails, retry using the button or open the update guide.
+
+## Reading email history
+
+The status tabs show each email's current status, not cumulative totals. An
+unavailable original copy is different from an error while reading a saved copy.
+A missing subject in the history does not prove that the delivered email lacked
+a subject. Never resend an email only to restore its preview.
+
+Use attributed orders for recovered revenue. Recorded links appear under
+**Associated orders** with the order reference, cart and amount when available.
+Several emails may contribute to one order. When no exact order reference is shown, do not infer a match from
+the recipient or date alone. Opening an archived preview does not create a
+delivery, open, click or conversion event.
+
+# Premiers pas en français
+
+Après l’installation et la connexion, ouvrez **Vue d’ensemble** et suivez la
+checklist : compte, boutique, connecteur, emails, puis synchronisation.
+
+- Le module officiel doit être installé et configuré dans PrestaShop,
+  WooCommerce ou Magento. Créer sa clé ne suffit pas.
+- Vérifiez l’expéditeur, la langue et les préférences de validation des emails,
+  puis générez un aperçu. La case de vérification de la checklist est votre
+  confirmation personnelle, conservée dans ce navigateur uniquement.
+- Dans **Offre et données**, vérifiez le récapitulatif avant de poursuivre.
+  Community gratuite n’inclut pas de nouvel essai lors du passage au payant.
+  Vérifiez le prix, les limites et la date d’effet dans Stripe avant confirmation.
+- Pour une mise à jour, attendez la vérification de la version démarrée.
+- Les statuts email sont exclusifs. Le revenu se vérifie dans les commandes
+  attribuées, pas en additionnant les emails marqués comme convertis.

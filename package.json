@@ -1,6 +1,6 @@
 {
   "name": "neurocheckout-community",
-  "version": "0.1.0-preview.24",
+  "version": "0.1.0-preview.25",
   "private": true,
   "engines": {
     "node": ">=22.13.0",
@@ -28,7 +28,9 @@
     "backup:local-data": "node scripts/backup-local-data.mjs",
     "verify:release": "./tools/verify-community-release.sh",
     "typecheck": "tsc --noEmit",
-    "test:partner-program-ui": "node scripts/test-partner-program-ui.mjs"
+    "test:partner-program-ui": "node scripts/test-partner-program-ui.mjs",
+    "test:experience": "node scripts/test-plan-labels.mjs && node scripts/test-public-messages.mjs && node scripts/test-email-history-archive.mjs",
+    "test:journeys": "node scripts/test-guided-experience-ui.mjs && node scripts/test-plan-actions-ui.mjs && node scripts/test-sent-email-ui.mjs"
   },
   "dependencies": {
     "next": "16.3.4",
@@ -36,6 +38,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

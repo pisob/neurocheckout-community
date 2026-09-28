@@ -41,7 +41,7 @@ for (const language of ["en", "fr"]) {
           assert(!html.includes("Continue securely"));
           const buttons = [...html.matchAll(/<button\b([^>]*)>(.*?)<\/button>/g)];
           for (const [, attributes, label] of buttons) {
-            if (label.includes("Refresh") || label.includes("Actualiser")) continue;
+            if (label.includes("Refresh") || label.includes("Actualiser") || label.includes("Not now") || label.includes("Plus tard")) continue;
             assert.equal(attributes.includes('disabled=""'), !trusted);
           }
         }

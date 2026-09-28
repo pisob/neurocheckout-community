@@ -56,7 +56,8 @@ try {
  // Exercise real tab changes with intentionally reordered server replies.
  const statuses = ['sent', 'delivered', 'opened', 'clicked', 'converted', 'bounced'];
  const history = statuses.map((status, index) => ({ ...items[0], delivery_id: `community-edge-${100+index}`,
-   subject: `Message ${status}`, status, body_html: `<p>Content ${status}</p>`, tracking_available: true }));
+   subject: `Message ${status}`, status, body_html: `<p>Content ${status}</p>`, tracking_available: true,
+   attributed_orders: status === 'converted' ? [{ order_id: 'fixture-order-42', cart_id: 'fixture-cart-9', order_total: 12.34 }] : [] }));
  let releaseSlow, startedSlow;
  const slowStarted = new Promise(resolve => { startedSlow = resolve; });
  const slowGate = new Promise(resolve => { releaseSlow = resolve; });
@@ -76,6 +77,7 @@ try {
  await slowStarted;
  await tab('Converted').click();
  await page.locator('.sent-email-inspector h3').filter({hasText:'Message converted'}).waitFor();
+ await page.getByText('Order fixture-order-42', {exact:false}).waitFor();
  releaseSlow();
  await page.waitForTimeout(250);
  assert.equal(await page.locator('.sent-email-inspector h3').innerText(), 'Message converted');

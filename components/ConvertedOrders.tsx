@@ -294,8 +294,12 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
             {statusTotal("converted") > 0 ? <p className="conversion-presence"><span />{statusTotal("converted")} {ui("conversion evidence retained", "preuve(s) de conversion conservée(s)")}</p> : null}
           </div>
           <p className="sent-preview-note">{ui("Each email appears under its current status. A dash means that no date is available for that event.", "Chaque email apparaît sous son statut actuel. Un tiret indique qu’aucune date n’est disponible pour cet événement.")}</p>
+          <details className="email-status-help"><summary>{ui("Understand email statuses", "Comprendre les statuts des emails")}</summary>
+            <p>{ui("Sent: sending recorded. Delivered: delivery confirmed. Opened or clicked: tracking event recorded, not proof of a human action. Converted: conversion attributed. Bounced: delivery rejected.", "Envoyé : envoi enregistré. Livré : livraison confirmée. Ouvert ou cliqué : événement de suivi enregistré, sans preuve d’une action humaine. Converti : conversion attribuée. Rejeté : livraison refusée.")}</p>
+            <p>{ui("The tabs are exclusive current states, not cumulative totals. One order may involve several emails: do not add email conversions to calculate revenue. Use attributed orders for that total.", "Les onglets représentent des statuts actuels exclusifs, pas des totaux cumulés. Plusieurs emails peuvent contribuer à une commande : n’additionnez pas les conversions email pour calculer le revenu. Utilisez les commandes attribuées pour ce total.")}</p>
+          </details>
 
-          {emailError ? <p className="email-activity-error" role="alert">{emailError}</p> : null}
+          {emailError ? <div className="email-activity-error" role="alert"><p>{emailError}</p><button className="button ghost" disabled={emailLoading} onClick={() => void loadRecentEmails()}>{ui("Retry loading emails", "Recharger les emails")}</button><a className="button ghost" href="#sync-health">{ui("Check synchronization", "Vérifier la synchronisation")}</a></div> : null}
           {emailLoading ? <div className="email-activity-state"><span className="loader" /><p>{ui("Loading sent emails…", "Chargement des emails envoyés…")}</p></div> : null}
           {!emailLoading && !emailError && emailPayload?.items.length === 0 ? (
             <div className="email-activity-state"><p>{emailFilter === "all"
@@ -304,7 +308,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
           ) : null}
           {!emailLoading && !emailError && emailContext === currentEmailContext && emailPayload && emailPayload.items.length > 0 ? (
             <>
-              <SentEmailPreview key={currentEmailContext} items={emailPayload.items.slice(0,10)} language={language} />
+              <SentEmailPreview key={currentEmailContext} items={emailPayload.items.slice(0,10)} language={language} currency={emailPayload.shop.currency_code} />
               <nav className="email-pagination" aria-label={ui("Email history pages", "Pages de l’historique email")}>
                 <button className="button ghost" type="button" disabled={emailOffset === 0} onClick={() => setEmailOffset(Math.max(0, emailOffset - 10))}>{ui("Previous", "Précédent")}</button>
                 <span>{ui("Page", "Page")} {emailPage} / {emailPages}</span>

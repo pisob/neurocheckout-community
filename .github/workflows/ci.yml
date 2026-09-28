@@ -21,7 +21,7 @@ jobs:
   validate:
     name: Typecheck, build and audit
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       NEXT_TELEMETRY_DISABLED: "1"
 
@@ -71,6 +71,9 @@ jobs:
       - name: Test email history
         run: npm run test:email-history
 
+      - name: Test plan presentation and public messages
+        run: npm run test:experience
+
       - name: Test encrypted staging local data
         run: npm run test:local-data
 
@@ -82,6 +85,12 @@ jobs:
 
       - name: Build the production application
         run: npm run build
+
+      - name: Install browser for user journeys
+        run: npx playwright install --with-deps chromium
+
+      - name: Test user journeys in the browser
+        run: npm run test:journeys
 
       - name: Smoke-test OAuth and Cloud proxy
         run: npm run smoke:integration
