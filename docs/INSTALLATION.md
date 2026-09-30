@@ -340,24 +340,14 @@ container is updated.
 
 ## Revoke or uninstall
 
-First revoke the installation in **NeuroCheckout Cloud → Community
-installations**. For a native systemd installation:
+For a local installation started with `npm start`, press **Ctrl+C** in that
+terminal first. Closing the browser is not enough. Decide whether to preserve
+your encrypted local data before removing the installation folder.
 
-```bash
-sudo systemctl disable --now neurocheckout-community
-sudo rm /etc/systemd/system/neurocheckout-community.service
-sudo systemctl daemon-reload
-```
-
-For Docker, stop and remove the local container and image:
-
-```bash
-docker compose down --rmi local
-```
-
-Delete `.env.local` only after confirming that its session secret is no longer
-needed. Business data remains governed by the Cloud account and is not removed
-by deleting the Community container.
+Follow [Stop or uninstall Community (English / français)](UNINSTALL.md) for
+step-by-step instructions, including systemd, Docker volumes, reinstalling and
+revoking Cloud access. Uninstalling does not cancel a paid subscription or delete
+your Cloud account or store connector.
 
 ## Troubleshooting
 
