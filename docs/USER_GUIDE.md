@@ -35,6 +35,13 @@ current operation. A restart can briefly interrupt the connection. Wait for the
 version check; do not launch another installation while the update is running.
 If an update fails, retry using the button or open the update guide.
 
+## Stopping or uninstalling
+
+Closing the browser does not stop Community. For a terminal installation, press
+**Ctrl+C** where `npm start` is running. To remove the application, follow the
+[uninstall guide](UNINSTALL.md) and choose whether to keep your local data.
+Uninstalling does not cancel your subscription or delete your store connector.
+
 ## Reading email history
 
 The status tabs show each email's current status, not cumulative totals. An
@@ -64,3 +71,11 @@ checklist : compte, boutique, connecteur, emails, puis synchronisation.
 - Pour une mise à jour, attendez la vérification de la version démarrée.
 - Les statuts email sont exclusifs. Le revenu se vérifie dans les commandes
   attribuées, pas en additionnant les emails marqués comme convertis.
+
+## Arrêter ou désinstaller
+
+Fermer le navigateur ne suffit pas. Appuyez sur **Ctrl+C** dans le terminal où
+vous avez lancé `npm start`. Pour supprimer Community, suivez le
+[guide de désinstallation en français](UNINSTALL.md#arrêter-ou-désinstaller-community--français).
+Il explique comment garder vos données ou repartir de zéro. La désinstallation
+n’annule pas votre abonnement et ne retire pas le module de votre boutique.

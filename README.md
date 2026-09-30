@@ -213,6 +213,16 @@ Install only a newer signed release. Read its release notes, verify the tag and
 assets, stop the running process, back up `.community-state/` and `.env.local`,
 then follow the update instructions displayed by Community.
 
+## Stopping or uninstalling Community
+
+For an installation started with `npm start`, press **Ctrl+C** in its terminal.
+To uninstall, stop it, preserve `.community-state/` and `.env.local` if needed,
+then move only its installation folder to the Trash. Uninstalling does not cancel
+your subscription or remove your store connector.
+
+Follow the [step-by-step uninstall guide (English / français)](docs/UNINSTALL.md)
+for local installations, Linux services, Docker volumes and Cloud revocation.
+
 ## Development and contributions
 
 ```bash
