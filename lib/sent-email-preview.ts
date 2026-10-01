@@ -15,6 +15,8 @@ export function sentEmailRecoveryLink(html: string): { href: string; label: stri
 
 /** Call in a browser effect. Inert HTML with raster images and no active content. */
 export function sentEmailPreview(html: string, assetBaseUrl?: string): string {
+  const isLogo = (url: URL) => /^\/api\/v1\/public\/shop-logo\/[a-zA-Z0-9_.:-]{1,128}$/.test(url.pathname)
+    && /^\?v=[a-f0-9]{12}$/.test(url.search) && !url.hash;
   const template = document.createElement("template");
   template.innerHTML = String(html).slice(0, 65536);
   const tags = new Set("a p div span table thead tbody tfoot tr td th img h1 h2 h3 h4 h5 h6 b strong i em u s small br hr ul ol li blockquote pre code center style font caption colgroup col".split(" "));
@@ -25,8 +27,9 @@ export function sentEmailPreview(html: string, assetBaseUrl?: string): string {
         try {
           const url = new URL(node.getAttribute("src") || "");
           const base = new URL(assetBaseUrl);
-          if (base.protocol === "https:" && /^\/api\/v1\/public\/email-image-cache\/[a-zA-Z0-9_-]+\/images\/[a-f0-9]{32}\.jpg$/.test(url.pathname) && !url.search && !url.hash) {
-            node.setAttribute("src", new URL(url.pathname, base.origin).href);
+          if (base.protocol === "https:" && !base.username && !base.password && !base.port &&
+            ((/^\/api\/v1\/public\/email-image-cache\/[a-zA-Z0-9_-]+\/images\/[a-f0-9]{32}\.jpg$/.test(url.pathname) && !url.search && !url.hash) || isLogo(url))) {
+            node.setAttribute("src", new URL(url.pathname + url.search, base.origin).href);
           }
         } catch { /* Invalid image sources are removed below. */ }
       }
@@ -43,8 +46,9 @@ export function sentEmailPreview(html: string, assetBaseUrl?: string): string {
       if (node.tagName === "IMG" && name === "src") {
         try {
           const url = new URL(attribute.value);
+          const trustedLogo = assetBaseUrl && isLogo(url) && url.origin === new URL(assetBaseUrl).origin;
           rasterUrl = url.protocol === "https:" && !url.username && !url.password && !url.port &&
-            /\.(?:png|jpe?g|webp)$/i.test(url.pathname) && !url.search && !url.hash;
+            ((/\.(?:png|jpe?g|webp)$/i.test(url.pathname) && !url.search && !url.hash) || Boolean(trustedLogo));
         } catch { /* Non-URL sources are checked as embedded images below. */ }
       }
       const image = node.tagName === "IMG" && name === "src" && (rasterUrl || /^data:image\/(png|jpeg|gif|webp);base64,[a-zA-Z0-9+/=]+$/.test(attribute.value));

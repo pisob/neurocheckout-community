@@ -30,7 +30,7 @@
     "typecheck": "tsc --noEmit",
     "test:partner-program-ui": "node scripts/test-partner-program-ui.mjs",
     "test:experience": "node scripts/test-plan-labels.mjs && node scripts/test-public-messages.mjs && node scripts/test-email-history-archive.mjs",
-    "test:journeys": "node scripts/test-guided-experience-ui.mjs && node scripts/test-plan-actions-ui.mjs && node scripts/test-sent-email-ui.mjs"
+    "test:journeys": "node scripts/test-guided-experience-ui.mjs && node scripts/test-plan-actions-ui.mjs && node scripts/test-sent-email-ui.mjs && node scripts/test-email-image-policy.mjs"
   },
   "dependencies": {
     "next": "16.3.8",
