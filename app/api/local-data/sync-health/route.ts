@@ -1,6 +1,10 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { authorizedWorkspaceDirectory } from "@/lib/workspace";
+import { requestWorkspaceRun } from "@/lib/server-workspace";
+import { rejectForeignMutation } from "@/lib/request-origin";
+import { workspaceEnabled } from "@/lib/config";
 
 import { requestDataRelayRun } from "@/lib/server-data-relay";
 import { requestSourcePullRun } from "@/lib/server-source-pull";
@@ -21,20 +25,30 @@ function unavailable() {
   });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   if (process.env.NC_DEPLOYMENT_ENV !== "staging" || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true" ||
       !existsSync(resolve(directory(), "local-data-keys.json"))) return unavailable();
   let store: LocalDataStore | undefined;
   let archive: EmailArchive | undefined;
   try {
-    const source = automaticSourceStatus(directory());
-    store = new LocalDataStore(directory());
+    let selectedDirectory = directory();
+    let cookie: string | null = null;
+    if (workspaceEnabled()) {
+      const shopUuid = request.nextUrl.searchParams.get("shop_uuid");
+      if (!shopUuid) return unavailable();
+      const context = await authorizedWorkspaceDirectory(request, shopUuid);
+      if (!context.directory) return context.response;
+      selectedDirectory = context.directory;
+      cookie = context.response.headers.get("set-cookie");
+    }
+    const source = automaticSourceStatus(selectedDirectory);
+    store = new LocalDataStore(selectedDirectory);
     const queue = store.db.prepare(`SELECT COUNT(*) AS pending,
       MIN(observed_at) AS oldest_at, MAX(observed_at) AS newest_at FROM outbox`).get() as Record<string, number | null>;
     const records = store.db.prepare(`SELECT COUNT(*) AS total,
       COUNT(*) FILTER (WHERE kind='cart') AS carts,
       COUNT(*) FILTER (WHERE kind='product') AS products FROM records`).get() as Record<string, number>;
-    archive = new EmailArchive(directory());
+    archive = new EmailArchive(selectedDirectory);
     const copies = archive.db.prepare(`SELECT COUNT(*) AS confirmed,
       MAX(sent_at) AS last_sent_at FROM email_archive WHERE sent_at IS NOT NULL`).get() as Record<string, number | null>;
     return NextResponse.json({
@@ -60,7 +74,7 @@ export async function GET() {
         encrypted: true,
       },
       generated_at: Date.now(),
-    }, { headers: { "Cache-Control": "no-store, private" } });
+    }, { headers: { "Cache-Control": "no-store, private", ...(cookie ? { "Set-Cookie": cookie } : {}) } });
   } catch {
     return NextResponse.json({ available: true, configured: false, ready: false, detail: "sync_health_unavailable" }, {
       status: 503,
@@ -72,9 +86,27 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  let cookie: string | null = null;
+  const rejected = rejectForeignMutation(request);
+  if (rejected) return rejected;
   if (process.env.NC_DEPLOYMENT_ENV !== "staging" || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true") {
     return NextResponse.json({ detail: "local_data_unavailable" }, { status: 404 });
+  }
+  if (workspaceEnabled()) {
+    try {
+      const shopUuid = request.nextUrl.searchParams.get("shop_uuid");
+      if (!shopUuid) return unavailable();
+      const context = await authorizedWorkspaceDirectory(request, shopUuid);
+      if (!context.directory) return context.response;
+      cookie = context.response.headers.get("set-cookie");
+      if (context.directory !== directory()) {
+        const scheduled = requestWorkspaceRun(context.directory);
+        return NextResponse.json({ status: scheduled ? "scheduled" : "unavailable", source_scheduled: scheduled, relay_scheduled: false }, {
+          status: scheduled ? 202 : 503, headers: { "Cache-Control": "no-store, private", ...(cookie ? { "Set-Cookie": cookie } : {}) },
+        });
+      }
+    } catch { return unavailable(); }
   }
   const sourceScheduled = requestSourcePullRun();
   const relayScheduled = requestDataRelayRun();
@@ -84,6 +116,6 @@ export async function POST() {
     relay_scheduled: relayScheduled,
   }, {
     status: sourceScheduled || relayScheduled ? 202 : 503,
-    headers: { "Cache-Control": "no-store, private" },
+    headers: { "Cache-Control": "no-store, private", ...(cookie ? { "Set-Cookie": cookie } : {}) },
   });
 }

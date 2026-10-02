@@ -83,6 +83,9 @@ jobs:
       - name: Test outgoing source synchronization
         run: npm run test:source-pull
 
+      - name: Test isolated store selection and local vaults
+        run: npm run test:workspace
+
       - name: Build the production application
         run: npm run build
 
@@ -94,6 +97,9 @@ jobs:
 
       - name: Smoke-test OAuth and Cloud proxy
         run: npm run smoke:integration
+
+      - name: Test multi-store synchronization and browser isolation
+        run: npm run smoke:workspace && npm run test:workspace-ui
 
       - name: Diagnose a native installation
         run: npm run doctor

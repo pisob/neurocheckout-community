@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { publicErrorMessage } from "@/lib/public-presentation";
 import { useUiLanguage, type UiLanguage } from "@/lib/ui-language";
 
@@ -99,6 +99,8 @@ export default function CloudConfiguration() {
   const ui = (english: string, french: string) => language === "fr" ? french : english;
   const [shops, setShops] = useState<Shop[]>([]);
   const [selectedShopUuid, setSelectedShopUuid] = useState("");
+  const activeShop = useRef(selectedShopUuid);
+  activeShop.current = selectedShopUuid;
   const [byok, setByok] = useState<ByokStatus | null>(null);
   const [aiProvider, setAiProvider] = useState<AiProvider>("openai");
   const [templateKey, setTemplateKey] = useState("abandoned_cart");
@@ -159,7 +161,7 @@ export default function CloudConfiguration() {
     if (!response.ok) throw new Error(detail(payload, ui("Stores unavailable", "Boutiques indisponibles"), language));
     const items = Array.isArray(payload.items) ? payload.items : [];
     setShops(items);
-    setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
+    setSelectedShopUuid((current) => items.some(item => shopUuid(item) === current) ? current : (items[0] ? shopUuid(items[0]) : ""));
   };
 
   const loadEmailProfile = async (uuid: string, locale = "en") => {
@@ -167,6 +169,7 @@ export default function CloudConfiguration() {
     const normalizedLocale = normalizeLocaleCode(locale);
     const profileResponse = await fetch(`/api/cloud/email-profile?shop_uuid=${encodeURIComponent(uuid)}&locale=${encodeURIComponent(normalizedLocale)}`, { cache: "no-store" });
     const profilePayload = (await readJson(profileResponse)) as { item?: EmailProfile };
+    if (activeShop.current !== uuid) return;
     if (!profileResponse.ok || !profilePayload.item) throw new Error(detail(profilePayload, ui("Email settings unavailable", "Réglages email indisponibles"), language));
     setEmailProfile(profilePayload.item);
     setRequiredTermsInput((profilePayload.item.required_terms || []).join(", "));
@@ -178,6 +181,7 @@ export default function CloudConfiguration() {
     if (!uuid) return;
     const byokResponse = await fetch(`/api/cloud/byok?shop_uuid=${encodeURIComponent(uuid)}&provider=${encodeURIComponent(provider)}`, { cache: "no-store" });
     const byokPayload = (await readJson(byokResponse)) as ByokStatus;
+    if (activeShop.current !== uuid) return;
     if (!byokResponse.ok) throw new Error(detail(byokPayload, ui("BYOK status unavailable", "Statut BYOK indisponible"), language));
     setByok(byokPayload);
   };
@@ -188,9 +192,9 @@ export default function CloudConfiguration() {
     await Promise.all([
       loadEmailProfile(uuid, locale),
       loadByokStatus(uuid, provider),
-      fetch("/api/local-data/setup", { cache: "no-store" }).then(readJson).then((status: { configured?: boolean; shopId?: string }) => {
+      fetch(`/api/local-data/setup?shop_uuid=${encodeURIComponent(uuid)}`, { cache: "no-store" }).then(readJson).then((status: { configured?: boolean; shopId?: string }) => {
         const selected = shops.find((shop) => shopUuid(shop) === uuid);
-        setLocalSyncActive(Boolean(status.configured && selected && status.shopId === selected.shop_id));
+        if (activeShop.current === uuid) setLocalSyncActive(Boolean(status.configured && selected && status.shopId === selected.shop_id));
       }),
     ]);
   };
@@ -221,7 +225,13 @@ export default function CloudConfiguration() {
   }, []);
 
   useEffect(() => {
-    void loadShopConfiguration(selectedShopUuid, "en").catch((loadError) => setError(loadError instanceof Error ? loadError.message : ui("Configuration unavailable", "Configuration indisponible")));
+    setBusy("load");
+    setConnectorKey(null); setApiKey(""); setDpaAccepted(false); setLocalSyncActive(false);
+    setByok(null); setEmailProfile(DEFAULT_EMAIL_PROFILE); setPreviews([]);
+    setRequiredTermsInput(""); setForbiddenTermsInput(""); setNotice(null);
+    void loadShopConfiguration(selectedShopUuid, "en")
+      .catch((loadError) => { if (activeShop.current === selectedShopUuid) setError(loadError instanceof Error ? loadError.message : ui("Configuration unavailable", "Configuration indisponible")); })
+      .finally(() => { if (activeShop.current === selectedShopUuid) setBusy(null); });
   }, [selectedShopUuid]);
 
   const selectEmailLocale = async (locale: string) => {
@@ -463,7 +473,10 @@ export default function CloudConfiguration() {
           ))}
         </div>
         {shops.length ? (
-          <label className="shop-selector">{ui("Active store", "Boutique active")}<select value={selectedShopUuid} onChange={(event) => setSelectedShopUuid(event.target.value)}>{shops.map((shop) => <option key={shopUuid(shop)} value={shopUuid(shop)}>{shop.shop_id} · {shop.platform}</option>)}</select></label>
+          <>
+          <label className="shop-selector">{ui("Active store", "Boutique active")}<select disabled={busy !== null} value={selectedShopUuid} onChange={(event) => { activeShop.current = event.target.value; setConnectorKey(null); setApiKey(""); setSelectedShopUuid(event.target.value); }}>{shops.map((shop) => <option key={shopUuid(shop)} value={shopUuid(shop)}>{shop.shop_id} · {shop.platform}</option>)}</select></label>
+          <button className="text-action" disabled={busy !== null} type="button" onClick={() => void loadShops().catch(() => setError(ui("Stores unavailable", "Boutiques indisponibles")))}>{ui("Refresh stores", "Actualiser les boutiques")}</button>
+          </>
         ) : null}
       </div>
 

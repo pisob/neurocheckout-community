@@ -238,7 +238,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
       {loading ? <div className="operational-state"><span className="loader" /><p>{ui("Loading conversion evidence…", "Chargement des preuves de conversion…")}</p></div> : null}
       {!loading && shops.length === 0 ? <div className="operational-state"><p className="eyebrow">{ui("Store required", "Boutique requise")}</p><h2>{ui("Connect a store to see converted orders", "Connectez une boutique pour voir les commandes converties")}</h2></div> : null}
 
-      {!loading && payload ? (
+      {!loading && payload && shopUuid(payload.shop) === selectedShopUuid ? (
         payload.items.length === 0 ? (
           <div className="operational-state"><p className="eyebrow">{ui("No conversion yet", "Aucune conversion")}</p><h2>{ui("Converted orders will appear here", "Les commandes converties apparaîtront ici")}</h2><p>{ui("Only orders attributed by NeuroCheckout Cloud are listed.", "Seules les commandes attribuées par NeuroCheckout Cloud sont listées.")}</p></div>
         ) : (

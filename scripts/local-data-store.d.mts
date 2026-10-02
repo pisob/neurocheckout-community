@@ -2,6 +2,7 @@ export function initializeLocalData(directory: string, shopId: string): {
   shopId: string;
   environment: string;
 };
+export function loadLocalDataConfig(directory: string): { shopId: string };
 
 export class LocalDataStore {
   constructor(directory: string);

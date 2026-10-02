@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import AgentNetwork from "@/components/AgentNetwork";
 import OptimizationRecommendations from "@/components/OptimizationRecommendations";
@@ -118,6 +118,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
   const [selectedAgent, setSelectedAgent] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const performanceRequest = useRef(0);
 
   const loadShops = useCallback(async () => {
     const response = await fetch("/api/cloud/shops", { cache: "no-store" });
@@ -133,6 +134,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
   }, [language]);
 
   const loadPerformance = useCallback(async () => {
+    const sequence = ++performanceRequest.current;
     if (!selectedShopUuid) {
       setPayload(null);
       setLoading(false);
@@ -144,6 +146,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
       const query = new URLSearchParams({ shop_uuid: selectedShopUuid, days: String(days) });
       const response = await fetch(`/api/cloud/agent-performance?${query.toString()}`, { cache: "no-store" });
       const rawBody: unknown = await response.json().catch(() => ({}));
+      if (sequence !== performanceRequest.current) return;
       const body = normalizePerformancePayload(rawBody);
       if (!response.ok) {
         if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant analytics access.", "Reconnectez cette installation une fois pour autoriser les statistiques."));
@@ -156,10 +159,11 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
       setPayload(body);
       setSelectedAgent((current) => body.items.some((item) => item.agent_name === current) ? current : body.items[0]?.agent_name || "");
     } catch (loadError) {
+      if (sequence !== performanceRequest.current) return;
       setPayload(null);
       setError(loadError instanceof Error ? loadError.message : ui("Performance unavailable.", "Performances indisponibles."));
     } finally {
-      setLoading(false);
+      if (sequence === performanceRequest.current) setLoading(false);
     }
   }, [days, language, selectedShopUuid]);
 
@@ -170,7 +174,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
     });
   }, [loadShops]);
 
-  useEffect(() => { void loadPerformance(); }, [loadPerformance]);
+  useEffect(() => { void loadPerformance(); return () => { ++performanceRequest.current; }; }, [loadPerformance]);
 
   const selected = useMemo(
     () => payload?.items.find((item) => item.agent_name === selectedAgent) || payload?.items[0] || null,
@@ -207,7 +211,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
       {loading ? <div className="operational-state"><span className="loader" /><p>{ui("Calculating agent performance…", "Calcul des performances des agents…")}</p></div> : null}
       {!loading && shops.length === 0 ? <div className="operational-state"><p className="eyebrow">{ui("Store required", "Boutique requise")}</p><h2>{ui("Connect a store to see performance", "Connectez une boutique pour voir les performances")}</h2></div> : null}
 
-      {!loading && payload ? (
+      {!loading && payload && shopUuid(payload.shop) === selectedShopUuid ? (
         <>
           <div className="analytics-summary" aria-label={ui("Performance summary", "Synthèse des performances")}>
             <div><span>{ui("Attributed revenue", "Revenu attribué")}</span><strong>{formatMoney(summary.attributed_revenue, currency)}</strong></div>

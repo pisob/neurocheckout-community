@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 
 import packageMetadata from "@/package.json";
-import { cloudApiBaseUrl } from "@/lib/config";
+import { cloudApiBaseUrl, workspaceEnabled } from "@/lib/config";
 import { refreshOAuthSession } from "@/lib/cloud-client";
 import { cloudFetch, CloudRequestError } from "@/lib/cloud-transport";
 import { rejectForeignMutation } from "@/lib/request-origin";
+import { workspaceRequestShop } from "@/scripts/workspace-request.mjs";
 import {
   COMMUNITY_SESSION_COOKIE,
   sealSession,
@@ -67,6 +68,13 @@ export async function authenticatedCloudFetch(
 ): Promise<NextResponse> {
   const rejected = rejectForeignMutation(request);
   if (rejected) return rejected;
+  let workspaceShop: string | null = null;
+  if (workspaceEnabled()) {
+    try { workspaceShop = workspaceRequestShop(path, init.body); }
+    catch {
+      return NextResponse.json({ detail: "community_workspace_shop_invalid" }, { status: 400 });
+    }
+  }
   let resolved: { session: OAuthSession; refreshed: boolean } | null = null;
   try {
     resolved = await resolveSession(request);
@@ -80,6 +88,7 @@ export async function authenticatedCloudFetch(
         Authorization: `Bearer ${accessToken}`,
         "X-NeuroCheckout-Community-Version": COMMUNITY_DASHBOARD_VERSION,
         ...(init.headers || {}),
+        ...(workspaceShop ? { "X-NeuroCheckout-Workspace-Shop": workspaceShop } : {}),
       },
       cache: "no-store",
     });

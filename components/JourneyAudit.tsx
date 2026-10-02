@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { publicEnumLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
@@ -130,6 +130,7 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
   const [selectedSessionKey, setSelectedSessionKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const auditRequest = useRef(0);
 
   const loadShops = useCallback(async () => {
     const response = await fetch("/api/cloud/shops", { cache: "no-store" });
@@ -145,6 +146,7 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
   }, [language]);
 
   const loadAudit = useCallback(async () => {
+    const sequence = ++auditRequest.current;
     if (!selectedShopUuid) {
       setPayload(null);
       setLoading(false);
@@ -162,6 +164,7 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
       });
       const response = await fetch(`/api/cloud/journey-audit?${query.toString()}`, { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
+      if (sequence !== auditRequest.current) return;
       if (!response.ok) {
         if (response.status === 403) throw new Error(ui("Reconnect this installation once to grant journey audit access.", "Reconnectez cette installation une fois pour autoriser l’audit de parcours."));
         throw new Error(publicErrorMessage(
@@ -175,10 +178,11 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
       setPayload({ ...nextPayload, recent_sessions: sessions, recent_audits: Array.isArray(nextPayload.recent_audits) ? nextPayload.recent_audits : [] });
       setSelectedSessionKey((current) => sessions.some((item) => item.session_key === current) ? current : sessions[0]?.session_key || "");
     } catch (loadError) {
+      if (sequence !== auditRequest.current) return;
       setPayload(null);
       setError(loadError instanceof Error ? loadError.message : ui("Journey audit unavailable.", "Audit de parcours indisponible."));
     } finally {
-      setLoading(false);
+      if (sequence === auditRequest.current) setLoading(false);
     }
   }, [days, filter, language, page, selectedShopUuid]);
 
@@ -189,7 +193,7 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
     });
   }, [loadShops]);
 
-  useEffect(() => { void loadAudit(); }, [loadAudit]);
+  useEffect(() => { void loadAudit(); return () => { ++auditRequest.current; }; }, [loadAudit]);
 
   const selectedSession = useMemo(
     () => payload?.recent_sessions.find((item) => item.session_key === selectedSessionKey) || payload?.recent_sessions[0] || null,
@@ -222,7 +226,7 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
       {loading ? <div className="operational-state"><span className="loader" /><p>{ui("Analyzing customer journeys…", "Analyse des parcours clients…")}</p></div> : null}
       {!loading && shops.length === 0 ? <div className="operational-state"><p className="eyebrow">{ui("Store required", "Boutique requise")}</p><h2>{ui("Connect a store to audit journeys", "Connectez une boutique pour auditer les parcours")}</h2></div> : null}
 
-      {!loading && payload ? (
+      {!loading && payload && shopUuid(payload.shop) === selectedShopUuid ? (
         <>
           <div className="journey-state-line"><span className="status-pill"><span className="status-dot" />{publicEnumLabel(payload.state, language, ui("Available", "Disponible"))}</span><span>{formatNumber(payload.journey_pagination?.total_items || payload.recent_sessions.length, language)} {ui("journeys in this view", "parcours dans cette vue")}</span></div>
           <div className="journey-summary" aria-label={ui("Journey summary", "Synthèse du parcours") }>
