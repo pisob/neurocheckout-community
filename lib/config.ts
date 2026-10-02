@@ -47,3 +47,8 @@ export function useSecureCookies(): boolean {
   if (override === "false") return false;
   return process.env.NODE_ENV === "production";
 }
+
+export function workspaceEnabled(): boolean {
+  const value = process.env.NC_COMMUNITY_MULTISTORE_ENABLED;
+  return value === "true" || (value !== "false" && process.env.NC_DEPLOYMENT_ENV === "staging");
+}

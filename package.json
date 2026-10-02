@@ -1,6 +1,6 @@
 {
   "name": "neurocheckout-community",
-  "version": "0.1.0-preview.25",
+  "version": "0.1.0-preview.26",
   "private": true,
   "engines": {
     "node": ">=22.13.0",
@@ -23,6 +23,9 @@
     "test:email-history": "node scripts/test-email-history-archive.mjs",
     "test:source-pull": "node --test scripts/test-source-pull.mjs",
     "test:auto-source": "node --test scripts/test-automatic-source-setup.mjs",
+    "test:workspace": "node --test scripts/test-workspace-store.mjs scripts/test-workspace-request.mjs",
+    "test:workspace-ui": "node scripts/test-workspace-ui.mjs",
+    "smoke:workspace": "node scripts/smoke-workspace.mjs",
     "setup:source-pull": "node scripts/configure-source-pull.mjs",
     "setup:local-data": "node scripts/setup-local-data.mjs",
     "backup:local-data": "node scripts/backup-local-data.mjs",

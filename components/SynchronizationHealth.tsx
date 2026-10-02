@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
@@ -52,6 +52,8 @@ export default function SynchronizationHealth({ language, connectors }: { langua
   const [retrying, setRetrying] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const healthRequest = useRef(0);
+  const [healthShop, setHealthShop] = useState("");
 
   const selectedShop = shops.find((shop) => shopUuid(shop) === selectedShopUuid);
   const connector = connectors.find((item) => item.shop_id === selectedShop?.shop_id);
@@ -70,18 +72,20 @@ export default function SynchronizationHealth({ language, connectors }: { langua
   }, [language]);
 
   const loadHealth = useCallback(async (quiet = false) => {
+    const sequence = ++healthRequest.current;
     if (!selectedShopUuid) return;
     if (!quiet) setLoading(true);
     setError("");
     try {
       const [cloudResponse, localResponse] = await Promise.all([
         fetch(`/api/cloud/sync-health?${new URLSearchParams({ shop_uuid: selectedShopUuid })}`, { cache: "no-store" }),
-        fetch("/api/local-data/sync-health", { cache: "no-store" }),
+        fetch(`/api/local-data/sync-health?${new URLSearchParams({ shop_uuid: selectedShopUuid })}`, { cache: "no-store" }),
       ]);
       const [cloudBody, localBody] = await Promise.all([
         cloudResponse.json().catch(() => ({})),
         localResponse.json().catch(() => ({})),
       ]);
+      if (sequence !== healthRequest.current) return;
       if (!cloudResponse.ok) throw new Error(publicErrorMessage(
         cloudBody?.detail,
         { en: "Synchronization status unavailable.", fr: "État de synchronisation indisponible." },
@@ -89,10 +93,12 @@ export default function SynchronizationHealth({ language, connectors }: { langua
       ));
       setCloud(cloudBody as CloudHealth);
       setLocal(localBody as LocalHealth);
+      setHealthShop(selectedShopUuid);
     } catch (loadError) {
+      if (sequence !== healthRequest.current) return;
       setError(loadError instanceof Error ? loadError.message : ui("Synchronization status unavailable.", "État de synchronisation indisponible."));
     } finally {
-      setLoading(false);
+      if (sequence === healthRequest.current) setLoading(false);
     }
   }, [language, selectedShopUuid]);
 
@@ -101,13 +107,13 @@ export default function SynchronizationHealth({ language, connectors }: { langua
     if (!selectedShopUuid) return;
     void loadHealth();
     const interval = setInterval(() => void loadHealth(true), 15_000);
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); ++healthRequest.current; };
   }, [loadHealth, selectedShopUuid]);
 
   const retry = async () => {
     setRetrying(true); setNotice(""); setError("");
     try {
-      const response = await fetch("/api/local-data/sync-health", { method: "POST" });
+      const response = await fetch(`/api/local-data/sync-health?${new URLSearchParams({ shop_uuid: selectedShopUuid })}`, { method: "POST" });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(publicErrorMessage(
         body?.detail,
@@ -157,7 +163,7 @@ export default function SynchronizationHealth({ language, connectors }: { langua
     {notice ? <p className="config-notice" role="status">{notice}</p> : null}
     {loading ? <div className="operational-state"><span className="loader" /><p>{ui("Checking the full synchronization path…", "Vérification du parcours de synchronisation…")}</p></div> : null}
 
-    {!loading && cloud ? <>
+    {!loading && cloud && healthShop === selectedShopUuid ? <>
       <header className={`sync-health-summary ${status}`}>
         <div><p className="eyebrow">{ui("Current state", "État actuel")}</p><h2>{stateCopy[status]}</h2><p>{cloud.online ? ui("Community and Cloud are exchanging authenticated signals.", "Community et le Cloud échangent des signaux authentifiés.") : ui("Cloud is preserving pending work until Community returns.", "Le Cloud conserve le travail en attente jusqu’au retour de Community.")}</p></div>
         <div className="sync-health-score"><strong>{cloud.queue.failed + cloud.data_quality.incomplete}</strong><span>{ui("issues requiring review", "anomalies à vérifier")}</span></div>

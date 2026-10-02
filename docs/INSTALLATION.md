@@ -88,7 +88,7 @@ assistant.
 Install a fixed signed release, not the moving development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.25 --depth 1 \
+git clone --branch v0.1.0-preview.26 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -96,7 +96,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.25
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.26
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -229,14 +229,51 @@ npm run doctor
 2. Review and authorize the requested scopes in NeuroCheckout Cloud.
 3. Confirm that the overview shows the Cloud plan, quota, Supervisor and seven
    enabled specialist agents.
-4. Confirm that Configuration displays only the store selected during Cloud
-   registration. Configure its editorial email rules and generate a preview
+4. Confirm that Configuration displays the store authorized during Cloud
+   registration (and any explicitly linked stores, when multi-store is enabled).
+   Configure the selected store's editorial email rules and generate a preview
    with a shop-owned OpenAI or Anthropic key. Choose the provider under
    **Configuration → AI key**; only the selected provider is used for that
    shop. A preview never sends a customer email.
 
 The contextual support agent is intentionally not displayed while its
 per-store personalization remains disabled.
+
+### Add another store to the same Community installation
+
+Multi-store is available in the staging preview when enabled by Cloud and within
+your current plan's store limit. Creating a store alone does not authorize an
+existing Community installation to access it.
+
+1. Create the additional store in Cloud with its own platform and storefront URL.
+2. Open **Community installations** in Cloud. Under your existing installation,
+   select the additional store and click **Authorize this store**. Do not create
+   a second public Client ID for this same Community dashboard.
+3. In Community, open **Configuration**, click **Refresh stores**, then select
+   the added store. Reuse its existing connector key if already configured;
+   otherwise generate a key for this store and save it in its platform connector.
+   Never reuse another store's key.
+4. Save the connector settings and complete **Test API** successfully. In
+   Community, activate the selected store's synchronization under
+   **Configuration → Connector**.
+5. Check **Sync health**, then select each store separately in the activity
+   pages. Configuration, synchronization and encrypted archives are isolated
+   per store. Keep Community running to synchronize all configured stores.
+
+A store already assigned to another installation cannot be taken over silently.
+Revoke that old assignment in Cloud only if you intend to replace it. Revoking
+the main installation also revokes access for its linked stores; local archives
+are not deleted. A plan reduction limits access without deleting local data.
+
+**Français — ajouter une deuxième boutique :** créez-la dans Cloud, puis ouvrez
+**Installations Community**. Sous votre installation existante, sélectionnez la
+boutique et cliquez sur **Autoriser cette boutique**. Dans Community, ouvrez
+**Configuration → Actualiser les boutiques**, sélectionnez-la, configurez sa
+propre clé dans son connecteur et réussissez **Test API**. Activez ensuite sa
+synchronisation dans **Configuration → Connecteur** et vérifiez **État de la
+synchronisation**. Aucun nouvel identifiant public ni nouvelle URL de retour
+n'est nécessaire. Cette fonction nécessite son activation côté staging et une
+offre permettant plusieurs boutiques.
 
 ## Optional Docker installation
 

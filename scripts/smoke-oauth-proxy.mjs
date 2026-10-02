@@ -146,7 +146,7 @@ const cloud = createServer(async (request, response) => {
   if (request.method === "GET" && request.url === "/api/v1/member/shops") {
     observed.shopList = true;
     return json(response, 200, {
-      items: [{ shop_uuid: "33333333-3333-4333-8333-333333333333", shop_id: "shop_smoke", platform: "woocommerce" }],
+      items: [{ shop_uuid: "33333333-3333-4333-8333-333333333333", shop_id: "synthetic-shop", platform: "woocommerce" }],
     });
   }
 
@@ -478,7 +478,7 @@ try {
   assert.match(previewResponse.headers.get('cache-control'), /no-store/);
   assert.equal((await communityFetch('/api/cloud/subscription/preview?plan_code=private&billing_cycle=annual')).status, 400);
   assert.equal(shops.status, 200);
-  assert.equal((await shops.json()).items[0].shop_id, "shop_smoke");
+  assert.equal((await shops.json()).items[0].shop_id, "synthetic-shop");
 
   const createShop = await communityFetch("/api/cloud/shops", { method: "POST" });
   assert.equal(createShop.status, 405);

@@ -6,5 +6,7 @@ export async function register() {
     startAvailabilityHeartbeat();
     const { startDataRelay } = await import("./lib/server-data-relay");
     startDataRelay();
+    const { startWorkspaceWorkers } = await import("./lib/server-workspace");
+    startWorkspaceWorkers();
   }
 }
