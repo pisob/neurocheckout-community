@@ -26,6 +26,7 @@ type CloudHealth = {
   data_quality: { incomplete: number };
   evidence: { received: number; sent: number; converted: number };
   latest_issue?: string | null;
+  next_attempt_at?: string | null;
 };
 type LocalHealth = {
   available: boolean;
@@ -140,6 +141,12 @@ export default function SynchronizationHealth({ language, connectors }: { langua
     offline: ui("Community offline", "Community hors ligne"),
   }), [language]);
   const issueCopy: Record<string, string> = {
+    abandonment_wait: ui("The abandonment delay has not elapsed. No email should be sent yet.", "Le délai d’abandon n’est pas atteint. Aucun email ne doit encore partir."),
+    agent_wait: ui("The agent has scheduled a later review.", "L’agent a programmé une réévaluation ultérieure."),
+    pre_send_wait: ui("The final check before sending is scheduled.", "La vérification finale avant envoi est programmée."),
+    quota_blocked: ui("The sending quota blocked an action. Check Plan & data. No automatic retry is confirmed.", "Le quota d’envoi a bloqué une action. Consultez Offre et données. Aucune reprise automatique n’est confirmée."),
+    agent_ignored: ui("An action was not eligible under the recovery rules. Check the agent settings; this is not a connection failure.", "Une action n’était pas admissible selon les règles de relance. Vérifiez les paramètres de l’agent ; ce n’est pas un échec de connexion."),
+    delivery_uncertain: ui("The mail server response is uncertain. Sending again is blocked to prevent duplicates; contact support.", "La réponse du serveur mail est incertaine. Le renvoi est bloqué pour éviter un doublon ; contactez le support."),
     community_unavailable: ui("Community was temporarily unreachable; retry is automatic.", "Community était temporairement indisponible ; la reprise est automatique."),
     consumer_failed: ui("Cloud processing is being retried automatically.", "Le traitement Cloud est relancé automatiquement."),
     worker_recovered: ui("An interrupted operation resumed without losing data.", "Une opération interrompue a repris sans perte de données."),
@@ -183,6 +190,9 @@ export default function SynchronizationHealth({ language, connectors }: { langua
       </div>
 
       {cloud.latest_issue ? <aside className="sync-issue" role="status"><strong>{ui("Latest diagnostic", "Dernier diagnostic")}</strong><p>{issueCopy[cloud.latest_issue] || ui("A recoverable synchronization issue was detected.", "Une anomalie de synchronisation récupérable a été détectée.")}</p></aside> : null}
+      {cloud.next_attempt_at ? <p role="status">{ui("Next processing attempt (not a guaranteed send time)", "Prochaine tentative de traitement (pas une heure d’envoi garantie)")} : {date(cloud.next_attempt_at)}</p> : null}
+      {!cloud.online ? <p role="status">{ui("Start Community and check its Internet connection. Pending work resumes when it reconnects.", "Démarrez Community et vérifiez sa connexion Internet. Le travail en attente reprend à sa reconnexion.")}</p> : null}
+      {cloud.online && localMatches && !localReady ? <p role="status">{ui("Check the connector API test and its cron status. Missing signals alone do not prove that cron is stopped.", "Vérifiez le test API du connecteur et l’état de son cron. L’absence de signaux ne prouve pas à elle seule que le cron est arrêté.")}</p> : null}
     </> : null}
   </section>;
 }

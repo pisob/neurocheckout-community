@@ -125,5 +125,11 @@ app/api/local-update/route.ts
 components/LocalUpdate.tsx
 scripts/verified-update.mjs
 scripts/update-switch.mjs
+scripts/update-backup.mjs
+scripts/restore-update-backup.mjs
+scripts/test-update-backup.mjs
+scripts/test-launcher-recovery.mjs
+scripts/test-support-diagnostics.mjs
+docs/RECOVERY.md
 scripts/test-local-update.mjs
 scripts/test-update-launcher.mjs

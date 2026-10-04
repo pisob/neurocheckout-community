@@ -11,6 +11,7 @@ export type SentEmail = {
   opened_at?: string | null; clicked_at?: string | null; converted_at?: string | null;
   tracking_available?: boolean; preview_available?: boolean;
   preview_asset_base_url?: string;
+  copy_diagnostic?: { source?: string; language?: string | null; variant_id?: number | null };
   preview_state?: "available" | "unavailable" | "read_error";
   order_id?: string | null; cart_id?: string | null;
   attributed_orders?: Array<{ order_id: string; cart_id?: string | null; order_total?: number | null }>;
@@ -40,6 +41,7 @@ export default function SentEmailPreview({ items, language, currency }: { items:
   const statuses: Record<string, string> = { sent: ui("Sent", "Envoyé"), delivered: ui("Delivered", "Livré"), opened: ui("Opened", "Ouvert"), clicked: ui("Clicked", "Cliqué"), converted: ui("Converted", "Converti"), bounced: ui("Bounced", "Rejeté") };
   const preview = (large = false) => documentHtml ? <iframe key={emailKey(selected)} className={large ? "sent-preview-frame expanded" : "sent-preview-frame"} sandbox="" referrerPolicy="no-referrer" title={ui("Sent email preview", "Aperçu de l’email envoyé")} srcDoc={documentHtml} /> : selected?.preview_available && selected.body_text ? <pre className="sent-preview-text">{selected.body_text}</pre> : <p className="email-activity-state">{selected?.preview_available && selected.body_html ? ui("Loading preview…", "Chargement de l’aperçu…") : ui("The original content is unavailable in this installation. Delivery and tracking details remain available.", "Le contenu original est indisponible dans cette installation. Les informations d’envoi et de suivi restent disponibles.")}</p>;
   if (!selected) return null;
+  const copySources: Record<string, string> = { byok: "BYOK", library: ui("Custom library", "Bibliothèque personnalisée"), db: ui("Database variant", "Variante DB"), standard: ui("Standard fallback", "Contenu de secours standard") };
   return <div className="sent-email-workspace">
     <div className="sent-email-list" aria-label={ui("Sent emails", "Emails envoyés")}>
       {items.slice(0,10).map((item) => <button type="button" className={emailKey(item)===emailKey(selected) ? "active" : ""} aria-pressed={emailKey(item)===emailKey(selected)} key={emailKey(item)} onClick={() => { setSelectedKey(emailKey(item)); dialog.current?.close(); }}>
@@ -51,6 +53,8 @@ export default function SentEmailPreview({ items, language, currency }: { items:
     <section className="sent-email-inspector" aria-label={ui("Selected email", "Email sélectionné")}>
       <header><h3>{selected.subject || ui("Email details", "Détails de l’email")}</h3>{selected.preview_available ? <button ref={trigger} className="button secondary-blue" type="button" onClick={() => dialog.current?.showModal()}>{ui("Full preview", "Aperçu complet")}</button> : null}</header>
       <dl>
+        <div><dt>{ui("Email language", "Langue de l’email")}</dt><dd>{selected.copy_diagnostic?.language || ui("Not recorded", "Non enregistrée")}</dd></div>
+        <div><dt>{ui("Content source", "Source du contenu")}</dt><dd>{copySources[selected.copy_diagnostic?.source || ""] || ui("Not recorded", "Non enregistrée")}{selected.copy_diagnostic?.source === "db" && selected.copy_diagnostic.variant_id ? ` · #${selected.copy_diagnostic.variant_id}` : ""}</dd></div>
         <div><dt>{ui("To", "À")}</dt><dd>{selected.recipient_email || selected.customer.email_masked || "—"}</dd></div>
         <div><dt>{ui("Sent", "Envoyé le")}</dt><dd>{date(selected.sent_at)}</dd></div>
         <div><dt>Agent</dt><dd>{selected.agent_name ? publicAgentLabel(selected.agent_name, language) : "—"}</dd></div>

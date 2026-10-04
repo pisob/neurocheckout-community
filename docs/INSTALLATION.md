@@ -320,6 +320,10 @@ After a healthy restart the selection persists across `npm start` restarts.
 A failed build leaves the existing server running; failed activation restores
 the previous server. A stopped or interrupted job is not automatically retried.
 
+See [backup verification and recovery / sauvegarde et restauration](RECOVERY.md)
+for protected multi-store snapshots, restoring to a new directory, and the
+required launcher upgrade for existing installations.
+
 The original launcher remains installed in the root directory. Updates that
 change that launcher require the manual procedure below. Docker and direct
 standalone-server launches display the manual update guide. Run as a dedicated

@@ -18,6 +18,7 @@ try {
  const items=[{delivery_id:'community-edge-1',subject:'Your selection is saved',recipient_email:'synthetic@example.invalid',customer:{},sent_at:new Date().toISOString(),agent_name:'abandoned_cart',status:'sent',tracking_available:false,preview_available:true,
  body_html:`<html><head><meta http-equiv="refresh" content="0;url=https://tracking.invalid/refresh"><style>@import url('https://tracking.invalid/style');.banner{background:#142c40;color:white;padding:22px}</style></head><body><div class="banner"><h1>Your selection is saved</h1></div><p>Your items are waiting for you.</p><table><tr><td>Framed poster × 3</td><td>$104.40</td></tr><tr><td>Mug × 3</td><td>$42.84</td></tr></table><p><b>Total: $147.24</b></p><a href="https://tracking.invalid/click">Return to my cart</a><img src="https://tracking.invalid/pixel" onerror="alert(1)"><svg onload="alert(1)"></svg><iframe src="https://tracking.invalid/frame"></iframe><script>alert(1)</script></body></html>`},
  {delivery_id:'community-edge-2',subject:'Older message',customer:{email_masked:'s***@example.invalid'},sent_at:new Date().toISOString(),status:'sent',preview_available:false}];
+ items[0].copy_diagnostic={source:'db',language:'fr',variant_id:42};
  await page.route('**/api/**',route=>{const path=new URL(route.request().url()).pathname;let body={};
   if(path.endsWith('/capabilities'))body={schema_version:'1.0',plan:{code:'community',edition:'community'},subscription:{status:'free_active',active:true},limits:{shops:1,active_agents:8,emails:{limit:100,used:2,remaining:98}},features:{member_dashboard:true,converted_orders:true,recent_emails:true},agents:{available:[],coordination_enabled:true},dashboard:{update_required:false,update_recommended:false},upgrade:{available:false},connectors:[]};
   else if(path.endsWith('/shops'))body={items:[shop]};
@@ -28,6 +29,8 @@ try {
  });
  await page.goto(origin+'/?connected=1#converted-orders');
  await page.locator('.sent-email-inspector iframe').waitFor();
+ await page.locator('.sent-email-inspector').getByText('Database variant · #42',{exact:true}).waitFor();
+ assert.equal(await page.locator('.sent-email-inspector dl').getByText('fr',{exact:true}).count(),1);
   await page.frameLocator('.sent-email-inspector iframe').getByText('Total: $147.24').waitFor();
   const recovery = page.getByRole('link', {name: 'Open original cart link'});
   assert.equal(await recovery.getAttribute('href'), 'https://tracking.invalid/click');
@@ -45,6 +48,7 @@ try {
   await page.locator('.email-activity').screenshot({path:process.env.NC_TEST_SCREENSHOT});
  }
  await page.getByRole('button',{name:/Older message/}).click();
+ assert.equal(await page.locator('.sent-email-inspector').getByText('Database variant · #42',{exact:true}).count(),0);
   await page.locator('.sent-email-inspector').getByText('The original content is unavailable in this installation.',{exact:false}).waitFor();
   assert.equal(await page.getByRole('link', {name: 'Open original cart link'}).count(), 0);
  await page.setViewportSize({width:390,height:844});
