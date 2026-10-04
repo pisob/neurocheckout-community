@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
     try {
       const queued = JSON.parse(await readFile(join(directory, "request.json"), "utf8"));
-      if (!["verifying", "downloading", "building", "restarting"].includes(state.phase)) {
+      if (!["preflight", "backing_up", "verifying", "downloading", "building", "restarting"].includes(state.phase)) {
         state = validVersion(queued?.version) ? { phase: "queued", version: queued.version } : { phase: "queued" };
       }
     } catch { /* No pending request. */ }

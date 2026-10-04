@@ -9,6 +9,7 @@ export default function LocalUpdate({ french }: { french: boolean }) {
   const [confirming, setConfirming] = useState(false);
   const [versions, setVersions] = useState<{ current?: string; latest?: string }>({});
   const [checkError, setCheckError] = useState("");
+  const [failureCode, setFailureCode] = useState("");
   const titleId = useId();
   const descriptionId = useId();
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
@@ -25,6 +26,7 @@ export default function LocalUpdate({ french }: { french: boolean }) {
         if (!active) return;
         setAvailable(data.available);
         setCheckError("");
+        setFailureCode(typeof data.error_code === "string" ? data.error_code : "");
         setVersions({ current: data.current_version, latest: data.latest_version });
         const verified = data.completion_verified === true && data.current_version === data.latest_version && data.version === data.current_version;
         setPhase(data.phase === "complete" && !verified ? "confirming" : data.phase);
@@ -65,11 +67,13 @@ export default function LocalUpdate({ french }: { french: boolean }) {
       triggerButtonRef.current?.focus();
     };
   }, [confirming]);
-  const busy = pending || ["queued", "verifying", "downloading", "building", "restarting", "confirming"].includes(phase);
+  const busy = pending || ["queued", "preflight", "backing_up", "verifying", "downloading", "building", "restarting", "confirming"].includes(phase);
   const labels: Record<string, string> = french ? {
+    preflight: "Vérification de l’espace disque et des permissions…", backing_up: "Sauvegarde privée et contrôle d’intégrité…",
     confirming: "Vérification de la version démarrée…",
     queued: "Mise à jour en attente…", verifying: "Vérification de la release…", downloading: "Téléchargement sécurisé…", building: "Préparation de la mise à jour…", restarting: "Redémarrage…", failed: "Échec de la mise à jour. Réessayez ou consultez le guide.", rolled_back: "L’ancienne version a été restaurée.", interrupted: "La mise à jour a été interrompue.", complete: "Mise à jour terminée.",
   } : {
+    preflight: "Checking disk space and permissions…", backing_up: "Private backup and integrity check…",
     confirming: "Verifying the running version…",
     queued: "Update queued…", verifying: "Verifying release…", downloading: "Downloading securely…", building: "Preparing update…", restarting: "Restarting…", failed: "Update failed. Retry or consult the guide.", rolled_back: "The previous version was restored.", interrupted: "Update interrupted.", complete: "Update complete.",
   };
@@ -89,12 +93,26 @@ export default function LocalUpdate({ french }: { french: boolean }) {
       setCheckError(french ? "Demande envoyée, confirmation en attente. Vérification automatique en cours." : "Request sent; awaiting confirmation. Checking automatically.");
     }
   }
+  const failureMessages: Record<string,string> = french ? {
+    update_disk_space_low: "Espace disque insuffisant : libérez au moins 2 Go. L’application actuelle reste disponible.",
+    update_private_directory_required: "Le dossier de mise à jour doit appartenir à votre utilisateur et rester privé (permissions 700).",
+    asset_unavailable: "Téléchargement indisponible après plusieurs tentatives. Vérifiez votre connexion et réessayez.",
+    asset_missing: "L’archive de cette version n’est pas disponible. Attendez sa publication complète.",
+    signature_rejected: "Signature de la release refusée. Ne contournez pas cette vérification ; contactez le support.",
+  } : {
+    update_disk_space_low: "Insufficient disk space: free at least 2 GB. The current application remains available.",
+    update_private_directory_required: "The update directory must belong to your user and be private (permissions 700).",
+    asset_unavailable: "Download unavailable after retries. Check your connection and try again.",
+    asset_missing: "This release archive is not available. Wait until publication is complete.",
+    signature_rejected: "Release signature rejected. Do not bypass verification; contact support.",
+  };
   return <div className="local-update-actions">
     {versions.current || versions.latest ? <small>{french ? "Installée" : "Installed"} : {versions.current || "—"} · {french ? "Disponible" : "Available"} : {versions.latest || "—"}</small> : null}
     {available ? <button ref={triggerButtonRef} type="button" className="button secondary-blue" disabled={busy} onClick={() => setConfirming(true)}>{busy ? (french ? "Mise à jour en cours…" : "Updating…") : (french ? "Mettre à jour" : "Update securely")}</button> :
       <a className="button ghost" href="https://github.com/pisob/neurocheckout-community/blob/main/docs/INSTALLATION.md#upgrade" target="_blank" rel="noreferrer">{french ? "Guide de mise à jour" : "Update guide"}</a>}
     <span role="status" aria-live="polite">{labels[phase] || ""}</span>
     {checkError ? <span role="status">{checkError}</span> : null}
+    {failureMessages[failureCode] ? <span role="status">{failureMessages[failureCode]}</span> : null}
     {["failed", "rolled_back", "interrupted"].includes(phase) ? <a href="https://github.com/pisob/neurocheckout-community/blob/main/docs/INSTALLATION.md#upgrade" target="_blank" rel="noreferrer">{french ? "Ouvrir le guide" : "Open the guide"}</a> : null}
     {confirming ? <div className="update-modal-backdrop" onMouseDown={(event) => {
       if (event.target === event.currentTarget) setConfirming(false);

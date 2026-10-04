@@ -2,6 +2,8 @@
 export async function activateCandidate(candidate, current, operations) {
   await operations.stop();
   try {
+    // Snapshot only after the server stops: include SQLite WAL and all stores.
+    await operations.backup?.();
     await operations.start(candidate);
     if (!(await operations.healthy())) throw new Error("candidate_unhealthy");
     await operations.commit(candidate);

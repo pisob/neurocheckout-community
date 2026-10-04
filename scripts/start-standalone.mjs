@@ -6,6 +6,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { loadEnvironmentFile } from "./env-file.mjs";
 import { isNewerVersion, prepareRelease, validVersion } from "./verified-update.mjs";
 import { activateCandidate } from "./update-switch.mjs";
+import { createUpdateBackup, updatePreflight } from "./update-backup.mjs";
 
 const root = process.cwd();
 loadEnvironmentFile(resolve(root, ".env.local"));
@@ -32,8 +33,9 @@ let switching = false;
 let child;
 const pointer = resolve(directory, "current.json");
 const requestPath = resolve(directory, "request.json");
-async function status(phase, version) {
+async function status(phase, version, errorCode) {
   const payload = validVersion(version) ? { phase, version } : { phase };
+  if (['update_disk_space_low','update_private_directory_required','asset_unavailable','asset_missing','signature_rejected'].includes(errorCode)) payload.error_code = errorCode;
   await writeFile(resolve(directory, "status.tmp"), JSON.stringify(payload), { mode: 0o600 });
   await rename(resolve(directory, "status.tmp"), resolve(directory, "status.json"));
 }
@@ -72,13 +74,17 @@ async function healthy(instance) {
 }
 let current = root;
 let previous = root;
+function safeBuildPath(value) {
+  if (typeof value !== "string") return null;
+  const path = resolve(directory, value), within = relative(directory, path);
+  return (path === root || (!within.startsWith("..") && !isAbsolute(within))) && existsSync(resolve(path, ".next/standalone/server.js")) ? path : null;
+}
 try {
   const saved = JSON.parse(await readFile(pointer, "utf8"));
-  const resolved = resolve(directory, saved.path);
-  const within = relative(directory, resolved);
-  if (!within.startsWith("..") && !isAbsolute(within) && existsSync(resolve(resolved, ".next/standalone/server.js"))) {
+  const resolved = safeBuildPath(saved.path);
+  if (resolved) {
     current = resolved;
-    if (typeof saved.previous === "string") previous = resolve(directory, saved.previous);
+    previous = safeBuildPath(saved.previous) || root;
   }
 } catch { /* First start uses the installed build. */ }
 // An interrupted request is not silently retried at startup.
@@ -90,7 +96,19 @@ try {
 await rm(resolve(directory, "queue.lock"), { recursive: true, force: true });
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => { stopping = true; cancellation.abort(); });
 try {
+  switching = true;
   child = launch(current);
+  if (!(await healthy(child))) {
+    await stop(child);
+    if (previous === current || stopping) throw new Error("startup_unhealthy");
+    child = launch(previous);
+    if (!(await healthy(child))) throw new Error("rollback_unhealthy");
+    current = previous;
+    await writeFile(pointer + ".tmp", JSON.stringify({path:relative(directory,current)}),{mode:0o600});
+    await rename(pointer + ".tmp",pointer);
+    await status("rolled_back");
+  }
+  switching = false;
   while (!stopping) {
     await delay(500);
     let request;
@@ -107,12 +125,20 @@ try {
       }
       const currentMetadata = JSON.parse(await readFile(resolve(current, "package.json"), "utf8"));
       if (!isNewerVersion(request.version, currentMetadata.version)) throw new Error("update_not_newer");
+      await status("preflight", request.version);
+      updatePreflight(directory);
       const candidate = await prepareRelease(directory, request.version, phase => status(phase, request.version), cancellation.signal);
       if (stopping) break;
       await status("restarting", request.version);
       switching = true;
       const result = await activateCandidate(candidate, current, {
         stop: () => stop(child),
+        backup: async () => {
+          await status("backing_up", request.version);
+          const destination = resolve(directory, `backup-${Date.now()}`);
+          createUpdateBackup({ root, stateDirectory: process.env.NC_COMMUNITY_STATE_DIRECTORY, destination });
+          await status("restarting", request.version);
+        },
         start: source => { child = launch(source); },
         healthy: () => healthy(child),
         commit: async source => {
@@ -123,12 +149,12 @@ try {
       if (result.phase === "complete") previous = current;
       current = result.current;
       await status(result.phase, request.version);
-    } catch {
+    } catch (error) {
       if (switching && !stopping) {
         await stop(child);
         child = launch(current);
         await status((await healthy(child)) ? "rolled_back" : "failed", request?.version);
-      } else await status("failed", request?.version);
+      } else await status("failed", request?.version, error?.message);
     } finally {
       switching = false;
       await unlink(requestPath).catch(() => {});

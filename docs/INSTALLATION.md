@@ -88,7 +88,7 @@ assistant.
 Install a fixed signed release, not the moving development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.26 --depth 1 \
+git clone --branch v0.1.0-preview.27 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -96,7 +96,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.26
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.27
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -319,6 +319,10 @@ receives those settings; dependency installation and build do not receive them.
 After a healthy restart the selection persists across `npm start` restarts.
 A failed build leaves the existing server running; failed activation restores
 the previous server. A stopped or interrupted job is not automatically retried.
+
+See [backup verification and recovery / sauvegarde et restauration](RECOVERY.md)
+for protected multi-store snapshots, restoring to a new directory, and the
+required launcher upgrade for existing installations.
 
 The original launcher remains installed in the root directory. Updates that
 change that launcher require the manual procedure below. Docker and direct
