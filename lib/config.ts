@@ -50,5 +50,5 @@ export function useSecureCookies(): boolean {
 
 export function workspaceEnabled(): boolean {
   const value = process.env.NC_COMMUNITY_MULTISTORE_ENABLED;
-  return value === "true" || (value !== "false" && process.env.NC_DEPLOYMENT_ENV === "staging");
+  return value === "true" || (value !== "false" && ["staging", "production"].includes(process.env.NC_DEPLOYMENT_ENV || ""));
 }

@@ -26,7 +26,7 @@ function unavailable() {
 }
 
 export async function GET(request: NextRequest) {
-  if (process.env.NC_DEPLOYMENT_ENV !== "staging" || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true" ||
+  if (!["staging", "production"].includes(process.env.NC_DEPLOYMENT_ENV || "") || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true" ||
       !existsSync(resolve(directory(), "local-data-keys.json"))) return unavailable();
   let store: LocalDataStore | undefined;
   let archive: EmailArchive | undefined;
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
   let cookie: string | null = null;
   const rejected = rejectForeignMutation(request);
   if (rejected) return rejected;
-  if (process.env.NC_DEPLOYMENT_ENV !== "staging" || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true") {
+  if (!["staging", "production"].includes(process.env.NC_DEPLOYMENT_ENV || "") || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true") {
     return NextResponse.json({ detail: "local_data_unavailable" }, { status: 404 });
   }
   if (workspaceEnabled()) {

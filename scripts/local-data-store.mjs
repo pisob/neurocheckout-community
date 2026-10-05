@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from "node:crypto";
 import { mkdirSync, lstatSync, fstatSync, chmodSync, openSync, closeSync, readFileSync, writeFileSync, constants } from "node:fs";
 import { resolve } from "node:path";
+import { runtimeEnvironment } from "./deployment-environment.mjs";
 
 export const MAX_BODY_BYTES = 192 * 1024;
 const RETENTION_MS = 30 * 86400_000;
@@ -34,7 +35,7 @@ function readPrivate(path) {
   } finally { closeSync(fd); }
 }
 
-export function initializeLocalData(directory, shopId, environment = "staging") {
+export function initializeLocalData(directory, shopId, environment = runtimeEnvironment()) {
   if (!["staging", "production"].includes(environment)) fail("local_data_environment_invalid");
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(shopId)) fail("local_data_shop_invalid");
   const path = privateDirectory(directory);
@@ -46,7 +47,7 @@ export function initializeLocalData(directory, shopId, environment = "staging") 
   return { shopId, environment };
 }
 
-export function loadLocalDataConfig(directory, expectedEnvironment = "staging") {
+export function loadLocalDataConfig(directory, expectedEnvironment = runtimeEnvironment()) {
   if (!["staging", "production"].includes(expectedEnvironment)) fail("local_data_environment_invalid");
   const path = privateDirectory(directory);
   const config = JSON.parse(readPrivate(resolve(path, "local-data-keys.json")));
@@ -58,7 +59,7 @@ export function loadLocalDataConfig(directory, expectedEnvironment = "staging") 
 }
 
 export class LocalDataStore {
-  constructor(directory, clock = Date.now, environment = "staging") {
+  constructor(directory, clock = Date.now, environment = runtimeEnvironment()) {
     this.config = loadLocalDataConfig(directory, environment);
     this.clock = clock;
     const path = resolve(directory, "local-data.sqlite");

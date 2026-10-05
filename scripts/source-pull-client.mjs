@@ -3,6 +3,7 @@ import { lookup } from "node:dns/promises";
 import { request } from "node:https";
 import { BlockList, isIP } from "node:net";
 import { LocalDataStore, mac } from "./local-data-store.mjs";
+import { supportedEnvironment } from "./deployment-environment.mjs";
 import { SourceSynchronizer, connectorEndpoint, SOURCE_PAGE_BYTES, SOURCE_PAGE_RECORDS } from "./local-source-sync.mjs";
 
 const denied = new BlockList();
@@ -67,10 +68,10 @@ export async function postSourcePage(endpoint, body, headers, { resolveTarget = 
 }
 
 export async function pullSourceOnce(options, transport = postSourcePage) {
-  if (!options.enabled || options.environment !== "staging") return { ok: false };
+  if (!options.enabled || !supportedEnvironment(options.environment)) return { ok: false };
   let store, sync, lease;
   try {
-    store = new LocalDataStore(options.directory);
+    store = new LocalDataStore(options.directory, Date.now, options.environment);
     sync = new SourceSynchronizer(store);
     const configuration = sync.configuration();
     lease = sync.claim();
@@ -96,10 +97,10 @@ export async function pullSourceOnce(options, transport = postSourcePage) {
 }
 
 export function pauseSourceReads(options) {
-  if (!options.enabled || options.environment !== "staging") return;
+  if (!options.enabled || !supportedEnvironment(options.environment)) return;
   let store;
   try {
-    store = new LocalDataStore(options.directory);
+    store = new LocalDataStore(options.directory, Date.now, options.environment);
     if (store.db.prepare("SELECT 1 FROM meta WHERE name='source_pull_bound'").get()) {
       store.db.prepare("UPDATE source_sync SET ready=0 WHERE id=1").run();
     }

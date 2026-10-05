@@ -21,7 +21,7 @@ function stateDirectory(): string {
 }
 
 export async function GET(request: NextRequest) {
-  if (process.env.NC_DEPLOYMENT_ENV !== "staging" || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true") {
+  if (!["staging", "production"].includes(process.env.NC_DEPLOYMENT_ENV || "") || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true") {
     return NextResponse.json({ available: false, configured: false, ready: false });
   }
   const { automaticSourceStatus } = await import("@/scripts/automatic-source-setup.mjs");
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (process.env.NC_DEPLOYMENT_ENV !== "staging" || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true") {
+  if (!["staging", "production"].includes(process.env.NC_DEPLOYMENT_ENV || "") || process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true") {
     return NextResponse.json({ detail: "local_data_unavailable" }, { status: 404 });
   }
   let shopUuid = "";

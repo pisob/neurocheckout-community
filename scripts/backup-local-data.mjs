@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { LocalDataStore } from "./local-data-store.mjs";
 let store;
 try {
-  if (process.env.NC_DEPLOYMENT_ENV !== "staging" || process.argv.length !== 3) throw new Error("staging_backup_required");
+  if (!["staging", "production"].includes(process.env.NC_DEPLOYMENT_ENV || "") || process.argv.length !== 3) throw new Error("environment_backup_required");
   const directory = process.env.NC_COMMUNITY_STATE_DIRECTORY || resolve(process.cwd(), ".community-state");
   store = new LocalDataStore(directory);
   store.backup(process.argv[2]);

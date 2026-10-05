@@ -17,7 +17,7 @@ export function requestWorkspaceRun(directory: string): boolean {
 // Each child owns its timers, backoff and vault. A slow/offline shop cannot stall
 // the parent's existing loops or another shop. No credentials enter the browser.
 export function startWorkspaceWorkers() {
-  if (!workspaceEnabled() || process.env.NC_DEPLOYMENT_ENV !== "staging" ||
+  if (!workspaceEnabled() || !["staging", "production"].includes(process.env.NC_DEPLOYMENT_ENV || "") ||
       process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true") return;
   const state = globalThis as typeof globalThis & { communityWorkspaceStarted?: boolean };
   if (state.communityWorkspaceStarted) return;
@@ -33,7 +33,7 @@ export function startWorkspaceWorkers() {
         if (workers.has(directory)) continue;
         const generation = Symbol(); workers.set(directory, generation);
         const active = () => workers.get(directory) === generation;
-        const options = { enabled: true, environment: "staging", directory, secret: sessionSecret(),
+        const options = { enabled: true, environment: process.env.NC_DEPLOYMENT_ENV || "production", directory, secret: sessionSecret(),
           cloudUrl: cloudApiBaseUrl(), clientId: communityClientId(), port: process.env.PORT || "3400", version };
         try { pauseSourceReads(options); } catch { /* Setup may still be completing. */ }
         let relayFailures = 0;

@@ -13,7 +13,7 @@ function options() {
 }
 
 export async function persistRelayCredential(credential: unknown) {
-  if (process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true" || process.env.NC_DEPLOYMENT_ENV !== "staging") return;
+  if (process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true" || !["staging", "production"].includes(process.env.NC_DEPLOYMENT_ENV || "")) return;
   const { saveRelayCredential } = await import("@/scripts/server-data-relay.mjs");
   await saveRelayCredential(options(), credential);
 }
@@ -45,7 +45,7 @@ export function requestDataRelayRun(): boolean {
 }
 
 export function startDataRelay() {
-  if (process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true" || process.env.NC_DEPLOYMENT_ENV !== "staging") return;
+  if (process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true" || !["staging", "production"].includes(process.env.NC_DEPLOYMENT_ENV || "")) return;
   const runtime = relayRuntime();
   if (runtime.started) return;
   runtime.started = true;

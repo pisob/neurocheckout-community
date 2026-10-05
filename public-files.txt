@@ -133,3 +133,8 @@ scripts/test-support-diagnostics.mjs
 docs/RECOVERY.md
 scripts/test-local-update.mjs
 scripts/test-update-launcher.mjs
+scripts/deployment-environment.mjs
+scripts/deployment-environment.d.mts
+scripts/test-vault-environment.mjs
+scripts/test-production-environment.mjs
+docs/STAGING.md

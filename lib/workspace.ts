@@ -66,7 +66,7 @@ export async function bootstrapWorkspaceDirectory(request: NextRequest, shopUuid
   if (payload.grant?.shop_uuid !== shopUuid || payload.local_data_credential?.installation_id !== payload.grant.installation_id ||
       payload.local_data_credential?.shop_id !== payload.grant.shop_id) throw new Error("workspace_response_invalid");
   const directory = workspaceStoreDirectory(workspaceRoot(), payload.grant, { create: true });
-  const options = { enabled: true, environment: "staging", directory,
+  const options = { enabled: true, environment: process.env.NC_DEPLOYMENT_ENV || "production", directory,
     secret: sessionSecret(), cloudUrl: cloudApiBaseUrl(), clientId: communityClientId(),
     port: process.env.PORT || "3400", version };
   await saveRelayCredential(options, payload.local_data_credential);

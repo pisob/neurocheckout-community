@@ -28,11 +28,11 @@ export function requestSourcePullRun(): boolean {
 
 export async function startSourcePull() {
   if (process.env.NC_CONNECTOR_PULL_ENABLED !== "true" ||
-      process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true" || process.env.NC_DEPLOYMENT_ENV !== "staging") return;
+      process.env.NC_LOCAL_DATA_PILOT_ENABLED !== "true" || !["staging", "production"].includes(process.env.NC_DEPLOYMENT_ENV || "")) return;
   const runtime = sourceRuntime();
   if (runtime.started) return;
   runtime.started = true;
-  const options = { enabled: true, environment: "staging",
+  const options = { enabled: true, environment: process.env.NC_DEPLOYMENT_ENV || "production",
     directory: process.env.NC_COMMUNITY_STATE_DIRECTORY || resolve(process.cwd(), ".community-state"),
   };
   try {

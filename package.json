@@ -19,7 +19,7 @@
     "test:diagnostics": "node scripts/test-support-diagnostics.mjs",
     "test:availability": "node --test scripts/test-server-availability.mjs",
     "test:local-data": "node --test scripts/test-local-data.mjs scripts/test-vault-environment.mjs",
-    "test:relay": "node --test scripts/test-server-data-relay.mjs",
+    "test:relay": "node --test scripts/test-server-data-relay.mjs scripts/test-production-environment.mjs",
     "test:email-archive": "node --test scripts/test-email-archive.mjs",
     "test:email-history": "node scripts/test-email-history-archive.mjs",
     "test:source-pull": "node --test scripts/test-source-pull.mjs",
