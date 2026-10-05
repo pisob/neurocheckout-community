@@ -34,21 +34,23 @@ function readPrivate(path) {
   } finally { closeSync(fd); }
 }
 
-export function initializeLocalData(directory, shopId) {
+export function initializeLocalData(directory, shopId, environment = "staging") {
+  if (!["staging", "production"].includes(environment)) fail("local_data_environment_invalid");
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(shopId)) fail("local_data_shop_invalid");
   const path = privateDirectory(directory);
-  const config = { schema: 1, environment: "staging", shopId,
+  const config = { schema: 1, environment, shopId,
     encryptionKey: randomBytes(32).toString("hex"),
     ingestionKey: randomBytes(32).toString("hex"), readKey: randomBytes(32).toString("hex") };
   // Never overwrite keys: doing so would make the existing database unreadable.
   writeFileSync(resolve(path, "local-data-keys.json"), JSON.stringify(config), { mode: 0o600, flag: "wx" });
-  return { shopId, environment: "staging" };
+  return { shopId, environment };
 }
 
-export function loadLocalDataConfig(directory) {
+export function loadLocalDataConfig(directory, expectedEnvironment = "staging") {
+  if (!["staging", "production"].includes(expectedEnvironment)) fail("local_data_environment_invalid");
   const path = privateDirectory(directory);
   const config = JSON.parse(readPrivate(resolve(path, "local-data-keys.json")));
-  if (config.schema !== 1 || config.environment !== "staging" ||
+  if (config.schema !== 1 || config.environment !== expectedEnvironment ||
       !/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(config.shopId) ||
       ![config.encryptionKey, config.ingestionKey, config.readKey].every(v => typeof v === "string" && hexKey.test(v)) ||
       new Set([config.encryptionKey, config.ingestionKey, config.readKey]).size !== 3) fail("local_data_configuration_invalid");
@@ -56,8 +58,8 @@ export function loadLocalDataConfig(directory) {
 }
 
 export class LocalDataStore {
-  constructor(directory, clock = Date.now) {
-    this.config = loadLocalDataConfig(directory);
+  constructor(directory, clock = Date.now, environment = "staging") {
+    this.config = loadLocalDataConfig(directory, environment);
     this.clock = clock;
     const path = resolve(directory, "local-data.sqlite");
     const fd = openSync(path, constants.O_CREAT | constants.O_RDWR | constants.O_NOFOLLOW, 0o600);

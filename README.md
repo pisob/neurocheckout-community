@@ -22,30 +22,30 @@ dependent actions pause safely and resume automatically after reconnection.
 
 ## 1. Create your Cloud account before installing Community
 
-The commands below use `--environment=preview`, which connects to **Cloud
-staging**, not production. First confirm that you have authorized staging access.
-If access is refused, stop here and request access from NeuroCheckout; installing
-Community does not grant access to staging.
+The main instructions below target **production** at `https://www.neurocheckout.com`.
+**Launch status:** production activation is being prepared. The signed preview.27
+release still restricts local synchronization to staging. Do not use it for live
+stores until a production-enabled release and Cloud activation are announced.
+Testers should use the separate [staging instructions](docs/STAGING.md).
 
-1. [Create your staging account](https://staging.neurocheckout.com/register), or
-   [sign in to staging](https://staging.neurocheckout.com/login) if you already
+1. [Create your account](https://www.neurocheckout.com/register), or
+   [sign in](https://www.neurocheckout.com/login) if you already
    have one. Verify your email if requested.
-2. For a new free account, open [plan selection](https://staging.neurocheckout.com/onboarding/subscription)
+2. For a new free account, open [plan selection](https://www.neurocheckout.com/onboarding/subscription)
    and choose **Activate Community** / **Continue free with Community**.
    This free activation does not require Stripe checkout or a payment card.
    **Already subscribed or in an active trial? Keep that plan; skip free activation.**
 3. In the Cloud dashboard, create or select the store that Community will manage.
 
-For production, use your account at `https://www.neurocheckout.com`, an authorized
-release and the [production instructions](docs/INSTALLATION.md). Do not mix a
-production Client ID with preview setup. Accounts and installations must belong
-to the environment you connect to.
+Use a release authorized for production and the [installation instructions](docs/INSTALLATION.md).
+Do not mix a production Client ID with preview setup. Accounts and installations
+must belong to the environment you connect to; changing a URL does not migrate data.
 
 ## 2. Register your installation and copy its public Client ID
 
 Community does **not** need to be installed or running for this step.
 
-1. Open [Community installations in staging](https://staging.neurocheckout.com/dashboard/community).
+1. Open [Community installations](https://www.neurocheckout.com/dashboard/community).
 2. Create an installation for your store and give it a recognizable name.
 3. For this local installation, register the exact callback URL:
    `http://localhost:3400/api/auth/callback`.
@@ -111,7 +111,7 @@ signature is not.
 Run the guided setup from the `neurocheckout-community` directory:
 
 ```bash
-npm run setup -- --environment=preview
+npm run setup -- --environment=production
 ```
 
 When prompted:
@@ -138,7 +138,7 @@ Community automatically creates its encrypted local vault and starts product and
 cart synchronization for the eligible store. No additional synchronization
 secret, server file or SSH access is required.
 
-Use the same staging account that owns the installation. Check your store and
+Use the same production account that owns the installation. Check your store and
 **Sync health**. If the store connector is not configured yet, follow
 [Connect an ecommerce platform](#connect-an-ecommerce-platform) below.
 

@@ -35,19 +35,20 @@ npm --version
 No local installation is required yet. Complete these browser steps **before**
 running the setup assistant.
 
-This guide's `--environment=preview` commands connect to **staging**. You need
-authorized access to `https://staging.neurocheckout.com`; a production account or
-Client ID cannot be substituted. If access is refused, request staging access
-from NeuroCheckout before proceeding.
+This guide targets **production** at `https://www.neurocheckout.com`.
+Production activation is still being prepared: preview.27 does not enable local
+synchronization in production. Wait for an explicitly production-enabled release
+before connecting live stores. Authorized testers must use [STAGING.md](STAGING.md)
+and `--environment=preview` instead, with a separate account and installation.
 
-1. [Register](https://staging.neurocheckout.com/register) or
-   [sign in](https://staging.neurocheckout.com/login), then verify your email if requested.
-2. For a new free account, open [plan selection](https://staging.neurocheckout.com/onboarding/subscription)
+1. [Register](https://www.neurocheckout.com/register) or
+   [sign in](https://www.neurocheckout.com/login), then verify your email if requested.
+2. For a new free account, open [plan selection](https://www.neurocheckout.com/onboarding/subscription)
    and select **Activate Community** / **Continue free with Community**. No Stripe
    checkout or payment card is required. If you already have an active trial or
    paid plan, keep that plan and skip this step.
 3. Create or select your store in the Cloud dashboard.
-4. Open [Community installations](https://staging.neurocheckout.com/dashboard/community)
+4. Open [Community installations](https://www.neurocheckout.com/dashboard/community)
    and create an installation for that store, with a name and this exact local
    callback URL: `http://localhost:3400/api/auth/callback`.
 5. Copy the displayed public **Client ID**, beginning with `nc_`. For an existing
@@ -57,9 +58,8 @@ The **Public Cloud client ID** is an OAuth installation identifier, not a
 password, connector API key, signing key or MCP URL. Browser sign-in and consent
 are still required. You will paste this identifier into the terminal in step 3.
 
-For an authorized production deployment, perform those browser steps on
-`https://www.neurocheckout.com` instead and use `--environment=production` during
-setup. Do not mix environments. For a hosted installation, register your own
+Use `--environment=production` during setup. Do not mix environments or reuse a
+staging vault in production. For a hosted installation, register your own
 HTTPS callback, for example `https://community.example.com/api/auth/callback`,
 instead of the localhost URL.
 
@@ -117,7 +117,7 @@ is invalid.
 From the repository root:
 
 ```bash
-npm run setup -- --environment=preview
+npm run setup -- --environment=production
 ```
 
 The assistant asks only for the public client ID and exact callback URL. It
@@ -133,7 +133,7 @@ For an unattended installation, pass the two public values explicitly:
 
 ```bash
 npm run setup -- \
-  --environment=preview \
+  --environment=production \
   --client-id=nc_public_client_id_from_cloud \
   --redirect-uri=https://community.example.com/api/auth/callback
 ```
@@ -214,7 +214,7 @@ community.example.com {
 ```
 
 Register `https://community.example.com/api/auth/callback` in Cloud before
-starting the OAuth connection. Run `npm run setup -- --environment=preview` again if the callback
+starting the OAuth connection. Run `npm run setup -- --environment=production` again if the callback
 changes; it preserves the existing session secret.
 
 ## 7. Validate the connection
