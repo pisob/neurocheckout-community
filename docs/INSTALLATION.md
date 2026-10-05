@@ -241,8 +241,8 @@ per-store personalization remains disabled.
 
 ### Add another store to the same Community installation
 
-Multi-store is available in the staging preview when enabled by Cloud and within
-your current plan's store limit. Creating a store alone does not authorize an
+Multi-store requires a release supported by your Cloud environment and must be
+enabled within your current plan's store limit. Creating a store alone does not authorize an
 existing Community installation to access it.
 
 1. Create the additional store in Cloud with its own platform and storefront URL.
@@ -272,7 +272,8 @@ boutique et cliquez sur **Autoriser cette boutique**. Dans Community, ouvrez
 propre clé dans son connecteur et réussissez **Test API**. Activez ensuite sa
 synchronisation dans **Configuration → Connecteur** et vérifiez **État de la
 synchronisation**. Aucun nouvel identifiant public ni nouvelle URL de retour
-n'est nécessaire. Cette fonction nécessite son activation côté staging et une
+n'est nécessaire. Cette fonction nécessite une version compatible avec votre
+environnement Cloud, son activation et une
 offre permettant plusieurs boutiques.
 
 ## Optional Docker installation
