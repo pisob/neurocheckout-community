@@ -36,9 +36,9 @@ No local installation is required yet. Complete these browser steps **before**
 running the setup assistant.
 
 This guide targets **production** at `https://www.neurocheckout.com`.
-Production activation is still being prepared: preview.27 does not enable local
-synchronization in production. Wait for an explicitly production-enabled release
-before connecting live stores. Authorized testers must use [STAGING.md](STAGING.md)
+Use **0.1.0-preview.28** or a newer compatible release for production synchronization.
+This is a prerelease: keep a private backup and verify each store's connection
+before enabling customer email automation. Testers must use [STAGING.md](STAGING.md)
 and `--environment=preview` instead, with a separate account and installation.
 
 1. [Register](https://www.neurocheckout.com/register) or
@@ -88,7 +88,7 @@ assistant.
 Install a fixed signed release, not the moving development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.27 --depth 1 \
+git clone --branch v0.1.0-preview.28 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -96,7 +96,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.27
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.28
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
