@@ -16,4 +16,5 @@ export function automaticSourceStatus(directory: string): {
   shopId?: string;
   lastSuccessAt?: number;
   lastCompleteAt?: number;
+  diagnostic?: { code: string; checked_at: number } | null;
 };

@@ -209,6 +209,15 @@ be copied into issues, logs or pull requests.
 
 ## Updating
 
+Read [update safety and recovery](docs/RECOVERY.md) before updating. A failed
+candidate must not validate using another version's health response. The launcher
+performs a private restore drill before activation and reports safe failure codes.
+These protections require updating the launcher itself, not only the served build.
+
+The [stable acceptance checklist](docs/STABLE-RELEASE.md) distinguishes production
+connectivity from stable certification. The merchant journey still requires owner
+acceptance; this work does not promote a preview to stable.
+
 Install only a newer signed release. Read its release notes, verify the tag and
 assets, stop the running process, back up `.community-state/` and `.env.local`,
 then follow the update instructions displayed by Community.

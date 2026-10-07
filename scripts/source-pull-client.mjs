@@ -5,6 +5,7 @@ import { BlockList, isIP } from "node:net";
 import { LocalDataStore, mac } from "./local-data-store.mjs";
 import { supportedEnvironment } from "./deployment-environment.mjs";
 import { SourceSynchronizer, connectorEndpoint, SOURCE_PAGE_BYTES, SOURCE_PAGE_RECORDS } from "./local-source-sync.mjs";
+import { recordSourceDiagnostic, sourceFailureCode } from './source-diagnostic.mjs';
 
 const denied = new BlockList();
 for (const [network, prefix] of [
@@ -48,7 +49,8 @@ export async function postSourcePage(endpoint, body, headers, { resolveTarget = 
         ? callback(null, [{ address, family: 4 }]) : callback(null, address, 4),
       headers: { ...headers, "Content-Length": String(Buffer.byteLength(body)), "Accept-Encoding": "identity" },
     }, res => {
-      const abort = () => { res.destroy(); req.destroy(); reject(new Error("source_unavailable")); };
+      const abort = (code = "source_unavailable") => { reject(new Error(code)); res.destroy(); req.destroy(); };
+      if ([401, 403].includes(res.statusCode)) { abort('source_auth_rejected'); return; }
       if (res.statusCode !== 200 || (res.headers["content-encoding"] || "identity") !== "identity" ||
           (res.headers["content-type"] || "").split(";")[0] !== "application/json" ||
           Number(res.headers["content-length"] || 0) > SOURCE_PAGE_BYTES) { abort(); return; }
@@ -86,12 +88,17 @@ export async function pullSourceOnce(options, transport = postSourcePage) {
     });
     if (!Buffer.isBuffer(response.body) || response.body.length > SOURCE_PAGE_BYTES ||
         typeof response.signature !== "string" || !/^[a-f0-9]{64}$/.test(response.signature) ||
-        !timingSafeEqual(Buffer.from(response.signature, "hex"), Buffer.from(sourceResponseSignature(configuration.secret, nonce, response.body), "hex"))) throw new Error("source_unavailable");
+        !timingSafeEqual(Buffer.from(response.signature, "hex"), Buffer.from(sourceResponseSignature(configuration.secret, nonce, response.body), "hex"))) throw new Error("source_signature_rejected");
     const page = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(response.body));
-    return { ok: true, ...sync.apply(page, lease) };
-  } catch {
+    const applied = sync.apply(page, lease);
+    try { recordSourceDiagnostic(store, 'ok'); } catch { /* Diagnostics must not replay an acknowledged page. */ }
+    return { ok: true, ...applied };
+  } catch (error) {
     // No raw payload, source URL, cursor or private diagnostic in logs/dashboard.
     if (sync && lease) { try { sync.failed(lease); } catch {} }
+    if (store && error?.message !== 'source_sync_busy') {
+      try { recordSourceDiagnostic(store, sourceFailureCode(error)); } catch {}
+    }
     return { ok: false };
   } finally { store?.close(); }
 }

@@ -44,6 +44,13 @@ GNUPGHOME="${verification_home}" gpg --batch --quiet --import "${public_key}"
 GNUPGHOME="${verification_home}" git -C "${repo_root}" verify-tag "${tag}"
 
 version="${tag#v}"
+if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if [[ -z "${NC_STABLE_READINESS_FILE:-}" ]]; then
+    echo "Stable release refused: reviewed acceptance evidence is required. See docs/STABLE-RELEASE.md." >&2
+    exit 9
+  fi
+  node "${repo_root}/scripts/release-readiness.mjs" "$tag" "$NC_STABLE_READINESS_FILE"
+fi
 archive="${output_dir}/neurocheckout-community-${version}.tar.gz"
 checksum="${archive}.sha256"
 signature="${archive}.asc"

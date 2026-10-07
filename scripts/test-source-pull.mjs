@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { EventEmitter } from "node:events";
 import { randomBytes } from "node:crypto";
+import { readSourceDiagnostic } from './source-diagnostic.mjs';
 import { LocalDataStore, initializeLocalData } from "./local-data-store.mjs";
 import { handleLocalData, signLocalRequest } from "./local-data-handler.mjs";
 import { SourceSynchronizer, connectorEndpoint } from "./local-source-sync.mjs";
@@ -128,10 +129,16 @@ test("signed outgoing pull recovers, rejects response replay and never advances 
     return { body: output, signature };
   };
   assert.equal((await pullSourceOnce(options, transport)).ok, true);
+  assert.equal(readSourceDiagnostic(store).code, 'ok');
+  assert.equal((await pullSourceOnce(options, async () => { throw new Error('source_auth_rejected'); })).ok, false);
+  assert.equal(readSourceDiagnostic(store).code, 'source_auth_rejected');
   assert.equal((await pullSourceOnce(options, async () => { throw new Error(payload.email); })).ok, false);
+  assert.equal(readSourceDiagnostic(store).code, 'source_unavailable');
   assert.throws(() => store.requireSourceFresh(), /source_unavailable/);
   assert.equal((await pullSourceOnce(options, transport)).ok, true);
+  assert.equal(readSourceDiagnostic(store).code, 'ok');
   assert.equal((await pullSourceOnce(options, async () => ({ body: Buffer.from(JSON.stringify(page())), signature: previousSignature }))).ok, false);
+  assert.equal(readSourceDiagnostic(store).code, 'source_signature_rejected');
   assert.equal(store.db.prepare("SELECT cursor FROM source_sync").get().cursor, cursor1);
   for (const changes of [{ enabled: false }, { environment: "production" }]) {
     assert.equal((await pullSourceOnce({ ...options, ...changes }, () => assert.fail("no network"))).ok, false);
@@ -210,6 +217,13 @@ test("HTTPS transport pins DNS while preserving hostname verification and a tota
   let resolved;
   fixture.options.lookup("ignored.example.invalid", {}, (error, address, family) => { assert.equal(error, null); resolved = { address, family }; });
   assert.deepEqual(resolved, { address: "93.184.216.34", family: 4 });
+});
+
+test('HTTP authentication refusal remains distinct from network failure without exposing response bodies', async () => {
+  for (const status of [401,403]) {
+    await assert.rejects(postSourcePage(source.endpoint,'{}',{},httpFixture({status})), /source_auth_rejected/);
+  }
+  await assert.rejects(postSourcePage(source.endpoint,'{}',{},httpFixture({status:503})), /source_unavailable/);
 });
 
 test("all three source routes accept public HTTPS only and preserve the signed path", async () => {

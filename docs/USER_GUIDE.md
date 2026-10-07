@@ -79,3 +79,26 @@ vous avez lancé `npm start`. Pour supprimer Community, suivez le
 [guide de désinstallation en français](UNINSTALL.md#arrêter-ou-désinstaller-community--français).
 Il explique comment garder vos données ou repartir de zéro. La désinstallation
 n’annule pas votre abonnement et ne retire pas le module de votre boutique.
+# Synchronization diagnostics / Diagnostic de synchronisation
+
+**FR :** Sync health distingue une connexion Cloud absente, une lecture locale
+indisponible, une source non configurée, un contrôle trop ancien, un refus HTTP
+401/403 et une réponse dont la signature est refusée. Chaque état propose une
+action. Un refus HTTP ne prouve pas à lui seul que la clé est incorrecte : une
+règle d’accès boutique peut aussi refuser la requête. Vérifiez Test API et les
+règles d’accès avant de remplacer une clé. La version « à jour » du connecteur ne
+prouve pas que son cron tourne ; vérifiez l’état du cron dans le module.
+
+Un contrôle source vieux de plus de deux minutes devient non vérifié. Après une
+erreur d’actualisation, l’ancien état vert n’est plus affiché. Une prochaine
+tentative indiquée par le Cloud n’est jamais une promesse d’heure d’envoi.
+Les quotas et délais de relance restent décidés par le Cloud.
+
+**EN:** Sync health distinguishes Cloud offline, unavailable local evidence,
+unconfigured source, stale checks, HTTP 401/403 refusal and rejected response
+signatures. Follow the suggested action; access rules can cause authentication
+refusal, so do not rotate keys blindly. An up-to-date connector version does not
+prove cron is running. Check cron in the store module. Source evidence older than
+two minutes is unverified, and a failed refresh clears the previous green state.
+Cloud retry timestamps are not guaranteed delivery times. Quotas and recovery
+delays remain Cloud-authoritative.
