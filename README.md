@@ -23,7 +23,7 @@ dependent actions pause safely and resume automatically after reconnection.
 ## 1. Create your Cloud account before installing Community
 
 The main instructions below target **production** at `https://www.neurocheckout.com`.
-Version **0.1.0-preview.29** supports production synchronization. It remains a
+Version **0.1.0-preview.30** supports production synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
 Testers should use the separate [staging instructions](docs/STAGING.md).
@@ -76,10 +76,10 @@ assistant.
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.29`:
+and note the latest tag. The example below uses `v0.1.0-preview.30`:
 
 ```bash
-git clone --branch v0.1.0-preview.29 --depth 1 \
+git clone --branch v0.1.0-preview.30 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -95,7 +95,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.29
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.30
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
