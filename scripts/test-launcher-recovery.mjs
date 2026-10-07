@@ -15,7 +15,8 @@ test('launcher restarts the previous build when selected build exits during star
   mkdirSync(resolve(candidate,'.next','standalone'),{recursive:true,mode:0o700});
   mkdirSync(resolve(root,'.next','standalone'),{recursive:true,mode:0o700});
   writeFileSync(resolve(candidate,'.next','standalone','server.js'),'process.exit(1)');
-  writeFileSync(resolve(root,'.next','standalone','server.js'),`require('http').createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({service:'neurocheckout-community'}));}).listen(${port},'127.0.0.1');`);
+  for (const source of [root,candidate]) writeFileSync(resolve(source,'package.json'),JSON.stringify({version:'0.1.0-preview.29'}));
+  writeFileSync(resolve(root,'.next','standalone','server.js'),`require('http').createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ok:true,service:'neurocheckout-community',version:'0.1.0-preview.29'}));}).listen(${port},'127.0.0.1');`);
   writeFileSync(resolve(updates,'current.json'),JSON.stringify({path:'release-test/source',previous:'..'}),{mode:0o600});
   const child=spawn(process.execPath,[resolve('scripts/start-standalone.mjs')],{cwd:root,env:{PATH:process.env.PATH,PORT:String(port),HOSTNAME:'127.0.0.1'},stdio:'ignore'});
   try {

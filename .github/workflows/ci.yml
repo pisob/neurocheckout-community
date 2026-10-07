@@ -62,6 +62,9 @@ jobs:
       - name: Test update verification and rollback
         run: npm run test:update
 
+      - name: Test recovery, diagnostics and stable acceptance gate
+        run: npm run test:hardening && npm run test:diagnostics
+
       - name: Test server availability credentials and recovery
         run: npm run test:availability
 
@@ -94,6 +97,9 @@ jobs:
 
       - name: Test user journeys in the browser
         run: npm run test:journeys
+
+      - name: Test synchronization diagnostics in the browser
+        run: npm run test:diagnostics-ui
 
       - name: Smoke-test OAuth and Cloud proxy
         run: npm run smoke:integration

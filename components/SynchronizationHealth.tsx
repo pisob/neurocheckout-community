@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
+import { synchronizationDiagnostic } from "@/lib/sync-diagnostic";
 
 type Shop = { id?: string; shop_uuid?: string; canonical_shop_id?: string; shop_id: string; platform?: string };
 type Connector = {
@@ -33,7 +34,7 @@ type LocalHealth = {
   configured: boolean;
   ready: boolean;
   shop_id?: string;
-  source?: { last_success_at?: number | null; last_complete_at?: number | null; records: number; carts: number; products: number };
+  source?: { diagnostic?: { code: string; checked_at: number } | null; last_success_at?: number | null; last_complete_at?: number | null; records: number; carts: number; products: number };
   outbox?: { pending: number; oldest_at?: number | null; newest_at?: number | null };
   archive?: { confirmed: number; last_sent_at?: number | null; encrypted: boolean };
 };
@@ -69,7 +70,7 @@ export default function SynchronizationHealth({ language, connectors }: { langua
     ));
     const items = Array.isArray(body?.items) ? body.items as Shop[] : [];
     setShops(items);
-    setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
+    setSelectedShopUuid((current) => items.some(shop => shopUuid(shop) === current) ? current : (items[0] ? shopUuid(items[0]) : ""));
   }, [language]);
 
   const loadHealth = useCallback(async (quiet = false) => {
@@ -79,8 +80,8 @@ export default function SynchronizationHealth({ language, connectors }: { langua
     setError("");
     try {
       const [cloudResponse, localResponse] = await Promise.all([
-        fetch(`/api/cloud/sync-health?${new URLSearchParams({ shop_uuid: selectedShopUuid })}`, { cache: "no-store" }),
-        fetch(`/api/local-data/sync-health?${new URLSearchParams({ shop_uuid: selectedShopUuid })}`, { cache: "no-store" }),
+        fetch(`/api/cloud/sync-health?${new URLSearchParams({ shop_uuid: selectedShopUuid })}`, { cache: "no-store", signal: AbortSignal.timeout(12_000) }),
+        fetch(`/api/local-data/sync-health?${new URLSearchParams({ shop_uuid: selectedShopUuid })}`, { cache: "no-store", signal: AbortSignal.timeout(12_000) }),
       ]);
       const [cloudBody, localBody] = await Promise.all([
         cloudResponse.json().catch(() => ({})),
@@ -92,11 +93,21 @@ export default function SynchronizationHealth({ language, connectors }: { langua
         { en: "Synchronization status unavailable.", fr: "État de synchronisation indisponible." },
         language,
       ));
+      if (!cloudBody?.queue || !cloudBody?.data_quality || !cloudBody?.evidence ||
+          typeof cloudBody.online !== 'boolean' ||
+          !['healthy','synchronizing','recovering','attention','offline'].includes(cloudBody.state) ||
+          ![cloudBody.queue.pending, cloudBody.queue.processing, cloudBody.queue.retrying, cloudBody.queue.failed,
+            cloudBody.data_quality.incomplete, cloudBody.evidence.received, cloudBody.evidence.sent, cloudBody.evidence.converted]
+            .every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0)) {
+        throw new Error(ui("Synchronization status unavailable. Refresh to verify it again.", "État de synchronisation indisponible. Actualisez pour le vérifier à nouveau."));
+      }
       setCloud(cloudBody as CloudHealth);
-      setLocal(localBody as LocalHealth);
+      setLocal(localResponse.ok ? localBody as LocalHealth : { available: false, configured: false, ready: false });
       setHealthShop(selectedShopUuid);
     } catch (loadError) {
       if (sequence !== healthRequest.current) return;
+      // Never keep an old green state after losing the ability to verify it.
+      setCloud(null); setLocal(null); setHealthShop("");
       setError(loadError instanceof Error ? loadError.message : ui("Synchronization status unavailable.", "État de synchronisation indisponible."));
     } finally {
       if (sequence === healthRequest.current) setLoading(false);
@@ -157,6 +168,9 @@ export default function SynchronizationHealth({ language, connectors }: { langua
   const localReady = Boolean(localMatches && local?.configured && local?.ready);
   const queueHealthy = Boolean(cloud && cloud.queue.failed === 0 && cloud.data_quality.incomplete === 0);
   const status = cloud?.state || "offline";
+  const diagnostic = synchronizationDiagnostic({ online: cloud?.online === true,
+    available: Boolean(localMatches && local?.available), configured: Boolean(localMatches && local?.configured),
+    ready: localReady, source: localMatches ? local?.source?.diagnostic : null });
 
   return <section className="view-enter sync-health-view">
     <div className="analytics-toolbar">
@@ -166,7 +180,7 @@ export default function SynchronizationHealth({ language, connectors }: { langua
       <div className="sync-actions"><span>{ui("Automatic refresh · 15 s", "Actualisation automatique · 15 s")}</span><button className="button secondary-blue" type="button" disabled={retrying || !local?.available} onClick={() => void retry()}>{retrying ? ui("Scheduling…", "Programmation…") : ui("Retry synchronization", "Relancer la synchronisation")}</button></div>
     </div>
 
-    {error ? <p className="config-error" role="alert">{error}</p> : null}
+    {error ? <p className="config-error" role="alert">{error} {ui("Status is unverified; check the connection and refresh. Do not assume cron is stopped.", "État non vérifié : contrôlez la connexion et actualisez. Cela ne prouve pas que le cron est arrêté.")}</p> : null}
     {notice ? <p className="config-notice" role="status">{notice}</p> : null}
     {loading ? <div className="operational-state"><span className="loader" /><p>{ui("Checking the full synchronization path…", "Vérification du parcours de synchronisation…")}</p></div> : null}
 
@@ -176,8 +190,13 @@ export default function SynchronizationHealth({ language, connectors }: { langua
         <div className="sync-health-score"><strong>{cloud.queue.failed + cloud.data_quality.incomplete}</strong><span>{ui("issues requiring review", "anomalies à vérifier")}</span></div>
       </header>
 
+      <aside className="sync-issue" role="status" data-diagnostic={diagnostic.code}>
+        <strong>{ui("Connection diagnostic", "Diagnostic de connexion")}</strong>
+        <p>{fr ? diagnostic.fr : diagnostic.en}</p><p>{fr ? diagnostic.actionFr : diagnostic.actionEn}</p>
+      </aside>
+
       <div className="sync-path" aria-label={ui("Synchronization path", "Parcours de synchronisation")}>
-        <article className={connector?.status === "current" ? "ok" : "warn"}><span>01</span><div><strong>{ui("Store connector", "Connecteur boutique")}</strong><small>{connector ? `${connector.platform} · ${connector.installed_version}` : ui("Waiting for connector", "Connecteur en attente")}</small></div><i /></article>
+        <article className={diagnostic.code === "source_verified" ? "ok" : "warn"}><span>01</span><div><strong>{ui("Store connector", "Connecteur boutique")}</strong><small>{connector ? `${connector.platform} · ${connector.installed_version}` : ui("Waiting for connector", "Connecteur en attente")}</small></div><i /></article>
         <article className={localReady ? "ok" : "warn"}><span>02</span><div><strong>{ui("Encrypted local vault", "Coffre local chiffré")}</strong><small>{localReady ? ui("Source synchronized", "Source synchronisée") : ui("Source catching up", "Mise à niveau de la source")}</small></div><i /></article>
         <article className={cloud.online && queueHealthy ? "ok" : "warn"}><span>03</span><div><strong>{ui("Cloud reconciliation", "Réconciliation Cloud")}</strong><small>{cloud.queue.pending} {ui("pending", "en attente")} · {cloud.queue.retrying} {ui("retrying", "en reprise")}</small></div><i /></article>
         <article className={cloud.evidence.converted > 0 ? "ok" : "neutral"}><span>04</span><div><strong>{ui("Delivery evidence", "Preuves de traitement")}</strong><small>{cloud.evidence.sent} {ui("sent", "envoyés")} · {cloud.evidence.converted} {ui("converted", "convertis")}</small></div><i /></article>
@@ -189,7 +208,7 @@ export default function SynchronizationHealth({ language, connectors }: { langua
         <section><p className="eyebrow">{ui("Data quality", "Qualité des données")}</p><dl><div><dt>{ui("Signals received", "Signaux reçus")}</dt><dd>{cloud.evidence.received}</dd></div><div><dt>{ui("Incomplete records", "Données incomplètes")}</dt><dd>{cloud.data_quality.incomplete}</dd></div><div><dt>{ui("Failed after validation", "Échecs après validation")}</dt><dd>{cloud.queue.failed}</dd></div><div><dt>{ui("Dashboard version", "Version du tableau de bord")}</dt><dd>{cloud.dashboard_version || "—"}</dd></div></dl></section>
       </div>
 
-      {cloud.latest_issue ? <aside className="sync-issue" role="status"><strong>{ui("Latest diagnostic", "Dernier diagnostic")}</strong><p>{issueCopy[cloud.latest_issue] || ui("A recoverable synchronization issue was detected.", "Une anomalie de synchronisation récupérable a été détectée.")}</p></aside> : null}
+      {cloud.latest_issue ? <aside className="sync-issue" role="status"><strong>{ui("Latest diagnostic", "Dernier diagnostic")}</strong><p>{issueCopy[cloud.latest_issue] || ui("An unrecognized issue was reported. Refresh the status and contact support if it persists; automatic recovery is not confirmed.", "Une anomalie non reconnue a été signalée. Actualisez l’état et contactez le support si elle persiste ; la reprise automatique n’est pas confirmée.")}</p></aside> : null}
       {cloud.next_attempt_at ? <p role="status">{ui("Next processing attempt (not a guaranteed send time)", "Prochaine tentative de traitement (pas une heure d’envoi garantie)")} : {date(cloud.next_attempt_at)}</p> : null}
       {!cloud.online ? <p role="status">{ui("Start Community and check its Internet connection. Pending work resumes when it reconnects.", "Démarrez Community et vérifiez sa connexion Internet. Le travail en attente reprend à sa reconnexion.")}</p> : null}
       {cloud.online && localMatches && !localReady ? <p role="status">{ui("Check the connector API test and its cron status. Missing signals alone do not prove that cron is stopped.", "Vérifiez le test API du connecteur et l’état de son cron. L’absence de signaux ne prouve pas à elle seule que le cron est arrêté.")}</p> : null}

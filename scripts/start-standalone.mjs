@@ -7,6 +7,7 @@ import { loadEnvironmentFile } from "./env-file.mjs";
 import { isNewerVersion, prepareRelease, validVersion } from "./verified-update.mjs";
 import { activateCandidate } from "./update-switch.mjs";
 import { createUpdateBackup, updatePreflight } from "./update-backup.mjs";
+import { matchesUpdateHealth, updateFailureCode } from "./update-health.mjs";
 
 const root = process.cwd();
 loadEnvironmentFile(resolve(root, ".env.local"));
@@ -15,6 +16,8 @@ process.env.PORT ||= "3400";
 process.env.NC_COMMUNITY_STATE_DIRECTORY ||= resolve(root, ".community-state");
 const directory = resolve(root, ".community-updates");
 mkdirSync(directory, { recursive: true, mode: 0o700 });
+// Check privacy before trusting locks or pointers in this directory.
+updatePreflight(directory, 0);
 const lockPath = resolve(directory, "launcher.lock");
 try {
   const oldPid = Number(await readFile(lockPath, "utf8"));
@@ -35,7 +38,7 @@ const pointer = resolve(directory, "current.json");
 const requestPath = resolve(directory, "request.json");
 async function status(phase, version, errorCode) {
   const payload = validVersion(version) ? { phase, version } : { phase };
-  if (['update_disk_space_low','update_private_directory_required','asset_unavailable','asset_missing','signature_rejected'].includes(errorCode)) payload.error_code = errorCode;
+  if (errorCode) payload.error_code = updateFailureCode(new Error(errorCode), errorCode === 'backup_failed' ? 'backup' : '');
   await writeFile(resolve(directory, "status.tmp"), JSON.stringify(payload), { mode: 0o600 });
   await rename(resolve(directory, "status.tmp"), resolve(directory, "status.json"));
 }
@@ -61,12 +64,13 @@ async function stop(instance) {
     await new Promise(resolve => instance.once("exit", resolve));
   }
 }
-async function healthy(instance) {
+async function healthy(instance, source) {
+  const metadata = JSON.parse(await readFile(resolve(source, 'package.json'), 'utf8'));
   for (let i = 0; i < 40; i++) {
     if (stopping || instance.exitCode !== null || instance.signalCode !== null) return false;
     try {
       const response = await fetch(`http://127.0.0.1:${process.env.PORT}/api/health`, { signal: AbortSignal.timeout(1000) });
-      if (response.ok && (await response.json()).service === "neurocheckout-community") return true;
+      if (response.ok && matchesUpdateHealth(await response.json(), metadata.version)) return true;
     } catch { /* Startup may take a moment. */ }
     await delay(500);
   }
@@ -98,11 +102,11 @@ for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => { stopping 
 try {
   switching = true;
   child = launch(current);
-  if (!(await healthy(child))) {
+  if (!(await healthy(child, current))) {
     await stop(child);
     if (previous === current || stopping) throw new Error("startup_unhealthy");
     child = launch(previous);
-    if (!(await healthy(child))) throw new Error("rollback_unhealthy");
+    if (!(await healthy(child, previous))) throw new Error("rollback_unhealthy");
     current = previous;
     await writeFile(pointer + ".tmp", JSON.stringify({path:relative(directory,current)}),{mode:0o600});
     await rename(pointer + ".tmp",pointer);
@@ -131,6 +135,7 @@ try {
       if (stopping) break;
       await status("restarting", request.version);
       switching = true;
+      let launchedSource = current;
       const result = await activateCandidate(candidate, current, {
         stop: () => stop(child),
         backup: async () => {
@@ -139,8 +144,8 @@ try {
           createUpdateBackup({ root, stateDirectory: process.env.NC_COMMUNITY_STATE_DIRECTORY, destination });
           await status("restarting", request.version);
         },
-        start: source => { child = launch(source); },
-        healthy: () => healthy(child),
+        start: source => { launchedSource = source; child = launch(source); },
+        healthy: () => healthy(child, launchedSource),
         commit: async source => {
           await writeFile(pointer + ".tmp", JSON.stringify({ path: relative(directory, source), previous: relative(directory, current) }), { mode: 0o600 });
           await rename(pointer + ".tmp", pointer);
@@ -148,12 +153,12 @@ try {
       });
       if (result.phase === "complete") previous = current;
       current = result.current;
-      await status(result.phase, request.version);
+      await status(result.phase, request.version, result.errorCode);
     } catch (error) {
       if (switching && !stopping) {
         await stop(child);
         child = launch(current);
-        await status((await healthy(child)) ? "rolled_back" : "failed", request?.version);
+        await status((await healthy(child, current)) ? "rolled_back" : "failed", request?.version);
       } else await status("failed", request?.version, error?.message);
     } finally {
       switching = false;

@@ -17,6 +17,8 @@
     "test:native": "node scripts/test-native-setup.mjs",
     "test:update": "node scripts/test-local-update.mjs && node --test scripts/test-update-backup.mjs scripts/test-launcher-recovery.mjs",
     "test:diagnostics": "node scripts/test-support-diagnostics.mjs",
+    "test:hardening": "node --experimental-strip-types --test scripts/test-hardening.mjs scripts/test-release-readiness.mjs",
+    "test:diagnostics-ui": "node scripts/test-sync-diagnostics-ui.mjs",
     "test:availability": "node --test scripts/test-server-availability.mjs",
     "test:local-data": "node --test scripts/test-local-data.mjs scripts/test-vault-environment.mjs",
     "test:relay": "node --test scripts/test-server-data-relay.mjs scripts/test-production-environment.mjs",

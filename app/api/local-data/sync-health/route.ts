@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
       ready: source.ready,
       shop_id: store.config.shopId,
       source: {
+        diagnostic: source.diagnostic || null,
         last_success_at: source.lastSuccessAt || null,
         last_complete_at: source.lastCompleteAt || null,
         records: Number(records.total || 0),

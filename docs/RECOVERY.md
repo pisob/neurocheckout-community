@@ -2,6 +2,14 @@
 
 ## Français
 
+Le contrôle de santé exige `ok=true`, le service Community et la version attendue.
+Avant l’activation, la sauvegarde est restaurée dans un dossier temporaire privé,
+vérifiée puis cette copie de contrôle est supprimée. La sauvegarde reste conservée.
+Prévoyez l’espace pour deux copies du coffre, plus la préparation de la release.
+Les erreurs de sauvegarde et de santé sont distinguées, sans publier les chemins
+privés ou les messages techniques bruts. Un retour arrière concerne le **code** :
+il ne rembobine jamais automatiquement les données ni les envois déjà effectués.
+
 Avant la préparation, le lanceur vérifie les permissions et au moins 2 Go libres.
 La release reste vérifiée par signature. L’ancienne application continue pendant
 le téléchargement et la compilation. Avant de lancer la nouvelle version, le
@@ -40,6 +48,12 @@ guide manuel puis redémarrée ; la seule bascule de l’interface ne remplace p
 un lanceur déjà en cours d’exécution.
 
 ## English
+
+Health requires explicit success, the Community service and the expected version.
+Before activation, a private temporary restoration is verified and removed; the
+original backup is retained. Allow space for two vault copies plus release build.
+Safe error codes distinguish backup failure from an unhealthy candidate. Rollback
+selects previous **code**, never automatically rewinds data or email delivery.
 
 The updated launcher checks private permissions and at least 2 GB free space,
 verifies the signed release, and keeps the old application running during build.

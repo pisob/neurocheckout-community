@@ -94,12 +94,24 @@ export default function LocalUpdate({ french }: { french: boolean }) {
     }
   }
   const failureMessages: Record<string,string> = french ? {
+    backup_failed: "La sauvegarde n’a pas pu être terminée. La nouvelle version n’a pas été lancée. Vérifiez l’espace disque et les permissions.",
+    backup_invalid: "La sauvegarde n’a pas passé le contrôle d’intégrité. Mise à jour annulée ; conservez vos données et consultez le guide de restauration.",
+    backup_database_invalid: "Le contrôle du coffre sauvegardé a échoué. Ne supprimez pas le coffre ; consultez le guide de restauration.",
+    backup_unsafe_path: "Un chemin de sauvegarde n’est pas sûr. Vérifiez les liens symboliques et le propriétaire des fichiers.",
+    backup_private_directory_required: "La sauvegarde doit rester privée : dossiers 700, fichiers 600, même utilisateur.",
+    candidate_unhealthy: "La nouvelle version n’a pas passé le contrôle de santé. L’ancienne application a été redémarrée ; les données n’ont pas été rembobinées.",
     update_disk_space_low: "Espace disque insuffisant : libérez au moins 2 Go. L’application actuelle reste disponible.",
     update_private_directory_required: "Le dossier de mise à jour doit appartenir à votre utilisateur et rester privé (permissions 700).",
     asset_unavailable: "Téléchargement indisponible après plusieurs tentatives. Vérifiez votre connexion et réessayez.",
     asset_missing: "L’archive de cette version n’est pas disponible. Attendez sa publication complète.",
     signature_rejected: "Signature de la release refusée. Ne contournez pas cette vérification ; contactez le support.",
   } : {
+    backup_failed: "Backup could not complete. The new version was not started. Check disk space and permissions.",
+    backup_invalid: "Backup integrity check failed. Update cancelled; preserve your data and consult the recovery guide.",
+    backup_database_invalid: "The backed-up vault failed verification. Do not delete the vault; consult the recovery guide.",
+    backup_unsafe_path: "An unsafe backup path was detected. Check symbolic links and file ownership.",
+    backup_private_directory_required: "Backups must remain private: directories 700, files 600, same owner.",
+    candidate_unhealthy: "The new version failed its health check. The previous application restarted; data was not rewound.",
     update_disk_space_low: "Insufficient disk space: free at least 2 GB. The current application remains available.",
     update_private_directory_required: "The update directory must belong to your user and be private (permissions 700).",
     asset_unavailable: "Download unavailable after retries. Check your connection and try again.",

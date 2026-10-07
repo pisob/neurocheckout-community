@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { initializeLocalData, LocalDataStore } from "./local-data-store.mjs";
 import { SourceSynchronizer } from "./local-source-sync.mjs";
+import { readSourceDiagnostic } from './source-diagnostic.mjs';
 
 export function configureAutomaticSource(directory, binding) {
   if (!binding || binding.schema !== 1 || typeof binding.shop_id !== "string" ||
@@ -26,7 +27,7 @@ export function automaticSourceStatus(directory) {
     store = new LocalDataStore(directory);
     const bound = Boolean(store.db.prepare("SELECT 1 FROM source_binding WHERE id=1").get());
     const sync = bound ? store.db.prepare("SELECT ready,last_success_at,last_complete_at FROM source_sync WHERE id=1").get() : null;
-    return { configured: bound, ready: sync?.ready === 1, shopId: store.config.shopId,
+    return { configured: bound, ready: sync?.ready === 1, shopId: store.config.shopId, diagnostic: readSourceDiagnostic(store),
       lastSuccessAt: Number(sync?.last_success_at || 0), lastCompleteAt: Number(sync?.last_complete_at || 0) };
   } catch {
     return { configured: false, ready: false };

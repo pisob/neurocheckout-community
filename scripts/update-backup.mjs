@@ -32,6 +32,8 @@ export function updatePreflight(directory, minimumBytes = 2 * 1024 ** 3) {
 export function verifyUpdateBackup(directory) {
   const stat = lstatSync(directory);
   if (!stat.isDirectory() || stat.isSymbolicLink() || (stat.mode & 0o077) || stat.uid !== process.getuid?.()) throw new Error('backup_private_directory_required');
+  const manifestStat = lstatSync(resolve(directory, 'manifest.json'));
+  if (!manifestStat.isFile() || manifestStat.isSymbolicLink() || (manifestStat.mode & 0o077) || manifestStat.uid !== process.getuid?.()) throw new Error('backup_private_directory_required');
   const manifest = JSON.parse(readFileSync(resolve(directory, 'manifest.json'), 'utf8'));
   if (manifest.schema !== 1 || !Array.isArray(manifest.files)) throw new Error('backup_invalid');
   const actual = files(directory).filter(name => name !== 'manifest.json').sort();
@@ -76,6 +78,10 @@ export function createUpdateBackup({ root, stateDirectory, destination }) {
   const entries = files(destination).map(path => ({ path, sha256: hash(resolve(destination, path)) }));
   writeFileSync(resolve(destination, 'manifest.json'), JSON.stringify({ schema: 1, files: entries }), { flag: 'wx', mode: 0o600 });
   verifyUpdateBackup(destination);
+  // Exercise the recovery path before a candidate can touch any vault.
+  const drill = mkdtempSync(resolve(dirname(destination), 'restore-check-'));
+  try { restoreUpdateBackup(destination, resolve(drill, 'restored')); }
+  finally { rmSync(drill, { recursive: true, force: true }); }
   return destination;
 }
 export function restoreUpdateBackup(source, destination) {
