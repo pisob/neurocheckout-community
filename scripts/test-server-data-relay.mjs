@@ -12,7 +12,7 @@ function fixture(t) {
   const directory = mkdtempSync(resolve(tmpdir(), "nc-outgoing-relay-test-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   return { directory, enabled: true, environment: "staging", secret: "synthetic-session-secret-with-at-least-32-characters",
-    cloudUrl: "https://cloud.example.invalid", clientId: "synthetic-client", port: "43119", version: "synthetic-version" };
+    cloudUrl: "http://127.0.0.1:43120", clientId: "synthetic-client", port: "43119", version: "synthetic-version" };
 }
 const credential = () => ({ token: "nc_data_" + randomBytes(32).toString("base64url"),
   installation_id: "11111111-1111-4111-8111-111111111111", shop_id: "synthetic-shop" });

@@ -1,5 +1,5 @@
 export class EmailArchive {
-  constructor(directory: string, clock?: () => number);
+  constructor(directory: string, clock?: () => number, environment?: string);
   store: { config: { shopId: string }; bindInstallation(id: string): void };
   db: {
     prepare(sql: string): { get(...params: unknown[]): Record<string, number | string | null> };

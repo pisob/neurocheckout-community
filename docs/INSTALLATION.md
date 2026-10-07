@@ -35,19 +35,20 @@ npm --version
 No local installation is required yet. Complete these browser steps **before**
 running the setup assistant.
 
-This guide's `--environment=preview` commands connect to **staging**. You need
-authorized access to `https://staging.neurocheckout.com`; a production account or
-Client ID cannot be substituted. If access is refused, request staging access
-from NeuroCheckout before proceeding.
+This guide targets **production** at `https://www.neurocheckout.com`.
+Use **0.1.0-preview.28** or a newer compatible release for production synchronization.
+This is a prerelease: keep a private backup and verify each store's connection
+before enabling customer email automation. Testers must use [STAGING.md](STAGING.md)
+and `--environment=preview` instead, with a separate account and installation.
 
-1. [Register](https://staging.neurocheckout.com/register) or
-   [sign in](https://staging.neurocheckout.com/login), then verify your email if requested.
-2. For a new free account, open [plan selection](https://staging.neurocheckout.com/onboarding/subscription)
+1. [Register](https://www.neurocheckout.com/register) or
+   [sign in](https://www.neurocheckout.com/login), then verify your email if requested.
+2. For a new free account, open [plan selection](https://www.neurocheckout.com/onboarding/subscription)
    and select **Activate Community** / **Continue free with Community**. No Stripe
    checkout or payment card is required. If you already have an active trial or
    paid plan, keep that plan and skip this step.
 3. Create or select your store in the Cloud dashboard.
-4. Open [Community installations](https://staging.neurocheckout.com/dashboard/community)
+4. Open [Community installations](https://www.neurocheckout.com/dashboard/community)
    and create an installation for that store, with a name and this exact local
    callback URL: `http://localhost:3400/api/auth/callback`.
 5. Copy the displayed public **Client ID**, beginning with `nc_`. For an existing
@@ -57,9 +58,8 @@ The **Public Cloud client ID** is an OAuth installation identifier, not a
 password, connector API key, signing key or MCP URL. Browser sign-in and consent
 are still required. You will paste this identifier into the terminal in step 3.
 
-For an authorized production deployment, perform those browser steps on
-`https://www.neurocheckout.com` instead and use `--environment=production` during
-setup. Do not mix environments. For a hosted installation, register your own
+Use `--environment=production` during setup. Do not mix environments or reuse a
+staging vault in production. For a hosted installation, register your own
 HTTPS callback, for example `https://community.example.com/api/auth/callback`,
 instead of the localhost URL.
 
@@ -88,7 +88,7 @@ assistant.
 Install a fixed signed release, not the moving development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.27 --depth 1 \
+git clone --branch v0.1.0-preview.28 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -96,7 +96,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.27
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.28
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -117,7 +117,7 @@ is invalid.
 From the repository root:
 
 ```bash
-npm run setup -- --environment=preview
+npm run setup -- --environment=production
 ```
 
 The assistant asks only for the public client ID and exact callback URL. It
@@ -133,7 +133,7 @@ For an unattended installation, pass the two public values explicitly:
 
 ```bash
 npm run setup -- \
-  --environment=preview \
+  --environment=production \
   --client-id=nc_public_client_id_from_cloud \
   --redirect-uri=https://community.example.com/api/auth/callback
 ```
@@ -214,7 +214,7 @@ community.example.com {
 ```
 
 Register `https://community.example.com/api/auth/callback` in Cloud before
-starting the OAuth connection. Run `npm run setup -- --environment=preview` again if the callback
+starting the OAuth connection. Run `npm run setup -- --environment=production` again if the callback
 changes; it preserves the existing session secret.
 
 ## 7. Validate the connection
@@ -241,8 +241,8 @@ per-store personalization remains disabled.
 
 ### Add another store to the same Community installation
 
-Multi-store is available in the staging preview when enabled by Cloud and within
-your current plan's store limit. Creating a store alone does not authorize an
+Multi-store requires a release supported by your Cloud environment and must be
+enabled within your current plan's store limit. Creating a store alone does not authorize an
 existing Community installation to access it.
 
 1. Create the additional store in Cloud with its own platform and storefront URL.
@@ -272,7 +272,8 @@ boutique et cliquez sur **Autoriser cette boutique**. Dans Community, ouvrez
 propre clé dans son connecteur et réussissez **Test API**. Activez ensuite sa
 synchronisation dans **Configuration → Connecteur** et vérifiez **État de la
 synchronisation**. Aucun nouvel identifiant public ni nouvelle URL de retour
-n'est nécessaire. Cette fonction nécessite son activation côté staging et une
+n'est nécessaire. Cette fonction nécessite une version compatible avec votre
+environnement Cloud, son activation et une
 offre permettant plusieurs boutiques.
 
 ## Optional Docker installation

@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { LocalDataStore, MAX_BODY_BYTES, mac } from "./local-data-store.mjs";
+import { supportedEnvironment } from "./deployment-environment.mjs";
 
 const paths = { write: "/api/local-data/v1/records", read: "/api/local-data/v1/read" };
 export function signLocalRequest(secret, method, path, timestamp, nonce, body) {
@@ -34,8 +35,7 @@ async function boundedBody(request) {
 }
 
 export async function handleLocalData(request, role, options) {
-  // A distinct operator flag prevents accidentally activating the pilot in production.
-  if (!options.enabled || options.environment !== "staging") return response(404, { error: "not_found" });
+  if (!options.enabled || !supportedEnvironment(options.environment)) return response(404, { error: "not_found" });
   let store;
   try {
     const url = new URL(request.url);
@@ -46,7 +46,7 @@ export async function handleLocalData(request, role, options) {
     const signature = request.headers.get("x-nc-data-signature") || "";
     if (!/^\d{13}$/.test(timestamp) || Math.abs(Date.now() - Number(timestamp)) > 120_000 || !/^[a-f0-9]{32}$/.test(nonce) || !/^[a-f0-9]{64}$/.test(signature)) return response(401, { error: "local_data_unauthorized" });
     const body = await boundedBody(request);
-    store = new LocalDataStore(options.directory);
+    store = new LocalDataStore(options.directory, Date.now, options.environment);
     const secret = role === "write" ? store.config.ingestionKey : store.config.readKey;
     const expected = signLocalRequest(secret, request.method, url.pathname, timestamp, nonce, body);
     if (!timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expected, "hex"))) return response(401, { error: "local_data_unauthorized" });

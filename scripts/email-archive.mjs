@@ -4,8 +4,8 @@ import { LocalDataStore } from './local-data-store.mjs';
 const DAY = 86400000;
 const idPattern = /^community-edge-[1-9][0-9]{0,15}$/;
 export class EmailArchive {
-  constructor(directory, clock = Date.now) {
-    this.store = new LocalDataStore(directory); this.clock = clock;
+  constructor(directory, clock = Date.now, environment = undefined) {
+    this.store = new LocalDataStore(directory, Date.now, environment); this.clock = clock;
     this.db = this.store.db;
     this.db.exec(`CREATE TABLE IF NOT EXISTS email_archive (
       id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, sent_at INTEGER,

@@ -1,6 +1,11 @@
-# NeuroCheckout Community v0.1.0-preview.27
+# NeuroCheckout Community v0.1.0-preview.28
 
 Official signed Community prerelease.
+
+- Production account connection and local synchronization.
+- Separate configuration and encrypted vaults for each environment.
+- Multi-store synchronization with store-specific authorization.
+- Updated installation instructions for production and separate testing instructions.
 
 - Clearer synchronization blockers and scheduled processing attempts, in English and French.
 - Recorded email language and content source: BYOK, custom library or database variant.

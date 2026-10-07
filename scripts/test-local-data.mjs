@@ -133,7 +133,7 @@ test("signed API rejects replay and separated roles, verifies responses and resu
   assert.equal((await handleLocalData(unauthorized, "read", options)).status, 401);
   assert.equal((await handleLocalData(signed(directory, "write", record(), { headers: { Origin: "https://evil.invalid" } }), "write", options)).status, 403);
   assert.equal((await handleLocalData(signed(directory, "write", record(), { timestamp: String(Date.now() - 300_000) }), "write", options)).status, 401);
-  assert.equal((await handleLocalData(signed(directory, "write", "{}"), "write", { ...options, environment: "production" })).status, 404);
+  assert.equal((await handleLocalData(signed(directory, "write", "{}"), "write", { ...options, environment: "production" })).status, 503);
   assert.equal((await handleLocalData(signed(directory, "write", "{}"), "write", { ...options, enabled: false })).status, 404);
   assert.equal((await handleLocalData(signed(directory, "write", "x".repeat(200 * 1024)), "write", options)).status, 413);
   assert.equal((await handleLocalData(signed(directory, "read", input), "read", options)).status, 200);

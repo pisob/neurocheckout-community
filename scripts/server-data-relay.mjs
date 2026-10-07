@@ -4,6 +4,7 @@ import { constants } from "node:fs";
 import { resolve } from "node:path";
 import { LocalDataStore, initializeLocalData } from "./local-data-store.mjs";
 import { EmailArchive } from "./email-archive.mjs";
+import { permittedCloud } from "./deployment-environment.mjs";
 
 const key = secret => {
   if (typeof secret !== "string" || secret.length < 32) throw new Error("relay_configuration_invalid");
@@ -15,10 +16,7 @@ function validCredential(value) {
     /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value.shop_id);
 }
 function permitted(options) {
-  if (!options.enabled || options.environment !== "staging") return false;
-  const url = new URL(options.cloudUrl);
-  return !url.username && !url.password && !url.search && !url.hash &&
-    (url.protocol === "https:" || (url.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)));
+  return options.enabled === true && permittedCloud(options.environment, options.cloudUrl);
 }
 
 export async function saveRelayCredential(options, credential) {
@@ -30,9 +28,9 @@ export async function saveRelayCredential(options, credential) {
   try { await lstat(resolve(directory, "local-data-keys.json")); }
   catch (error) {
     if (error.code !== "ENOENT") throw error;
-    initializeLocalData(directory, credential.shop_id);
+    initializeLocalData(directory, credential.shop_id, options.environment);
   }
-  const store = new LocalDataStore(directory);
+  const store = new LocalDataStore(directory, Date.now, options.environment);
   try {
     if (store.config.shopId !== credential.shop_id) throw new Error("relay_store_mismatch");
     store.bindInstallation(credential.installation_id);
@@ -93,7 +91,7 @@ export async function relayOnce(options, fetchImpl = fetch) {
     const headers = { Authorization: `Bearer ${credential.token}`, "Content-Type": "application/json", "X-NeuroCheckout-Community-Version": options.version };
     let signalStore;
     try {
-      signalStore = new LocalDataStore(options.directory);
+      signalStore = new LocalDataStore(options.directory, Date.now, options.environment);
       if (signalStore.config.shopId !== credential.shop_id) throw new Error("relay_store_mismatch");
       signalStore.bindInstallation(credential.installation_id);
       const signals = signalStore.signals(100);
@@ -123,7 +121,7 @@ export async function relayOnce(options, fetchImpl = fetch) {
       let result, store;
       try {
         if (["archive_email", "confirm_email"].includes(command.operation)) {
-          const archive = new EmailArchive(options.directory);
+          const archive = new EmailArchive(options.directory, Date.now, options.environment);
           try {
             if (archive.store.config.shopId !== credential.shop_id) throw new Error("relay_store_mismatch");
             archive.store.bindInstallation(credential.installation_id);
@@ -134,7 +132,7 @@ export async function relayOnce(options, fetchImpl = fetch) {
             } else result = { status: "ok", ...archive.prepare(command.record) };
           } finally { archive.close(); }
         } else {
-        store = new LocalDataStore(options.directory);
+        store = new LocalDataStore(options.directory, Date.now, options.environment);
         if (store.config.shopId !== credential.shop_id) throw new Error("relay_store_mismatch");
         store.bindInstallation(credential.installation_id);
         result = { status: "ok", record: store.read(command.record) };
