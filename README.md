@@ -22,11 +22,10 @@ dependent actions pause safely and resume automatically after reconnection.
 
 ## 1. Create your Cloud account before installing Community
 
-The main instructions below target **production** at `https://www.neurocheckout.com`.
-Version **0.1.0-preview.30** supports production synchronization. It remains a
+Follow these instructions to connect Community to `https://www.neurocheckout.com`.
+Version **0.1.0-preview.30** supports store synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
-Testers should use the separate [staging instructions](docs/STAGING.md).
 
 1. [Create your account](https://www.neurocheckout.com/register), or
    [sign in](https://www.neurocheckout.com/login) if you already
@@ -37,9 +36,9 @@ Testers should use the separate [staging instructions](docs/STAGING.md).
    **Already subscribed or in an active trial? Keep that plan; skip free activation.**
 3. In the Cloud dashboard, create or select the store that Community will manage.
 
-Use a release authorized for production and the [installation instructions](docs/INSTALLATION.md).
-Do not mix a production Client ID with preview setup. Accounts and installations
-must belong to the environment you connect to; changing a URL does not migrate data.
+Use an official signed release and follow the [installation instructions](docs/INSTALLATION.md).
+Use the Client ID registered in your NeuroCheckout account and keep the configured
+Cloud address unchanged throughout installation.
 
 ## 2. Register your installation and copy its public Client ID
 
