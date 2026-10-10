@@ -14,7 +14,7 @@ test("automatic setup creates, encrypts and rotates a shop-scoped source binding
   const first = { schema: 1, shop_id: "euroka", platform: "prestashop",
     endpoint: "https://example.test/module/neurocheckoutconnector/communitydata", secret: "a".repeat(64) };
   assert.deepEqual(configureAutomaticSource(directory, first), { status: "synchronizing", shopId: "euroka" });
-  assert.deepEqual(automaticSourceStatus(directory), { configured: true, ready: false, shopId: "euroka", lastSuccessAt: 0, lastCompleteAt: 0 });
+  assert.deepEqual(automaticSourceStatus(directory), { configured: true, ready: false, shopId: "euroka", diagnostic: null, lastSuccessAt: 0, lastCompleteAt: 0 });
   assert.equal(statSync(directory).mode & 0o777, 0o700);
   assert.equal(statSync(join(directory, "local-data-keys.json")).mode & 0o777, 0o600);
   assert.equal(readFileSync(join(directory, "local-data.sqlite")).includes(Buffer.from(first.secret)), false);

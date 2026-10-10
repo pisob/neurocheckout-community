@@ -145,17 +145,40 @@ test("signed outgoing pull recovers, rejects response replay and never advances 
   }
 });
 
-test("DNS pinning refuses private, mixed, reserved and IPv6 destinations without HTTP", async () => {
+test("DNS pinning refuses private, mixed and reserved IPv4/IPv6 destinations without HTTP", async () => {
   const endpoint = source.endpoint;
   const good = { address: "93.184.216.34", family: 4 };
   assert.equal((await publicSourceTarget(endpoint, async () => [good])).address, good.address);
-  for (const address of ["127.0.0.1", "10.1.1.1", "172.16.0.1", "192.168.1.1", "169.254.169.254", "100.64.0.1", "192.0.2.1", "198.18.0.1", "224.0.0.1", "::1", "2001:4860:4860::8888"]) {
+  for (const address of ["127.0.0.1", "10.1.1.1", "172.16.0.1", "192.168.1.1", "169.254.169.254", "100.64.0.1", "192.0.2.1", "198.18.0.1", "224.0.0.1", "::1", '::ffff:127.0.0.1', '::ffff:93.184.216.34', 'fe80::1', 'fc00::1', 'ff02::1', '2001:db8::1', '2002:c0a8:101::1', '64:ff9b::a00:1', '2001::1', '3fff::1', '2606:4700::1%eth0']) {
     await assert.rejects(publicSourceTarget(endpoint, async () => [good, { address }]));
   }
   for (const invalid of ["http://store.example.invalid/module/neurocheckoutconnector/communitydata", source.endpoint + "?url=other",
     source.endpoint.replace("store.", "user:secret@store."), source.endpoint.replace("communitydata", "orderhistory")]) {
     await assert.rejects(publicSourceTarget(invalid, () => assert.fail("no DNS for invalid endpoint")));
   }
+});
+
+test('dual-stack targets retain all vetted addresses without a second DNS lookup', async () => {
+  const v4 = {address:'93.184.216.34',family:4};
+  const v6 = {address:'2606:4700:4700::1111',family:6};
+  let calls=0;
+  const target = await publicSourceTarget(source.endpoint, async (_host, options) => {
+    calls++; assert.equal(options.family,0); assert.equal(options.all,true);
+    return [v4,v6,v4];
+  });
+  assert.deepEqual(target.addresses,[v4,v6]);
+  const fixture=httpFixture();
+  fixture.resolveTarget=async()=>target;
+  await postSourcePage(source.endpoint,'{}',{},fixture);
+  assert.equal(fixture.options.family,0);
+  assert.equal(fixture.options.autoSelectFamily,true);
+  assert.equal(fixture.options.autoSelectFamilyAttemptTimeout,250);
+  fixture.options.lookup('ignored',{all:true},(err,addresses)=>{
+    assert.equal(err,null); assert.deepEqual(addresses,[v4,v6]);
+  });
+  assert.equal(calls,1);
+  const ipv6Only=await publicSourceTarget(source.endpoint,async()=>[v6]);
+  assert.deepEqual(ipv6Only.addresses,[v6]);
 });
 
 test("startup invalidates a recently restored sync status before serving reads", t => {

@@ -77,14 +77,14 @@ jobs:
       - name: Test plan presentation and public messages
         run: npm run test:experience
 
-      - name: Test encrypted staging local data
+      - name: Test encrypted local data
         run: npm run test:local-data
 
-      - name: Test outgoing staging relay
+      - name: Test outgoing relay
         run: npm run test:relay
 
       - name: Test outgoing source synchronization
-        run: npm run test:source-pull
+        run: npm run test:source-pull && npm run test:auto-source
 
       - name: Test isolated store selection and local vaults
         run: npm run test:workspace
