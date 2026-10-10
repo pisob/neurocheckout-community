@@ -17,7 +17,7 @@ try {
     else if(path.endsWith('/shops'))body={items:[shop]};
     else if(path==='/api/cloud/sync-health') {
       status=mode==='unavailable'?503:200;
-      body=status===503?{detail:'PRIVATE_RAW_ERROR_DO_NOT_SHOW'}:{state:'healthy',online:mode!=='offline',queue:{pending:0,processing:0,retrying:0,failed:0},data_quality:{incomplete:0},evidence:{received:1,sent:0,converted:0}};
+      body=status===503?{detail:'PRIVATE_RAW_ERROR_DO_NOT_SHOW'}:{state:'healthy',online:mode!=='offline',latest_issue:mode==='source_down'?'source_unavailable':null,queue:{pending:0,processing:0,retrying:0,failed:0},data_quality:{incomplete:0},evidence:{received:1,sent:0,converted:0}};
     } else if(path==='/api/local-data/sync-health')body={available:true,configured:true,ready:true,shop_id:'fixture',source:{diagnostic:{code:mode==='refused'?'source_auth_rejected':'ok',checked_at:mode==='stale'?1:Date.now()}}};
     await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
   });
@@ -25,6 +25,8 @@ try {
     mode=next;await page.goto(origin+'/#sync-health');await page.reload();
     await page.locator(`[data-diagnostic="${code}"]`).waitFor();
   }
+  mode='source_down';await page.reload();
+  await page.getByText('Community is reachable, but fresh store data is unavailable.', {exact:false}).waitFor();
   mode='healthy';await page.reload();await page.locator('[data-diagnostic="source_verified"]').waitFor();
   mode='unavailable';
   // Wait for the actual 15-second refresh, not a remount: stale green state must disappear.

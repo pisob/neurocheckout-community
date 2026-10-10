@@ -7,6 +7,7 @@ import { randomBytes } from "node:crypto";
 import { saveRelayCredential, relayOnce } from "./server-data-relay.mjs";
 import { LocalDataStore } from "./local-data-store.mjs";
 import { EmailArchive } from "./email-archive.mjs";
+import { SourceSynchronizer } from "./local-source-sync.mjs";
 
 function fixture(t) {
   const directory = mkdtempSync(resolve(tmpdir(), "nc-outgoing-relay-test-"));
@@ -16,6 +17,39 @@ function fixture(t) {
 }
 const credential = () => ({ token: "nc_data_" + randomBytes(32).toString("base64url"),
   installation_id: "11111111-1111-4111-8111-111111111111", shop_id: "synthetic-shop" });
+
+test("online relay reports a stale connector separately and resumes without leaking data", async t => {
+  const options = fixture(t), auth = credential();
+  await saveRelayCredential(options, auth);
+  const store = new LocalDataStore(options.directory);
+  new SourceSynchronizer(store).configure({
+    endpoint: "https://shop.example.com/module/neurocheckoutconnector/communitydata",
+    secret: "b".repeat(64),
+  });
+  const record = store.transaction(() => store.putInTransaction({ kind: "product", sourceId: "synthetic", revision: 1,
+    operation: "upsert", observedAt: new Date().toISOString(), payload: { name: "Local product" } }));
+  store.acknowledgeSignals(store.signals().map(signal => signal.id));
+  const command = { request_id: "a".repeat(32), operation: "read",
+    record: { kind: "product", reference: record.reference, minimumRevision: 1 } };
+  const replies = [];
+  const mock = async url => {
+    if (url.endsWith("/api/health")) return Response.json({ service: "neurocheckout-community" });
+    if (url.endsWith("/poll")) return Response.json({ commands: [command] });
+    return Response.json({ accepted: true });
+  };
+  const capture = async (url, init) => {
+    if (url.endsWith("/reply")) replies.push(JSON.parse(init.body).result);
+    return mock(url);
+  };
+  try {
+    assert.equal(await relayOnce(options, capture), true);
+    assert.deepEqual(replies[0], { status: "source_unavailable" });
+    store.db.prepare("UPDATE source_sync SET ready=1,last_complete_at=? WHERE id=1").run(Date.now());
+    assert.equal(await relayOnce(options, capture), true);
+    assert.equal(replies[1].status, "ok");
+    assert.equal(replies[1].record.payload.name, "Local product");
+  } finally { store.close(); }
+});
 
 test("authenticated relay archives large copies and confirms only metadata", async t => {
   const options=fixture(t), auth=credential();await saveRelayCredential(options,auth);

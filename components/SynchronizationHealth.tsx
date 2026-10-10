@@ -159,6 +159,7 @@ export default function SynchronizationHealth({ language, connectors }: { langua
     agent_ignored: ui("An action was not eligible under the recovery rules. Check the agent settings; this is not a connection failure.", "Une action n’était pas admissible selon les règles de relance. Vérifiez les paramètres de l’agent ; ce n’est pas un échec de connexion."),
     delivery_uncertain: ui("The mail server response is uncertain. Sending again is blocked to prevent duplicates; contact support.", "La réponse du serveur mail est incertaine. Le renvoi est bloqué pour éviter un doublon ; contactez le support."),
     community_unavailable: ui("Community was temporarily unreachable; retry is automatic.", "Community était temporairement indisponible ; la reprise est automatique."),
+    source_unavailable: ui("Community is reachable, but fresh store data is unavailable. Check the store connection; retry is automatic.", "Community est joignable, mais les données récentes de la boutique sont indisponibles. Vérifiez la liaison avec la boutique ; la reprise est automatique."),
     consumer_failed: ui("Cloud processing is being retried automatically.", "Le traitement Cloud est relancé automatiquement."),
     worker_recovered: ui("An interrupted operation resumed without losing data.", "Une opération interrompue a repris sans perte de données."),
     cart_amount_missing: ui("A cart arrived without a usable amount.", "Un panier est arrivé sans montant exploitable."),

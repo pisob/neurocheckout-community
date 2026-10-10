@@ -15,18 +15,35 @@ for (const [network, prefix] of [
   ["203.0.113.0",24], ["224.0.0.0",4], ["240.0.0.0",4],
 ]) denied.addSubnet(network, prefix, "ipv4");
 
+// Only globally routed IPv6 unicast. In particular never allow IPv4-mapped,
+// transition, scoped, loopback, link-local, documentation or private addresses.
+const globalV6 = new BlockList();
+globalV6.addSubnet('2000::', 3, 'ipv6');
+for (const [network, prefix] of [['2001::', 23], ['2001:db8::', 32], ['2002::', 16], ['3fff::', 20]]) {
+  denied.addSubnet(network, prefix, 'ipv6');
+}
+function publicAddress(answer) {
+  const address = answer?.address;
+  if (typeof address !== 'string' || address.includes('%')) return false;
+  const family = isIP(address);
+  if (answer.family !== undefined && answer.family !== family) return false;
+  return family === 4 ? !denied.check(address, 'ipv4') :
+    family === 6 && globalV6.check(address, 'ipv6') && !denied.check(address, 'ipv6');
+}
+
 export async function publicSourceTarget(endpoint, resolver = lookup) {
   const url = connectorEndpoint(endpoint);
   let timer;
   try {
-    // This first staging transport deliberately uses public IPv4 only.
     const answers = await Promise.race([
-      resolver(url.hostname, { all: true, family: 4, verbatim: true }),
+      resolver(url.hostname, { all: true, family: 0, verbatim: true }),
       new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("source_unavailable")), 5000); }),
     ]);
-    if (!Array.isArray(answers) || !answers.length || answers.length > 32 || answers.some(answer =>
-      isIP(answer.address) !== 4 || denied.check(answer.address, "ipv4"))) throw new Error("source_unavailable");
-    return { url, address: answers[0].address };
+    if (!Array.isArray(answers) || !answers.length || answers.length > 32 || !answers.every(publicAddress)) {
+      throw new Error("source_unavailable");
+    }
+    const addresses = [...new Map(answers.map(({ address }) => [address, { address, family: isIP(address) }])).values()];
+    return { url, address: addresses[0].address, addresses };
   } finally { clearTimeout(timer); }
 }
 
@@ -38,15 +55,18 @@ export function sourceResponseSignature(secret, nonce, body) {
 }
 
 export async function postSourcePage(endpoint, body, headers, { resolveTarget = publicSourceTarget, httpsRequest = request } = {}) {
-  const { url, address } = await resolveTarget(endpoint);
+  const { url, address, addresses = [{ address, family: isIP(address) }] } = await resolveTarget(endpoint);
+  if (!addresses.length || !addresses.every(publicAddress)) throw new Error('source_unavailable');
   return new Promise((resolve, reject) => {
     const req = httpsRequest({
       hostname: url.hostname, servername: url.hostname, port: 443, path: url.pathname,
-      method: "POST", agent: false, family: 4, autoSelectFamily: false,
+      method: "POST", agent: false, family: 0, autoSelectFamily: true,
+      autoSelectFamilyAttemptTimeout: 250,
       rejectUnauthorized: true, signal: AbortSignal.timeout(10_000),
-      // Pin the vetted address while retaining TLS verification for the original hostname.
+      // Race TCP connections only, not signed POSTs. DNS is not consulted again;
+      // every possible address was vetted and TLS still verifies the store host.
       lookup: (_hostname, options, callback) => options.all
-        ? callback(null, [{ address, family: 4 }]) : callback(null, address, 4),
+        ? callback(null, addresses) : callback(null, addresses[0].address, addresses[0].family),
       headers: { ...headers, "Content-Length": String(Buffer.byteLength(body)), "Accept-Encoding": "identity" },
     }, res => {
       const abort = (code = "source_unavailable") => { reject(new Error(code)); res.destroy(); req.destroy(); };

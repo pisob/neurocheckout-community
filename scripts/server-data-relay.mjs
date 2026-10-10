@@ -138,7 +138,7 @@ export async function relayOnce(options, fetchImpl = fetch) {
         result = { status: "ok", record: store.read(command.record) };
         }
       } catch (error) {
-        const statuses = { local_data_record_missing: "missing", local_data_record_deleted: "deleted", local_data_revision_not_ready: "not_ready" };
+        const statuses = { local_data_record_missing: "missing", local_data_record_deleted: "deleted", local_data_revision_not_ready: "not_ready", local_data_source_unavailable: "source_unavailable" };
         result = { status: statuses[error?.message] || "unavailable" };
       } finally { store?.close(); }
       // Reply only on the configured Cloud origin, never on a URL from a command.

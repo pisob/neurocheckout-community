@@ -20,6 +20,14 @@ No inbound Internet port is required for a localhost installation. The computer
 or server hosting Community must remain online. If it becomes unavailable,
 dependent actions pause safely and resume automatically after reconnection.
 
+The connector API test checks the store-to-Cloud connection. Also check
+**Synchronization health** in Community: Community must be able to reach the
+store's public HTTPS connector to keep its encrypted data up to date. The source
+transport supports public IPv4 and IPv6 with automatic connection fallback;
+private addresses, redirects and unverified responses remain blocked. A source
+outage pauses dependent actions and is retried automatically without resetting
+the installation or its credentials.
+
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
