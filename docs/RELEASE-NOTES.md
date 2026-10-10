@@ -1,18 +1,19 @@
-# NeuroCheckout Community v0.1.0-preview.30
+# NeuroCheckout Community v0.1.0-preview.31
 
 Official signed prerelease. Production connectivity is supported; this remains
 a preview pending full merchant acceptance.
 
-- Update activation verifies the exact expected application version.
-- Backups are restored and verified in a private temporary directory before activation.
-- Failed activation returns to the previous application without rewinding store data.
-- Synchronization diagnostics distinguish authentication refusal, invalid signatures,
-  unavailable sources and stale evidence, with suggested next steps in English and French.
-- A failed status refresh no longer leaves an old healthy indicator visible.
-- Additional recovery, synchronization and browser regression tests.
-- Documented acceptance criteria for a future stable release.
+- Store synchronization supports public IPv4 and IPv6 with automatic connection fallback.
+- Signed requests, response verification, connection deadlines and private-address
+  protection remain enforced.
+- Synchronization diagnostics distinguish an unavailable store source from an
+  offline Community installation, with guidance in English and French.
+- Temporary source outages retry automatically while dependent actions pause safely.
+- Additional regression coverage for connection recovery and automatic source setup.
+- Installation instructions and version examples point to this signed release.
 
-**Existing installations:** the backup/recovery protections require updating and
+**Existing installations:** back up your installation before updating. Updating the
+source transport and backup/recovery protections requires updating and
 restarting the root launcher using the manual procedure in `docs/INSTALLATION.md`.
 The dashboard updater alone cannot replace a running old launcher.
 See `docs/RECOVERY.md`. Backups contain private keys and configuration: keep them private.
