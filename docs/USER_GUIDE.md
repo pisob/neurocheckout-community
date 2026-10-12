@@ -49,6 +49,25 @@ unavailable original copy is different from an error while reading a saved copy.
 A missing subject in the history does not prove that the delivered email lacked
 a subject. Never resend an email only to restore its preview.
 
+Original copies are encrypted locally. Community retains the latest 50 confirmed
+copies and up to 50 additional copies identified as converted when their history
+is viewed, for a maximum of 30 days. Delivery and conversion evidence can remain
+available after an original expires. An update cannot recreate an already
+removed original; recovery requires a matching private-state backup. Keep a
+backup before updating or reinstalling Community.
+
+**Usage** is not the lifetime email count. The free Community quota counts sends
+and reservations for in-progress sends over the last 24 hours. Capacity becomes
+available as individual entries leave this window. Updating Community does not
+reset the Cloud ledger. An unavailable value is shown as **—**, not as zero.
+
+For paid Starter/Pro plans, usage is counted per store in the current calendar
+month, including when billing is annual. During a trial, the window starts at
+the trial's fixed start date, with no monthly reset. Enterprise follows the
+account-wide scope shown by its offer. Changing plans does not erase previous
+sends that still belong to the current quota window. In-progress or uncertain
+send reservations may also consume capacity until reconciled or outside the window.
+
 Use attributed orders for recovered revenue. Recorded links appear under
 **Associated orders** with the order reference, cart and amount when available.
 Several emails may contribute to one order. When no exact order reference is shown, do not infer a match from
@@ -72,6 +91,28 @@ checklist : compte, boutique, connecteur, emails, puis synchronisation.
 - Les statuts email sont exclusifs. Le revenu se vérifie dans les commandes
   attribuées, pas en additionnant les emails marqués comme convertis.
 
+Les originaux sont chiffrés localement : les 50 derniers envois confirmés et
+jusqu’à 50 copies supplémentaires reconnues comme converties lors de la
+consultation de leur historique sont conservés pendant 30 jours au maximum.
+La preuve d’envoi ou de conversion peut rester visible après expiration de
+l’original. Une mise à jour ne recrée pas une copie déjà supprimée : sa
+récupération nécessite une sauvegarde privée correspondante. Sauvegardez vos
+données avant une mise à jour ou une réinstallation ; ne renvoyez pas un email
+pour rétablir son aperçu.
+
+**Utilisation** ne représente pas le total historique des emails. Le quota de
+l’offre Community gratuite compte les envois et les réservations en cours sur
+les 24 dernières heures. Les unités se libèrent individuellement à la sortie de
+cette fenêtre. Une mise à jour ne remet pas le registre Cloud à zéro. Une valeur
+indisponible est affichée **—**, et non zéro.
+
+Pour Starter/Pro payants, la consommation est comptée par boutique sur le mois
+calendaire, même avec une facturation annuelle. Pendant un essai, elle est comptée
+depuis sa date de début, sans remise à zéro mensuelle. Enterprise suit la portée
+du compte indiquée par son offre. Changer d’offre n’efface pas les envois encore
+dans la fenêtre du quota. Les réservations d’envois en cours ou incertains peuvent
+aussi consommer de la capacité jusqu’à rapprochement ou sortie de la fenêtre.
+
 ## Arrêter ou désinstaller
 
 Fermer le navigateur ne suffit pas. Appuyez sur **Ctrl+C** dans le terminal où
@@ -94,6 +135,13 @@ erreur d’actualisation, l’ancien état vert n’est plus affiché. Une proch
 tentative indiquée par le Cloud n’est jamais une promesse d’heure d’envoi.
 Les quotas et délais de relance restent décidés par le Cloud.
 
+Si les fiches produits nécessaires au panier sont indisponibles, l’envoi est
+différé et le diagnostic indique de vérifier la synchronisation du catalogue.
+Cela évite d’envoyer des articles sans leur nom ou avec une image devinée.
+Gardez Community en fonctionnement et vérifiez le connecteur. Une image absente
+de la boutique ne peut pas être recréée ; la messagerie du destinataire peut
+aussi bloquer le chargement d’images distantes.
+
 **EN:** Sync health distinguishes Cloud offline, unavailable local evidence,
 unconfigured source, stale checks, HTTP 401/403 refusal and rejected response
 signatures. Follow the suggested action; access rules can cause authentication
@@ -102,3 +150,9 @@ prove cron is running. Check cron in the store module. Source evidence older tha
 two minutes is unverified, and a failed refresh clears the previous green state.
 Cloud retry timestamps are not guaranteed delivery times. Quotas and recovery
 delays remain Cloud-authoritative.
+
+When required cart product details are unavailable, sending is deferred and the
+diagnostic asks you to check catalog synchronization. This prevents sending
+unnamed products or guessed images. Keep Community running and check the store
+connector. A missing merchant image cannot be recreated, and the recipient's
+email client may also block remote images.

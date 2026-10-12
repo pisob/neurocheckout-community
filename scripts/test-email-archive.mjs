@@ -19,13 +19,30 @@ test('copies are encrypted, immutable across retries and survive restart', t => 
  }
  archive=new EmailArchive(dir);assert.deepEqual(archive.get('community-edge-1'),copy(1));archive.close();
 });
-test('only latest ten confirmed copies retained, preparations bounded and expired', t => {
+test('latest fifty confirmed copies retained, preparations bounded and expired', t => {
  const dir=setup(t);let now=Date.now();const archive=new EmailArchive(dir,()=>now);
- for(let id=1;id<=12;id++) {archive.prepare(copy(id));archive.confirm(`community-edge-${id}`,new Date(now+id).toISOString());}
- assert.equal(archive.get('community-edge-1'),null);assert.equal(archive.db.prepare('SELECT count(*) n FROM email_archive').get().n,10);
- for(let id=20;id<120;id++)archive.prepare(copy(id));
- assert.throws(()=>archive.prepare(copy(120)),/full/);
+ for(let id=1;id<=52;id++) {archive.prepare(copy(id));archive.confirm(`community-edge-${id}`,new Date(now+id).toISOString());}
+ assert.equal(archive.get('community-edge-1'),null);assert.equal(archive.db.prepare('SELECT count(*) n FROM email_archive').get().n,50);
+ for(let id=100;id<200;id++)archive.prepare(copy(id));
+ assert.throws(()=>archive.prepare(copy(200)),/full/);
  now+=31*86400000;archive.clean();assert.equal(archive.db.prepare('SELECT count(*) n FROM email_archive').get().n,0);archive.close();
+});
+test('known converted originals survive newer sends, restart and backup with bounded retention', t => {
+ const dir=setup(t);let now=Date.now();let archive=new EmailArchive(dir,()=>now);
+ for(let id=1;id<=101;id++) {
+  archive.prepare(copy(id));archive.confirm(`community-edge-${id}`,new Date(now+id).toISOString());
+  if(id<=51) archive.markConverted(`community-edge-${id}`,new Date(now+id).toISOString());
+ }
+ assert.equal(archive.get('community-edge-1'),null);
+ assert.deepEqual(archive.get('community-edge-2'),copy(2));
+ assert.equal(archive.db.prepare('SELECT count(*) n FROM email_archive').get().n,100);
+ const backup=join(dir,'backup');archive.store.backup(backup);archive.close();
+ archive=new EmailArchive(backup,()=>now);
+ assert.deepEqual(archive.get('community-edge-2'),copy(2));
+ assert.throws(()=>archive.markConverted('community-edge-2','not-a-date'),/invalid/);
+ now+=31*86400000;archive.clean();
+ assert.equal(archive.get('community-edge-2'),null);
+ assert.equal(archive.db.prepare('SELECT count(*) n FROM email_archive_conversions').get().n,0);archive.close();
 });
 test('size limits and authenticated ciphertext reject unsafe data',t=>{
  const dir=setup(t),archive=new EmailArchive(dir);

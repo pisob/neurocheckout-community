@@ -163,6 +163,7 @@ export default function SynchronizationHealth({ language, connectors }: { langua
     consumer_failed: ui("Cloud processing is being retried automatically.", "Le traitement Cloud est relancé automatiquement."),
     worker_recovered: ui("An interrupted operation resumed without losing data.", "Une opération interrompue a repris sans perte de données."),
     cart_amount_missing: ui("A cart arrived without a usable amount.", "Un panier est arrivé sans montant exploitable."),
+    cart_products_unavailable: ui("Cart product details are not ready. Sending is paused until the catalog is synchronized. Keep Community running and check the connector version.", "Les fiches produits du panier ne sont pas prêtes. L’envoi attend la synchronisation du catalogue. Gardez Community ouvert et vérifiez la version du connecteur."),
     record_invalid: ui("A connector record requires review.", "Une donnée du connecteur doit être vérifiée."),
   };
   const localMatches = Boolean(local?.shop_id && local.shop_id === selectedShop?.shop_id);

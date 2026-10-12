@@ -9,9 +9,11 @@ const sent_at = '2026-09-01T12:00:00Z';
 const item = (id) => ({ delivery_id: id, sent_at, subject: 'Cloud subject', status: 'converted', converted_at: sent_at });
 const copy = (id) => ({ delivery_id: id, subject: 'Archived subject', recipient_email: 'test@example.invalid', body_html: '<p>Original</p>' });
 const calls = [];
+const conversions = [];
 const archive = {
   get(id) { if (id === 'broken') throw Error('unreadable'); return copy(id); },
   confirm(id) { calls.push(id); if (id === 'retry') throw Error('busy'); },
+  markConverted(id, at) { conversions.push([id, at]); },
 };
 const result = enrichEmailHistory([item('broken'), item('good'), item('retry')], archive);
 assert.equal(result.length, 3);
@@ -27,6 +29,7 @@ for (const row of result.slice(1)) {
   assert.equal(row.converted_at, sent_at);
 }
 assert.deepEqual(calls, ['good', 'retry']);
+assert.deepEqual(conversions, [['good', sent_at], ['retry', sent_at]]);
 assert.equal(enrichEmailHistory([item('good')], { get: () => copy('wrong'), confirm() { throw Error('must not confirm'); } })[0].preview_available, false);
 assert.equal(enrichEmailHistory([{ ...item('good'), sent_at: null }], archive)[0].preview_available, false);
 const cloud = { ...item('cloud'), body_html: '<p>Cloud original</p>' };

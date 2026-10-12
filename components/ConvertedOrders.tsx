@@ -282,7 +282,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
             <div>
               <p className="eyebrow">{ui("Delivery evidence", "Preuves d’envoi")}</p>
               <h2 id="recent-email-heading">{ui("Email delivery history", "Historique des emails envoyés")}</h2>
-              <p>{ui("Up to 50 recent delivery records, with the latest 10 original copies kept in your encrypted local archive.", "Jusqu’à 50 preuves d’envoi récentes, avec les 10 dernières copies originales conservées dans votre archive locale chiffrée.")}</p>
+              <p>{ui("Up to 50 recent delivery records. Your encrypted archive keeps the latest 50 originals and up to 50 known converted copies, for up to 30 days.", "Jusqu’à 50 preuves d’envoi récentes. Votre archive chiffrée conserve les 50 derniers originaux et jusqu’à 50 copies converties identifiées, pendant 30 jours maximum.")}</p>
             </div>
             <span>{emailPayload?.total ?? 0} {ui("records", "preuves")}</span>
           </header>

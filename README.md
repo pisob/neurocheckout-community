@@ -31,7 +31,7 @@ the installation or its credentials.
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
-Version **0.1.0-preview.31** supports store synchronization. It remains a
+Version **0.1.0-preview.32** supports store synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
 
@@ -83,10 +83,10 @@ assistant.
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.31`:
+and note the latest tag. The example below uses `v0.1.0-preview.32`:
 
 ```bash
-git clone --branch v0.1.0-preview.31 --depth 1 \
+git clone --branch v0.1.0-preview.32 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -102,7 +102,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.31
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.32
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -265,7 +265,7 @@ the [user guide (English and French)](docs/USER_GUIDE.md).
 ### Sent email activity
 
 The email activity view keeps a filterable, paginated record of up to 50 recent
-sends. For the latest ten confirmed sends it also shows, when available, the
+sends. For the latest 50 confirmed sends it also shows, when available, the
 original HTML or text copy stored in your encrypted local archive. Select an
 email to inspect it, or choose **Full preview** to enlarge it. HTTPS raster product
 images are displayed. Scripts, links, tracking pixels and images with query strings
@@ -276,12 +276,27 @@ an email click. Historical copies retain their original content and links.
 Email preparation, agents and delivery remain Cloud responsibilities. Supported
 deliveries archive a Cloud-authenticated copy locally before sending; a failed
 archive blocks the send rather than losing the original content. Sent copies are
-limited to ten and expire after 30 days. Unconfirmed preparations are bounded to
+limited to the latest 50, plus up to 50 copies identified as converted when
+viewing their delivery history, and expire after 30 days. Unconfirmed preparations are bounded to
 100 and expire after 24 hours. Include your private Community state in backups.
 
 Older messages without a saved copy display **Preview unavailable**. An absent
 opening, click or conversion record is not inferred from viewing the preview.
 This feature does not add tracking to delivery paths that do not support it.
+
+The **Usage** view is a quota window, not the lifetime delivery count. On the
+Community plan it includes sends and in-progress reservations over the last
+24 hours. Updating the application does not reset the Cloud quota ledger.
+When Cloud cannot confirm usage, the interface displays an unavailable value,
+not zero. The delivery history and conversion evidence are independent of the
+local original-copy retention period. A previously expired copy is not recreated
+by an update; restore it from a matching private-state backup if available.
+
+Cart reads include exact same-store product references, so Cloud can retrieve
+product details even in large catalogs. An incomplete catalog defers sending
+and appears in **Sync health**; keep Community and the connector synchronized.
+Images must exist on the merchant site, and the recipient's email client may
+still block remote images. Already-delivered messages are not rewritten.
 It requires matching Community and Cloud support; it is not activated by this
 documentation alone.
 

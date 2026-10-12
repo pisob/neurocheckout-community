@@ -9,6 +9,8 @@ const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','
  cwd:process.cwd(),stdio:'ignore',env:{...process.env,NC_DEPLOYMENT_ENV:'test',NC_LOCAL_DATA_PILOT_ENABLED:'false',NC_CONNECTOR_PULL_ENABLED:'false',NC_COMMUNITY_AVAILABILITY_ENABLED:'false'},
 });
 let browser;
+let quotaUnavailable=false;
+let quotaWindow='rolling_24h';
 try {
  for(let i=0;i<80;i++){try{if((await fetch(origin)).ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}
  browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:1100}});
@@ -20,7 +22,7 @@ try {
  {delivery_id:'community-edge-2',subject:'Older message',customer:{email_masked:'s***@example.invalid'},sent_at:new Date().toISOString(),status:'sent',preview_available:false}];
  items[0].copy_diagnostic={source:'db',language:'fr',variant_id:42};
  await page.route('**/api/**',route=>{const path=new URL(route.request().url()).pathname;let body={};
-  if(path.endsWith('/capabilities'))body={schema_version:'1.0',plan:{code:'community',edition:'community'},subscription:{status:'free_active',active:true},limits:{shops:1,active_agents:8,emails:{limit:100,used:2,remaining:98}},features:{member_dashboard:true,converted_orders:true,recent_emails:true},agents:{available:[],coordination_enabled:true},dashboard:{update_required:false,update_recommended:false},upgrade:{available:false},connectors:[]};
+  if(path.endsWith('/capabilities'))body={schema_version:'1.0',plan:{code:quotaWindow==='rolling_24h'?'community':'starter',edition:'community'},subscription:{status:quotaWindow==='trial'?'trial_active':quotaWindow==='rolling_24h'?'free_active':'paid_active',active:true},limits:{shops:1,active_agents:8,emails:{limit:100,used:quotaUnavailable?null:0,remaining:quotaUnavailable?null:100,window:quotaWindow,window_hours:quotaWindow==='rolling_24h'?24:null}},features:{member_dashboard:true,converted_orders:true,recent_emails:true},agents:{available:[],coordination_enabled:true},dashboard:{update_required:false,update_recommended:false},upgrade:{available:false},connectors:[]};
   else if(path.endsWith('/shops'))body={items:[shop]};
   else if(path.endsWith('/converted-orders'))body={shop,items:[],count:0};
   else if(path.endsWith('/recent-emails'))body={shop,items,count:2,limit:10};
@@ -94,7 +96,27 @@ try {
  await tab('All').click();
  await page.getByRole('button', {name:/Message clicked/}).click();
  await page.frameLocator('.sent-email-inspector iframe').getByText('Content clicked', {exact:true}).waitFor();
+ await page.locator('nav').getByRole('button',{name:/Usage$/}).click();
+ await page.getByText('last 24 hours',{exact:false}).first().waitFor();
+ assert.equal(await page.locator('.usage-number strong').innerText(),'0');
+ await page.getByRole('button',{name:'FR',exact:true}).click();
+ await page.getByText('24 dernières heures',{exact:false}).first().waitFor();
+ assert.equal(await page.locator('.usage-number strong').innerText(),'0');
+ quotaUnavailable=true;await page.reload();
+ await page.getByText('La consommation Cloud n’a pas pu être confirmée.',{exact:false}).waitFor();
+ assert.equal(await page.locator('.usage-number strong').innerText(),'—');
+ assert.equal(await page.locator('.usage-meter strong').innerText(),'—');
+ assert.equal(await page.getByText('Quota glissant à jour',{exact:true}).count(),0);
+ quotaUnavailable=false;quotaWindow='trial';await page.reload();
+ await page.getByText('Quota de la période d’essai',{exact:true}).waitFor();
+ await page.getByText('sans remise à zéro mensuelle.',{exact:false}).waitFor();
+ await page.getByRole('button',{name:'EN',exact:true}).click();
+ await page.getByText('Trial period quota',{exact:true}).waitFor();
+ quotaWindow='calendar_month';await page.reload();
+ await page.getByText('Monthly plan quota',{exact:true}).waitFor();
+ await page.getByText('Changing plans does not erase usage.',{exact:false}).waitFor();
  assert.deepEqual(errors, []);
+ console.log('Rolling quota, French labels and unavailable-not-zero browser states passed.');
  console.log('Exclusive status tabs, delayed response rejection and preview identity passed.');
  console.log('Desktop/mobile, original preview, missing-copy state, modal keyboard and zero external requests passed.');
 }finally{await browser?.close();server.kill('SIGTERM');if(server.exitCode===null)await once(server,'exit');}

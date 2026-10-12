@@ -6,6 +6,7 @@ export class EmailArchive {
   };
   prepare(value: Record<string,string>): {archived: boolean; copy: Record<string,string>};
   confirm(id: string, sentAt: string): void;
+  markConverted(id: string, convertedAt: string): void;
   clean(): void;
   get(id: string): Record<string,string> | null;
   close(): void;
