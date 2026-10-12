@@ -10,13 +10,28 @@ export class EmailArchive {
     this.db.exec(`CREATE TABLE IF NOT EXISTS email_archive (
       id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, sent_at INTEGER,
       ciphertext BLOB NOT NULL)`);
+    // Separate table keeps the original encrypted-copy schema compatible with
+    // existing installations and preserves known conversions beyond pagination.
+    this.db.exec(`CREATE TABLE IF NOT EXISTS email_archive_conversions (
+      id TEXT PRIMARY KEY, converted_at INTEGER NOT NULL)`);
     this.clean();
   }
   close() { this.store.close(); }
   clean() {
     this.db.prepare('DELETE FROM email_archive WHERE COALESCE(sent_at,created_at) < ?').run(this.clock() - 30 * DAY);
     this.db.prepare('DELETE FROM email_archive WHERE sent_at IS NULL AND created_at < ?').run(this.clock() - DAY);
-    this.db.exec('DELETE FROM email_archive WHERE sent_at IS NOT NULL AND id NOT IN (SELECT id FROM email_archive WHERE sent_at IS NOT NULL ORDER BY sent_at DESC,id DESC LIMIT 10)');
+    this.db.exec(`DELETE FROM email_archive WHERE sent_at IS NOT NULL
+      AND id NOT IN (SELECT id FROM email_archive WHERE sent_at IS NOT NULL ORDER BY sent_at DESC,id DESC LIMIT 50)
+      AND id NOT IN (SELECT c.id FROM email_archive_conversions c JOIN email_archive a ON a.id=c.id
+        WHERE a.sent_at IS NOT NULL ORDER BY c.converted_at DESC,c.id DESC LIMIT 50)`);
+    this.db.exec('DELETE FROM email_archive_conversions WHERE id NOT IN (SELECT id FROM email_archive)');
+  }
+  markConverted(id, convertedAt) {
+    if (!idPattern.test(id) || typeof convertedAt !== 'string' || !Number.isFinite(Date.parse(convertedAt)) || Date.parse(convertedAt) > this.clock()+60000) throw Error('email_archive_invalid');
+    this.db.prepare(`INSERT INTO email_archive_conversions(id,converted_at)
+      SELECT id,? FROM email_archive WHERE id=?
+      ON CONFLICT(id) DO UPDATE SET converted_at=MIN(converted_at,excluded.converted_at)`)
+      .run(Date.parse(convertedAt),id);
   }
   prepare(value) {
     const keys = ['delivery_id','recipient_email','subject','body_html','body_text','agent_name','copy_signature'];

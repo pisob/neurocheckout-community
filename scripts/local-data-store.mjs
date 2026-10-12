@@ -209,6 +209,25 @@ export class LocalDataStore {
     const decipher = createDecipheriv("aes-256-gcm", Buffer.from(this.config.encryptionKey, "hex"), content.subarray(0, 12));
     decipher.setAAD(Buffer.from(aad)); decipher.setAuthTag(content.subarray(12, 28));
     const payload = JSON.parse(Buffer.concat([decipher.update(content.subarray(28)), decipher.final()]).toString("utf8"));
+    if (row.kind === "cart") {
+      // Resolve exact, same-vault product references on read. Cloud must not
+      // guess them by scanning a bounded sample of a merchant's catalog.
+      delete payload._nc_product_links;
+      if (["prestashop-native-v1", "magento-native-v1", "woocommerce-native-v1", "woocommerce-session-v1"].includes(payload.source_schema)
+          && Array.isArray(payload.items) && payload.items.length <= 128) {
+        const ids = new Set(payload.items.map(item => item &&
+          (payload.source_schema === "prestashop-native-v1" ? item.id_product : item.product_id))
+          .filter(id => (typeof id === "string" || Number.isSafeInteger(id)) && String(id).length > 0 && String(id).length <= 256)
+          .map(String));
+        const productRow = this.db.prepare("SELECT revision FROM records WHERE kind='product' AND reference=? AND operation='upsert' AND expires_at>?");
+        payload._nc_product_links = [];
+        for (const product_id of ids) {
+          const reference = this.reference("product", product_id);
+          const product = productRow.get(reference, this.clock());
+          if (product) payload._nc_product_links.push({ product_id, reference, revision: product.revision });
+        }
+      }
+    }
     return { shopId: this.config.shopId, kind: row.kind, reference: row.reference, revision: row.revision,
       observedAt: new Date(row.observed_at).toISOString(), expiresAt: new Date(row.expires_at).toISOString(),
       readAt: new Date(this.clock()).toISOString(), payload };

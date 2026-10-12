@@ -17,6 +17,21 @@ const payload = { email: "synthetic-private@example.invalid", title: "PRIVATE-SY
 const record = (extras = {}) => ({ kind: "cart", sourceId: "cart-private-0123", revision: 1,
   operation: "upsert", observedAt: new Date().toISOString(), payload, ...extras });
 
+for (const schema of ['prestashop-native-v1','magento-native-v1','woocommerce-native-v1','woocommerce-session-v1']) {
+ test(`cart reads resolve exact local product references for ${schema}`, t => {
+  const directory=fixture(t), store=new LocalDataStore(directory);t.after(()=>store.close());
+  const product=store.put(record({kind:'product',sourceId:'401',payload:{id:'401',name:'Exact item'}}));
+  const key=schema==='prestashop-native-v1'?'id_product':'product_id';
+  const cart=store.put(record({payload:{source_schema:schema,items:[{[key]:401},{[key]:'401'},{[key]:'999'}],
+    _nc_product_links:[{product_id:'401',reference:'forged',revision:999}]}}));
+  const read=()=>store.read({kind:'cart',reference:cart.reference,minimumRevision:1}).payload._nc_product_links;
+  assert.deepEqual(read(),[{product_id:'401',reference:product.reference,revision:1}]);
+  assert.equal(JSON.stringify(store.signals()).includes('Exact item'),false);
+  store.put(record({kind:'product',sourceId:'401',revision:2,operation:'delete',payload:{}}));
+  assert.deepEqual(read(),[]);
+ });
+}
+
 test("encrypted data survives restart; outbox contains references only", t => {
   const directory = fixture(t);
   let store = new LocalDataStore(directory);

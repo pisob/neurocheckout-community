@@ -2,6 +2,7 @@ type EmailRecord = Record<string, unknown>;
 type Archive = {
   get(id: string): EmailRecord | null;
   confirm(id: string, sentAt: string): void;
+  markConverted?(id: string, convertedAt: string): void;
 };
 
 export function enrichEmailHistory(items: EmailRecord[], archive?: Archive): EmailRecord[] {
@@ -13,6 +14,9 @@ export function enrichEmailHistory(items: EmailRecord[], archive?: Archive): Ema
     try {
       const copy = archive.get(item.delivery_id);
       if (!copy || copy.delivery_id !== item.delivery_id) return fallback;
+      if (item.status === "converted" && typeof item.converted_at === "string") {
+        try { archive.markConverted?.(item.delivery_id, item.converted_at); } catch { /* Retry on the next read. */ }
+      }
       // Confirmation failure must not discard an otherwise readable original.
       try { archive.confirm(item.delivery_id, item.sent_at); } catch { /* Retry on the next read. */ }
       const merged: EmailRecord = { ...fallback };
