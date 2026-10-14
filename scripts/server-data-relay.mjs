@@ -80,7 +80,18 @@ async function smallJson(response, limit) {
   } finally { reader.releaseLock(); }
 }
 
+// Shared across callers (workspace, scheduled loop, manual retry). A second
+// caller must never consume another poll/reply or acknowledge its outbox batch.
+const activeRelays = globalThis.__ncActiveRelays ||= new Set();
 export async function relayOnce(options, fetchImpl = fetch) {
+  const scope = resolve(options.directory);
+  if (activeRelays.has(scope)) return false;
+  activeRelays.add(scope);
+  try { return await performRelayOnce(options, fetchImpl); }
+  finally { activeRelays.delete(scope); }
+}
+
+async function performRelayOnce(options, fetchImpl) {
   try {
     if (!permitted(options)) return false;
     const credential = await load(options);

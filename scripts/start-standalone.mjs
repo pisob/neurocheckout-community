@@ -8,6 +8,7 @@ import { isNewerVersion, prepareRelease, validVersion } from "./verified-update.
 import { activateCandidate } from "./update-switch.mjs";
 import { createUpdateBackup, updatePreflight } from "./update-backup.mjs";
 import { matchesUpdateHealth, updateFailureCode } from "./update-health.mjs";
+import { assertUnmodifiedInstallation } from "./update-source-guard.mjs";
 
 const root = process.cwd();
 loadEnvironmentFile(resolve(root, ".env.local"));
@@ -131,8 +132,13 @@ try {
       if (!isNewerVersion(request.version, currentMetadata.version)) throw new Error("update_not_newer");
       await status("preflight", request.version);
       updatePreflight(directory);
+      assertUnmodifiedInstallation(root);
+      if (current !== root) assertUnmodifiedInstallation(current);
       const candidate = await prepareRelease(directory, request.version, phase => status(phase, request.version), cancellation.signal);
       if (stopping) break;
+      // A build may take minutes; recheck edits made while it was preparing.
+      assertUnmodifiedInstallation(root);
+      if (current !== root) assertUnmodifiedInstallation(current);
       await status("restarting", request.version);
       switching = true;
       let launchedSource = current;

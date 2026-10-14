@@ -94,6 +94,8 @@ export default function LocalUpdate({ french }: { french: boolean }) {
     }
   }
   const failureMessages: Record<string,string> = french ? {
+    update_local_changes: "Du code local a été modifié. Mise à jour automatique bloquée : sauvegardez et faites intégrer ces modifications avant la migration manuelle.",
+    update_integrity_unavailable: "L’intégrité des sources installées ne peut pas être confirmée. Utilisez la procédure de mise à jour manuelle avec sauvegarde.",
     backup_failed: "La sauvegarde n’a pas pu être terminée. La nouvelle version n’a pas été lancée. Vérifiez l’espace disque et les permissions.",
     backup_invalid: "La sauvegarde n’a pas passé le contrôle d’intégrité. Mise à jour annulée ; conservez vos données et consultez le guide de restauration.",
     backup_database_invalid: "Le contrôle du coffre sauvegardé a échoué. Ne supprimez pas le coffre ; consultez le guide de restauration.",
@@ -107,6 +109,8 @@ export default function LocalUpdate({ french }: { french: boolean }) {
     signature_rejected: "Signature de la release refusée. Ne contournez pas cette vérification ; contactez le support.",
   } : {
     backup_failed: "Backup could not complete. The new version was not started. Check disk space and permissions.",
+    update_local_changes: "Local code changes detected. Automatic update blocked: back up and integrate those changes before a manual upgrade.",
+    update_integrity_unavailable: "Installed source integrity could not be confirmed. Use the manual update procedure with a backup.",
     backup_invalid: "Backup integrity check failed. Update cancelled; preserve your data and consult the recovery guide.",
     backup_database_invalid: "The backed-up vault failed verification. Do not delete the vault; consult the recovery guide.",
     backup_unsafe_path: "An unsafe backup path was detected. Check symbolic links and file ownership.",

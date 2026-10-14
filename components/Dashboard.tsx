@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { quotaObservation } from "@/lib/reliability";
 import CloudConfiguration from "@/components/CloudConfiguration";
 import EmailApprovals from "@/components/EmailApprovals";
 import MemberMessages from "@/components/MemberMessages";
@@ -241,13 +242,18 @@ export default function Dashboard() {
   const [lastSuccessfulSyncAt, setLastSuccessfulSyncAt] = useState<Date | null>(null);
   const [activeView, setActiveView] = useState<DashboardView>("overview");
   const [billingNotice, setBillingNotice] = useState<string | null>(null);
+  const capabilitiesRequest = useRef(0);
+  const [observationTime, setObservationTime] = useState(Date.now());
+  useEffect(() => { const timer = setInterval(() => setObservationTime(Date.now()), 15_000); return () => clearInterval(timer); }, []);
 
   const load = async (silent = false): Promise<boolean> => {
+    const sequence = ++capabilitiesRequest.current;
     if (!silent) setStatus("loading");
     setError(null);
     try {
-      const response = await fetch("/api/cloud/capabilities", { cache: "no-store" });
+      const response = await fetch("/api/cloud/capabilities", { cache: "no-store", signal: AbortSignal.timeout(12_000) });
       const payload = (await response.json().catch(() => ({}))) as Capabilities & { detail?: string };
+      if (sequence !== capabilitiesRequest.current) return false;
       if (response.status === 401) {
         setCapabilities(null);
         setStatus("disconnected");
@@ -266,12 +272,15 @@ export default function Dashboard() {
         { en: "NeuroCheckout is temporarily unavailable.", fr: "NeuroCheckout est temporairement indisponible." },
         language,
       ));
+      if (!payload.plan || !payload.subscription || !payload.limits?.emails || !payload.features || !payload.dashboard || !payload.agents || !payload.upgrade) throw new Error(ui("Cloud response unavailable.", "Réponse Cloud indisponible."));
       setCapabilities(payload);
       setStatus("connected");
       setSyncDelayed(false);
       setLastSuccessfulSyncAt(new Date());
+      setObservationTime(Date.now());
       return true;
     } catch (loadError) {
+      if (sequence !== capabilitiesRequest.current) return false;
       setError(loadError instanceof Error ? loadError.message : ui("Cloud unavailable", "Cloud indisponible"));
       if (silent) setSyncDelayed(true);
       else setStatus("error");
@@ -368,6 +377,16 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (status !== "error") return;
+    // Retry transport failures, never loop on revoked or expired credentials.
+    const retry = () => { if (document.visibilityState === "visible") void load(); };
+    const timer = window.setTimeout(retry, 30_000);
+    window.addEventListener("online", retry);
+    document.addEventListener("visibilitychange", retry);
+    return () => { window.clearTimeout(timer); window.removeEventListener("online", retry); document.removeEventListener("visibilitychange", retry); };
+  }, [status]);
+
+  useEffect(() => {
     if (status !== "connected" || !capabilities) return;
     const refreshSeconds = Math.min(300, Math.max(30, Number(capabilities.manifest?.refresh_after_seconds || 60)));
     let stopped = false;
@@ -390,10 +409,12 @@ export default function Dashboard() {
       if (document.visibilityState === "visible") refresh();
     };
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("online", refresh);
     return () => {
       stopped = true;
       if (timer) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("online", refresh);
     };
   }, [status, capabilities?.manifest?.refresh_after_seconds]);
 
@@ -421,17 +442,21 @@ export default function Dashboard() {
   };
 
   const logout = async () => {
+    ++capabilitiesRequest.current;
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     setCapabilities(null);
     setStatus("disconnected");
   };
 
   const emailLimit = capabilities?.limits.emails.limit;
-  const emailUsed = capabilities?.limits.emails.used;
-  const emailRemaining = capabilities?.limits.emails.remaining;
+  const quota = quotaObservation(capabilities?.limits.emails, lastSuccessfulSyncAt?.getTime() ?? null,
+    syncDelayed, observationTime, Math.max(90_000, Math.min(300, capabilities?.manifest?.refresh_after_seconds || 60) * 2000));
+  const emailUsed = quota.used;
+  const emailRemaining = quota.remaining;
+  const emailLimitLabel = !quota.fresh ? "—" : emailLimit === null ? "∞" : emailLimit ?? "—";
   const emailRemainingLabel = emailRemaining !== null && emailRemaining !== undefined
     ? emailRemaining
-    : emailLimit === null
+    : quota.fresh && emailLimit === null
       ? ui("Unlimited", "Illimité")
       : "—";
   const emailRatio = emailLimit && emailUsed !== null && emailUsed !== undefined
@@ -525,7 +550,7 @@ export default function Dashboard() {
               <button className={language === "fr" ? "active" : ""} type="button" aria-pressed={language === "fr"} onClick={() => setLanguage("fr")}>FR</button>
             </div>
             {capabilities ? (
-              <span className={`cloud-status${syncDelayed ? " delayed" : ""}`} title={lastSuccessfulSyncAt ? `${ui("Last successful sync", "Dernière synchronisation réussie")} ${lastSuccessfulSyncAt.toLocaleString(language === "fr" ? "fr-FR" : "en-US")}` : undefined}><span className="status-dot" />{syncDelayed ? ui("Cloud sync delayed", "Synchronisation Cloud retardée") : ui("Cloud synced", "Cloud synchronisé")}</span>
+              <span className={`cloud-status${!quota.fresh ? " delayed" : ""}`} title={lastSuccessfulSyncAt ? `${ui("Last successful sync", "Dernière synchronisation réussie")} ${lastSuccessfulSyncAt.toLocaleString(language === "fr" ? "fr-FR" : "en-US")}` : undefined}><span className="status-dot" />{!quota.fresh ? ui("Cloud data stale", "Données Cloud périmées") : ui("Account connected", "Compte connecté")}</span>
             ) : null}
             {status === "connected" ? (
               <button className="button ghost" type="button" onClick={logout}>{ui("Disconnect", "Déconnecter")}</button>
@@ -599,7 +624,7 @@ export default function Dashboard() {
                       <small>{supervisorEnabled ? `${ui("Coordination", "Coordination")} + ${specializedAgents.length} ${ui("specialists", "spécialisés")}` : `${specializedAgents.length} ${ui("specialists", "spécialisés")}`}</small>
                     </article>
                     <article className="metric quota-metric">
-                      <div><p>Emails</p><strong>{emailUsed ?? "—"}<em>/ {emailLimit ?? "∞"}</em></strong></div>
+                      <div><p>Emails</p><strong>{emailUsed ?? "—"}<em>/ {emailLimitLabel}</em></strong></div>
                       <div className="meter" aria-label={`${emailRatio}% ${ui("of email quota used", "du quota email utilisé")}`}><span style={{ width: `${emailRatio}%` }} /></div>
                       <small>{emailRemainingLabel} {ui("available", "disponibles")}</small>
                     </article>
@@ -674,13 +699,14 @@ export default function Dashboard() {
             {activeView === "usage" ? (
               <section className="view-enter usage-view">
                 <div className="usage-primary">
-                  <div className="usage-number"><span>{ui("Email quota used", "Quota email utilisé")}</span><strong>{emailUsed ?? "—"}</strong><small>{ui("of", "sur")} {emailLimit ?? "∞"} · {capabilities.limits.emails.window === "rolling_24h" ? ui(`last ${capabilities.limits.emails.window_hours || 24} hours`, `${capabilities.limits.emails.window_hours || 24} dernières heures`) : ui("current plan window", "fenêtre de l’offre actuelle")}</small></div>
+                  <div className="usage-number"><span>{ui("Email quota used", "Quota email utilisé")}</span><strong>{emailUsed ?? "—"}</strong><small>{ui("of", "sur")} {emailLimitLabel} · {capabilities.limits.emails.window === "rolling_24h" ? ui(`last ${capabilities.limits.emails.window_hours || 24} hours`, `${capabilities.limits.emails.window_hours || 24} dernières heures`) : ui("current plan window", "fenêtre de l’offre actuelle")}</small></div>
                   <div className="usage-meter"><div className="meter"><span style={{ width: `${emailRatio}%` }} /></div><strong>{emailUsed == null ? "—" : `${emailRatio}%`}</strong></div>
-                  <p>{capabilities.limits.emails.remaining === null
-                    ? capabilities.limits.emails.limit === null
+                  <p>{emailRemaining === null
+                    ? quota.fresh && capabilities.limits.emails.limit === null
                       ? ui("This plan has no fixed email cap.", "Cette offre n’a pas de plafond email fixe.")
                       : ui("Usage is temporarily unavailable; Cloud still enforces the plan limit.", "La consommation est temporairement indisponible ; le Cloud applique toujours la limite de l’offre.")
-                    : `${capabilities.limits.emails.remaining} ${ui("emails remain available in this window.", "emails restent disponibles pour cette fenêtre.")}`}</p>
+                    : `${emailRemaining} ${ui("emails remain available in this window.", "emails restent disponibles pour cette fenêtre.")}`}</p>
+                  <p>{ui("Last confirmed Cloud observation", "Dernière observation Cloud confirmée")} : {lastSuccessfulSyncAt?.toLocaleString(language === "fr" ? "fr-FR" : "en-US") || "—"}</p>
                   <div className="quota-window-explainer">
                     <strong>{emailUsed == null ? ui("Usage temporarily unavailable", "Consommation temporairement indisponible") : capabilities.limits.emails.window === "rolling_24h" ? nextEmailRelease ? ui("Next capacity release", "Prochaine capacité libérée") : ui("Rolling quota is current", "Quota glissant à jour") : capabilities.limits.emails.window === "trial" ? ui("Trial period quota", "Quota de la période d’essai") : ui("Monthly plan quota", "Quota mensuel de l’offre")}</strong>
                     <span>{emailUsed == null ? ui("Cloud usage could not be confirmed. This does not mean zero emails were used.", "La consommation Cloud n’a pas pu être confirmée. Cela ne signifie pas qu’aucun email n’a été utilisé.") : capabilities.limits.emails.window === "rolling_24h" ? nextEmailRelease || ui("No email is currently waiting to leave the counting window.", "Aucun email n’attend actuellement de sortir de la fenêtre de comptage.") : ui("Cloud remains authoritative for usage and quota enforcement.", "Le Cloud reste l’autorité pour la consommation et le contrôle du quota.")}</span>

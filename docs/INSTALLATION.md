@@ -392,6 +392,42 @@ your Cloud account or store connector.
 
 ## Troubleshooting
 
+### Reliability checks before an update
+
+- A connected account is not proof that each store has fresh data. Open
+  **Sync health**, select each store, and inspect connection, source freshness,
+  received events, reconciliation, email sends and attributed conversions.
+- Sending eligibility is checked by Cloud for each cart, including consent,
+  timing, quota and duplicate-send protection. Never bypass a paused send.
+- A missing or stale quota observation is displayed as unavailable, not zero.
+  The Cloud ledger remains authoritative; restarting or updating Community
+  does not reset usage. Email history and quota windows measure different things.
+- Automatic updates refuse modified or untracked source files and local commits
+  differing from the installed release tag. Back up and
+  review those changes before following the manual upgrade procedure. Do not
+  reset or delete your working tree to bypass this safeguard.
+- If source provenance cannot be checked (for example an older archive install
+  without Git metadata), use the manual procedure with a verified release and
+  a private backup. Do not create a new Git baseline over unknown modified code.
+- The root launcher must also be updated manually to activate new launcher
+  safeguards. Updating only a dashboard build cannot replace a running launcher.
+- Cloud may advertise a new version progressively by account. All stores under
+  the same account share that rollout assignment; an already accepted newer
+  version is not downgraded when the rollout pauses.
+
+### Before publishing a new release
+
+Run `npm run test:reliability`, `npm run test:update`, the standard source/relay
+and workspace suites, then the production build and browser regression suites
+(including `npm run test:reliability-ui`). The release workflow runs these gates.
+The merchant recovery tests use real encrypted local storage and simulated Cloud
+responses; they do not send email. Platform installation and final merchant
+acceptance on PrestaShop, WooCommerce and Magento are separate release evidence,
+not implied by these transport tests. Keep real recipients and production keys
+out of the regression environment.
+
+### Connection troubleshooting
+
 - **Callback rejected:** compare the registered callback and
   `NC_COMMUNITY_REDIRECT_URI` character for character.
 - **Connection returns to the login screen:** verify the public client ID and

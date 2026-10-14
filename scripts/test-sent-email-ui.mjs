@@ -78,7 +78,7 @@ try {
      status_counts: Object.fromEntries(statuses.map(status => [status, 1])) }) });
  });
  await page.setViewportSize({width:1440,height:1100});
- const tab = name => page.locator('.email-status-filters button').filter({ hasText: new RegExp(`^${name}\\s*\\d*$`) });
+ const tab = name => page.locator('.email-status-filters button').filter({ hasText: new RegExp(`^${name}\\s*(?:\\d+|—)?$`) });
  await tab('Sent').click();
  await slowStarted;
  await tab('Converted').click();

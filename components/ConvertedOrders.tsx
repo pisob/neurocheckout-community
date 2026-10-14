@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { publicAgentLabel, publicEnumLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
+import { useEvidenceRefresh } from "@/lib/use-evidence-refresh";
+import { emailStatusTotal } from "@/lib/reliability";
 import SentEmailPreview, { type SentEmail } from "./SentEmailPreview";
 
 type Shop = { id?: string; shop_uuid?: string; canonical_shop_id?: string; shop_id: string; platform?: string; currency_code?: string | null };
@@ -32,9 +34,9 @@ type RecentEmailPayload = {
   limit: number;
   offset: number;
   count: number;
-  total: number;
+  total: number | null;
   has_more: boolean;
-  status_counts: Record<string, number>;
+  status_counts: Record<string, number | null>;
   items: RecentEmail[];
   detail?: string;
 };
@@ -73,10 +75,10 @@ function normalizeRecentEmailPayload(value: unknown): RecentEmailPayload | null 
     limit: typeof value.limit === "number" ? value.limit : 10,
     offset: typeof value.offset === "number" ? value.offset : 0,
     count: typeof value.count === "number" ? value.count : items.length,
-    total: typeof value.total === "number" ? value.total : items.length,
+    total: typeof value.total === "number" && Number.isSafeInteger(value.total) && value.total >= 0 ? value.total : null,
     has_more: value.has_more === true,
     status_counts: isRecord(value.status_counts)
-      ? Object.fromEntries(Object.entries(value.status_counts).map(([key, count]) => [key, Number(count) || 0]))
+      ? Object.fromEntries(Object.entries(value.status_counts).map(([key, count]) => [key, typeof count === "number" && Number.isSafeInteger(count) && count >= 0 ? count : null]))
       : {},
     items,
   };
@@ -135,7 +137,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
     setError("");
     try {
       const query = new URLSearchParams({ shop_uuid: selectedShopUuid, limit: String(limit) });
-      const response = await fetch(`/api/cloud/converted-orders?${query.toString()}`, { cache: "no-store" });
+      const response = await fetch(`/api/cloud/converted-orders?${query.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
       const rawBody: unknown = await response.json().catch(() => ({}));
       if (requestId !== orderRequest.current) return;
       const body = normalizeConvertedPayload(rawBody);
@@ -147,6 +149,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
           : publicErrorMessage(detail, { en: "Converted orders unavailable.", fr: "Commandes converties indisponibles." }, language));
       }
       if (!body) throw new Error(ui("Cloud returned an invalid converted-order response.", "Le Cloud a renvoyé une réponse de commandes converties invalide."));
+      if (shopUuid(body.shop) !== selectedShopUuid) throw new Error(ui("Store observation mismatch. Refresh to verify.", "Observation d’une autre boutique. Actualisez pour vérifier."));
       setPayload(body);
       setSelectedIndex(0);
     } catch (loadError) {
@@ -163,7 +166,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
     setEmailError("");
     try {
       const query = new URLSearchParams({ shop_uuid: selectedShopUuid, limit: "10", offset: String(emailOffset), status: emailFilter });
-      const response = await fetch(`/api/cloud/recent-emails?${query.toString()}`, { cache: "no-store" });
+      const response = await fetch(`/api/cloud/recent-emails?${query.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
       const rawBody: unknown = await response.json().catch(() => ({}));
       if (requestId !== emailRequest.current) return;
       const body = normalizeRecentEmailPayload(rawBody);
@@ -192,6 +195,8 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
   useEffect(() => { void loadOrders(); return () => { ++orderRequest.current; }; }, [loadOrders]);
   useEffect(() => { void loadRecentEmails(); return () => { ++emailRequest.current; }; }, [loadRecentEmails]);
   useEffect(() => { setEmailOffset(0); }, [selectedShopUuid]);
+  const refreshAllEvidence = useCallback(async () => { await Promise.all([loadOrders(), loadRecentEmails()]); }, [loadOrders, loadRecentEmails]);
+  useEvidenceRefresh(refreshAllEvidence, Boolean(selectedShopUuid));
 
   const selected = payload?.items[selectedIndex] || null;
   const totalValue = useMemo(() => (payload?.items || []).reduce((sum, item) => sum + Number(item.order_total || 0), 0), [payload]);
@@ -218,9 +223,8 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
     { value: "converted", label: ui("Converted", "Convertis") },
     { value: "bounced", label: ui("Bounced", "Rejetés") },
   ];
-  const statusTotal = (value: EmailStatus) => value === "all"
-    ? Object.values(emailPayload?.status_counts || {}).reduce((sum, count) => sum + count, 0)
-    : emailPayload?.status_counts?.[value] || 0;
+  const currentEmailPayload = emailContext === currentEmailContext ? emailPayload : null;
+  const statusTotal = (value: EmailStatus) => emailStatusTotal(currentEmailPayload?.status_counts, value);
   const emailPage = Math.floor(emailOffset / 10) + 1;
   const emailPages = Math.max(1, Math.ceil((emailPayload?.total || 0) / 10));
 
@@ -284,14 +288,14 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
               <h2 id="recent-email-heading">{ui("Email delivery history", "Historique des emails envoyés")}</h2>
               <p>{ui("Up to 50 recent delivery records. Your encrypted archive keeps the latest 50 originals and up to 50 known converted copies, for up to 30 days.", "Jusqu’à 50 preuves d’envoi récentes. Votre archive chiffrée conserve les 50 derniers originaux et jusqu’à 50 copies converties identifiées, pendant 30 jours maximum.")}</p>
             </div>
-            <span>{emailPayload?.total ?? 0} {ui("records", "preuves")}</span>
+            <span>{currentEmailPayload?.total ?? "—"} {ui("records", "preuves")}</span>
           </header>
 
           <div className="email-history-controls">
             <div className="email-status-filters" role="group" aria-label={ui("Filter emails by status", "Filtrer les emails par statut")}>
-              {emailFilters.map((filter) => <button className={emailFilter === filter.value ? "active" : ""} type="button" aria-pressed={emailFilter === filter.value} key={filter.value} onClick={() => { setEmailFilter(filter.value); setEmailOffset(0); }}>{filter.label}<span>{statusTotal(filter.value)}</span></button>)}
+              {emailFilters.map((filter) => <button className={emailFilter === filter.value ? "active" : ""} type="button" aria-pressed={emailFilter === filter.value} key={filter.value} onClick={() => { setEmailFilter(filter.value); setEmailOffset(0); }}>{filter.label}<span>{statusTotal(filter.value) ?? "—"}</span></button>)}
             </div>
-            {statusTotal("converted") > 0 ? <p className="conversion-presence"><span />{statusTotal("converted")} {ui("conversion evidence retained", "preuve(s) de conversion conservée(s)")}</p> : null}
+            {(statusTotal("converted") ?? 0) > 0 ? <p className="conversion-presence"><span />{statusTotal("converted")} {ui("conversion evidence retained", "preuve(s) de conversion conservée(s)")}</p> : null}
           </div>
           <p className="sent-preview-note">{ui("Each email appears under its current status. A dash means that no date is available for that event.", "Chaque email apparaît sous son statut actuel. Un tiret indique qu’aucune date n’est disponible pour cet événement.")}</p>
           <details className="email-status-help"><summary>{ui("Understand email statuses", "Comprendre les statuts des emails")}</summary>

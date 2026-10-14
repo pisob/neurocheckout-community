@@ -1,14 +1,19 @@
-// Opt-in integration test. Uses the historical signed public .3 release,
-// synthetic configuration and an isolated port; never connects a Cloud account.
+// Opt-in integration test. Requires an explicitly selected, published signed
+// release newer than this build. Uses synthetic configuration and an isolated
+// port; never connects a Cloud account.
 import assert from "node:assert/strict";
 import { mkdtemp, symlink, writeFile, readFile, access, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { createServer } from "node:net";
+import { isNewerVersion } from './verified-update.mjs';
 
 const checkout = process.cwd();
+const metadata = JSON.parse(await readFile(resolve(checkout, 'package.json'), 'utf8'));
+const targetVersion = process.env.NC_TEST_SIGNED_UPDATE_VERSION;
+assert(isNewerVersion(targetVersion, metadata.version), 'Set NC_TEST_SIGNED_UPDATE_VERSION to a published signed release newer than the built checkout.');
 const root = await mkdtemp(join(tmpdir(), "nc-launcher-test-"));
 const reserve = createServer();
 await new Promise(resolve => reserve.listen(0, "127.0.0.1", resolve));
@@ -42,19 +47,24 @@ try {
   await symlink(resolve(checkout, ".next"), join(root, ".next"), "dir");
   await symlink(resolve(checkout, "public"), join(root, "public"), "dir");
   await writeFile(join(root, ".env.local"), config, { mode: 0o600 });
+  await writeFile(join(root, 'package.json'), JSON.stringify({version:metadata.version}));
+  await writeFile(join(root, '.gitignore'), '.next/\n.community-updates/\n.community-state/\n.env.local\n');
+  const git = (...args) => execFileSync('git', ['-C', root, ...args], {stdio:'ignore'});
+  git('init'); git('config','user.name','Update fixture'); git('config','user.email','fixture@example.invalid');
+  git('add','.'); git('commit','-m','synthetic installed release'); git('tag',`v${metadata.version}`);
   child = start();
   const healthy = async () => (await fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(2000) })).ok;
   await wait(healthy);
   const directory = join(root, ".community-updates");
-  await writeFile(join(directory, "request.json"), JSON.stringify({ version: "0.1.0-preview.3" }));
+  await writeFile(join(directory, "request.json"), JSON.stringify({ version: targetVersion }));
   await wait(async () => {
     const status = JSON.parse(await readFile(join(directory, "status.json"), "utf8"));
     if (status.phase === "failed") throw new Error("Preparation failed");
-    return status.phase === "complete" && status.version === "0.1.0-preview.3";
+    return status.phase === "complete" && status.version === targetVersion;
   }, 600000);
   const pointer = JSON.parse(await readFile(join(directory, "current.json"), "utf8"));
   const source = resolve(directory, pointer.path);
-  assert.equal(JSON.parse(await readFile(join(source, "package.json"), "utf8")).version, "0.1.0-preview.3");
+  assert.equal(JSON.parse(await readFile(join(source, "package.json"), "utf8")).version, targetVersion);
   assert.equal(await readFile(join(root, ".env.local"), "utf8"), config);
   await assert.rejects(access(join(source, ".env.local")));
   assert.equal(await healthy(), true);
