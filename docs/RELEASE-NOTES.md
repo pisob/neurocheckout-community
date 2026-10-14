@@ -1,24 +1,20 @@
-# NeuroCheckout Community v0.1.0-preview.32
+# NeuroCheckout Community v0.1.0-preview.33
 
 Official signed prerelease. Production connectivity is supported; this remains
 a preview pending full merchant acceptance.
 
-- Reliable cart product names and images, including products outside recent
-  catalogue results. Incomplete product data pauses the affected email safely.
-- Clear quota periods for Community, paid plans and trials, in English and French.
-  Temporarily unavailable usage is shown as unknown, never as a false zero.
-- Encrypted email archives retain the latest 50 confirmed originals plus up to 50
-  known converted originals, for up to 30 days. Delivery history remains independent
-  of the current quota window.
-- Regression coverage for synchronization, email previews, archive retention
-  after restart and backup compatibility.
+- Progressively space repeated connection attempts after authorization failures.
+- Resume promptly when credentials are renewed or the application is updated.
+- Avoid overlapping heartbeat requests and keep each store's retries independent.
+- Preserve authentication checks: a paused or failed request never authorizes
+  synchronization or email delivery.
+- Include regression tests for rejected credentials, network failures, recovery
+  and simultaneous requests.
 
-Already removed email originals require a matching private backup; updating does
-not recreate or resend them. Rolling back to an older application restores that
-version's shorter archive retention policy. Use an up-to-date official connector
-and let product synchronization finish. Previously delivered emails are unchanged.
-Remote image availability and email client image blocking remain outside
-Community's control.
+Healthy connections continue using the existing heartbeat schedule. Retry delays
+are held in memory; restarting the application permits a fresh attempt. Repeated
+authorization failures may still require reconnecting the installation from its
+configuration page.
 
 **Existing installations:** back up your installation before updating. Updating the
 source transport and backup/recovery protections requires updating and

@@ -4,6 +4,13 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.33 - 2026-10-14
+
+- Space repeated connection attempts progressively after authorization failures.
+- Resume promptly after credentials are renewed or connectivity is restored.
+- Prevent overlapping heartbeat requests while keeping store contexts isolated.
+- Extend regression coverage for safe retries, reconnects and concurrent calls.
+
 ## 0.1.0-preview.24 - 2026-09-27
 
 - Clarify subscription action labels in English and French.
