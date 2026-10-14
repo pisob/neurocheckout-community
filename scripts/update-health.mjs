@@ -7,6 +7,7 @@ export function matchesUpdateHealth(body, expectedVersion) {
 export function updateFailureCode(error, stage = '') {
   const code = error?.message;
   const allowed = new Set(['update_disk_space_low', 'update_private_directory_required',
+    'update_local_changes', 'update_integrity_unavailable',
     'asset_unavailable', 'asset_missing', 'signature_rejected', 'candidate_unhealthy',
     'backup_invalid', 'backup_database_invalid', 'backup_unsafe_path', 'backup_private_directory_required']);
   if (allowed.has(code)) return code;

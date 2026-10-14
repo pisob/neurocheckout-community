@@ -36,7 +36,7 @@ No local installation is required yet. Complete these browser steps **before**
 running the setup assistant.
 
 This guide targets **production** at `https://www.neurocheckout.com`.
-Use **0.1.0-preview.33** or a newer compatible release for production synchronization.
+Use **0.1.0-preview.34** or a newer compatible release for production synchronization.
 This is a prerelease: keep a private backup and verify each store's connection
 before enabling customer email automation.
 
@@ -87,7 +87,7 @@ assistant.
 Install a fixed signed release, not the moving development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.33 --depth 1 \
+git clone --branch v0.1.0-preview.34 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -95,7 +95,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.33
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.34
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -391,6 +391,42 @@ revoking Cloud access. Uninstalling does not cancel a paid subscription or delet
 your Cloud account or store connector.
 
 ## Troubleshooting
+
+### Reliability checks before an update
+
+- A connected account is not proof that each store has fresh data. Open
+  **Sync health**, select each store, and inspect connection, source freshness,
+  received events, reconciliation, email sends and attributed conversions.
+- Sending eligibility is checked by Cloud for each cart, including consent,
+  timing, quota and duplicate-send protection. Never bypass a paused send.
+- A missing or stale quota observation is displayed as unavailable, not zero.
+  The Cloud ledger remains authoritative; restarting or updating Community
+  does not reset usage. Email history and quota windows measure different things.
+- Automatic updates refuse modified or untracked source files and local commits
+  differing from the installed release tag. Back up and
+  review those changes before following the manual upgrade procedure. Do not
+  reset or delete your working tree to bypass this safeguard.
+- If source provenance cannot be checked (for example an older archive install
+  without Git metadata), use the manual procedure with a verified release and
+  a private backup. Do not create a new Git baseline over unknown modified code.
+- The root launcher must also be updated manually to activate new launcher
+  safeguards. Updating only a dashboard build cannot replace a running launcher.
+- Cloud may advertise a new version progressively by account. All stores under
+  the same account share that rollout assignment; an already accepted newer
+  version is not downgraded when the rollout pauses.
+
+### Before publishing a new release
+
+Run `npm run test:reliability`, `npm run test:update`, the standard source/relay
+and workspace suites, then the production build and browser regression suites
+(including `npm run test:reliability-ui`). The release workflow runs these gates.
+The merchant recovery tests use real encrypted local storage and simulated Cloud
+responses; they do not send email. Platform installation and final merchant
+acceptance on PrestaShop, WooCommerce and Magento are separate release evidence,
+not implied by these transport tests. Keep real recipients and production keys
+out of the regression environment.
+
+### Connection troubleshooting
 
 - **Callback rejected:** compare the registered callback and
   `NC_COMMUNITY_REDIRECT_URI` character for character.

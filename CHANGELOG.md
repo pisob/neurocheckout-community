@@ -4,6 +4,15 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.34 - 2026-10-14
+
+- Separate store connection, fresh source data, pending processing and delivery evidence.
+- Refresh usage, performance and conversion history after network recovery; unavailable data is not zero.
+- Serialize competing relay attempts and verify durable recovery after a lost acknowledgement.
+- Refuse automatic updates over customized sources or unverifiable release baselines.
+- Extend guest/registered, multi-store, backup, rollback and browser regression coverage.
+- Support progressive Cloud update offers without revoking already upgraded installations.
+
 ## 0.1.0-preview.33 - 2026-10-14
 
 - Space repeated connection attempts progressively after authorization failures.

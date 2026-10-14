@@ -1,0 +1,33 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { assertUnmodifiedInstallation } from './update-source-guard.mjs';
+import { updateFailureCode } from './update-health.mjs';
+
+test('update refuses tracked edits, custom files and unknown archive provenance without changing files', t => {
+  const root = mkdtempSync(join(tmpdir(), 'nc-source-guard-'));
+  t.after(() => rmSync(root, {recursive:true,force:true}));
+  const git = (...args) => execFileSync('git', ['-C', root, ...args], {stdio:'ignore'});
+  assert.throws(() => assertUnmodifiedInstallation(root), /update_integrity_unavailable/);
+  git('init'); git('config','user.email','fixture@example.invalid'); git('config','user.name','Fixture');
+  writeFileSync(join(root,'.gitignore'), '.next/\n.community-state/\n.env.local\n');
+  writeFileSync(join(root,'package.json'), JSON.stringify({version:'0.1.0-preview.33'}));
+  writeFileSync(join(root,'app.js'), 'original'); git('add','.'); git('commit','-m','fixture');
+  assert.throws(() => assertUnmodifiedInstallation(root), /update_integrity_unavailable/);
+  git('tag','v0.1.0-preview.33');
+  assert.doesNotThrow(() => assertUnmodifiedInstallation(root));
+  writeFileSync(join(root,'.env.local'), 'PRIVATE');
+  mkdirSync(join(root,'.community-state')); writeFileSync(join(root,'.community-state','vault'), 'PRIVATE');
+  assert.doesNotThrow(() => assertUnmodifiedInstallation(root));
+  writeFileSync(join(root,'app.js'), 'modified');
+  assert.throws(() => assertUnmodifiedInstallation(root), /update_local_changes/);
+  writeFileSync(join(root,'app.js'), 'original'); writeFileSync(join(root,'custom.js'), 'custom');
+  assert.throws(() => assertUnmodifiedInstallation(root), /update_local_changes/);
+  git('add','custom.js'); git('commit','-m','local customization');
+  assert.throws(() => assertUnmodifiedInstallation(root), /update_local_changes/);
+  assert.throws(() => assertUnmodifiedInstallation(join(root,'.community-state')), /update_integrity_unavailable/);
+  assert.equal(updateFailureCode(new Error('update_local_changes')), 'update_local_changes');
+});

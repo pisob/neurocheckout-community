@@ -1,20 +1,19 @@
-# NeuroCheckout Community v0.1.0-preview.33
+# NeuroCheckout Community v0.1.0-preview.34
 
 Official signed prerelease. Production connectivity is supported; this remains
 a preview pending full merchant acceptance.
 
-- Progressively space repeated connection attempts after authorization failures.
-- Resume promptly when credentials are renewed or the application is updated.
-- Avoid overlapping heartbeat requests and keep each store's retries independent.
-- Preserve authentication checks: a paused or failed request never authorizes
-  synchronization or email delivery.
-- Include regression tests for rejected credentials, network failures, recovery
-  and simultaneous requests.
+- Distinguish connection, fresh store data, processing, sending eligibility and delivery evidence.
+- Refresh quotas, agent performance and email conversions automatically after network recovery.
+- Display unavailable observations as unknown, not zero or unlimited usage.
+- Prevent overlapping relay attempts and preserve acknowledged-send protection on replay.
+- Protect customized source files and local commits during automatic updates.
+- Add regression coverage for guest/registered carts across all three supported
+  platform contracts, encrypted recovery, multi-store isolation and browser journeys.
 
-Healthy connections continue using the existing heartbeat schedule. Retry delays
-are held in memory; restarting the application permits a fresh attempt. Repeated
-authorization failures may still require reconnecting the installation from its
-configuration page.
+Cloud remains authoritative for quotas, consent, scheduling and sending. A successful
+connection is not permission to send, and SMTP acceptance is not proof of inbox receipt.
+Automated transport tests do not replace real platform installation and merchant acceptance.
 
 **Existing installations:** back up your installation before updating. Updating the
 source transport and backup/recovery protections requires updating and

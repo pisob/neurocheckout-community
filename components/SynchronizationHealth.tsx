@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 import { synchronizationDiagnostic } from "@/lib/sync-diagnostic";
+import { reliabilityStages } from "@/lib/reliability";
 
 type Shop = { id?: string; shop_uuid?: string; canonical_shop_id?: string; shop_id: string; platform?: string };
 type Connector = {
@@ -16,6 +17,7 @@ type Connector = {
   last_seen_at: string;
 };
 type CloudHealth = {
+  generated_at?: string;
   state: "healthy" | "synchronizing" | "recovering" | "attention" | "offline";
   online: boolean;
   dashboard_version?: string | null;
@@ -27,6 +29,8 @@ type CloudHealth = {
   data_quality: { incomplete: number };
   evidence: { received: number; sent: number; converted: number };
   latest_issue?: string | null;
+  issue_active?: boolean;
+  issue_observed_at?: string | null;
   next_attempt_at?: string | null;
 };
 type LocalHealth = {
@@ -168,11 +172,12 @@ export default function SynchronizationHealth({ language, connectors }: { langua
   };
   const localMatches = Boolean(local?.shop_id && local.shop_id === selectedShop?.shop_id);
   const localReady = Boolean(localMatches && local?.configured && local?.ready);
-  const queueHealthy = Boolean(cloud && cloud.queue.failed === 0 && cloud.data_quality.incomplete === 0);
-  const status = cloud?.state || "offline";
   const diagnostic = synchronizationDiagnostic({ online: cloud?.online === true,
     available: Boolean(localMatches && local?.available), configured: Boolean(localMatches && local?.configured),
     ready: localReady, source: localMatches ? local?.source?.diagnostic : null });
+  const stages = reliabilityStages(cloud, local, selectedShop?.shop_id || "");
+  const sourceVerified = stages.find(stage => stage.id === "source")?.state === "verified";
+  const status = cloud?.online && !sourceVerified ? "attention" : cloud?.state || "offline";
 
   return <section className="view-enter sync-health-view">
     <div className="analytics-toolbar">
@@ -197,10 +202,18 @@ export default function SynchronizationHealth({ language, connectors }: { langua
         <p>{fr ? diagnostic.fr : diagnostic.en}</p><p>{fr ? diagnostic.actionFr : diagnostic.actionEn}</p>
       </aside>
 
+      <section aria-label={ui("Verified steps", "Étapes vérifiées")}>
+        <p>{ui("A connected account does not prove that data is ready or that an email may be sent.", "Un compte connecté ne prouve ni que les données sont prêtes ni qu’un email peut être envoyé.")}</p>
+        <ul>{stages.map(stage => <li key={stage.id} data-reliability-stage={stage.id} data-state={stage.state}>
+          {fr ? stage.fr : stage.en} : <strong>{({ verified: ui("Verified", "Vérifié"), pending: ui("Waiting / not yet confirmed", "En attente / non confirmé"), blocked: ui("Needs attention", "À vérifier"), unknown: ui("Unavailable", "Indisponible") })[stage.state]}</strong>
+        </li>)}</ul>
+        <p>{ui("Cloud observation", "Observation Cloud")} : {date(cloud.generated_at)}</p>
+      </section>
+
       <div className="sync-path" aria-label={ui("Synchronization path", "Parcours de synchronisation")}>
         <article className={diagnostic.code === "source_verified" ? "ok" : "warn"}><span>01</span><div><strong>{ui("Store connector", "Connecteur boutique")}</strong><small>{connector ? `${connector.platform} · ${connector.installed_version}` : ui("Waiting for connector", "Connecteur en attente")}</small></div><i /></article>
-        <article className={localReady ? "ok" : "warn"}><span>02</span><div><strong>{ui("Encrypted local vault", "Coffre local chiffré")}</strong><small>{localReady ? ui("Source synchronized", "Source synchronisée") : ui("Source catching up", "Mise à niveau de la source")}</small></div><i /></article>
-        <article className={cloud.online && queueHealthy ? "ok" : "warn"}><span>03</span><div><strong>{ui("Cloud reconciliation", "Réconciliation Cloud")}</strong><small>{cloud.queue.pending} {ui("pending", "en attente")} · {cloud.queue.retrying} {ui("retrying", "en reprise")}</small></div><i /></article>
+        <article className={sourceVerified ? "ok" : "warn"}><span>02</span><div><strong>{ui("Encrypted local vault", "Coffre local chiffré")}</strong><small>{sourceVerified ? ui("Source synchronized", "Source synchronisée") : ui("Source catching up", "Mise à niveau de la source")}</small></div><i /></article>
+        <article className={stages.find(stage => stage.id === "processing")?.state === "verified" ? "ok" : "warn"}><span>03</span><div><strong>{ui("Cloud reconciliation", "Réconciliation Cloud")}</strong><small>{cloud.queue.pending} {ui("pending", "en attente")} · {cloud.queue.retrying} {ui("retrying", "en reprise")}</small></div><i /></article>
         <article className={cloud.evidence.converted > 0 ? "ok" : "neutral"}><span>04</span><div><strong>{ui("Delivery evidence", "Preuves de traitement")}</strong><small>{cloud.evidence.sent} {ui("sent", "envoyés")} · {cloud.evidence.converted} {ui("converted", "convertis")}</small></div><i /></article>
       </div>
 

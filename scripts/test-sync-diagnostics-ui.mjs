@@ -18,12 +18,17 @@ try {
     else if(path==='/api/cloud/sync-health') {
       status=mode==='unavailable'?503:200;
       body=status===503?{detail:'PRIVATE_RAW_ERROR_DO_NOT_SHOW'}:{state:'healthy',online:mode!=='offline',latest_issue:mode==='products_missing'?'cart_products_unavailable':mode==='source_down'?'source_unavailable':null,queue:{pending:0,processing:0,retrying:0,failed:0},data_quality:{incomplete:0},evidence:{received:1,sent:0,converted:0}};
-    } else if(path==='/api/local-data/sync-health')body={available:true,configured:true,ready:true,shop_id:'fixture',source:{diagnostic:{code:mode==='refused'?'source_auth_rejected':'ok',checked_at:mode==='stale'?1:Date.now()}}};
+    } else if(path==='/api/local-data/sync-health')body={available:true,configured:true,ready:true,shop_id:'fixture',source:{last_complete_at:mode==='stale'?1:Date.now(),diagnostic:{code:mode==='refused'?'source_auth_rejected':'ok',checked_at:mode==='stale'?1:Date.now()}}};
     await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
   });
   for(const [next,code] of [['healthy','source_verified'],['refused','source_auth_rejected'],['stale','source_status_stale'],['offline','community_offline']]) {
     mode=next;await page.goto(origin+'/#sync-health');await page.reload();
     await page.locator(`[data-diagnostic="${code}"]`).waitFor();
+    if(next==='healthy') {
+      assert.equal(await page.locator('[data-reliability-stage="connection"]').getAttribute('data-state'),'verified');
+      assert.equal(await page.locator('[data-reliability-stage="eligibility"]').getAttribute('data-state'),'pending');
+    }
+    if(next==='stale') assert.equal(await page.locator('[data-reliability-stage="source"]').getAttribute('data-state'),'unknown');
   }
   mode='source_down';await page.reload();
   await page.getByText('Community is reachable, but fresh store data is unavailable.', {exact:false}).waitFor();

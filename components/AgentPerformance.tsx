@@ -6,6 +6,7 @@ import AgentNetwork from "@/components/AgentNetwork";
 import OptimizationRecommendations from "@/components/OptimizationRecommendations";
 import { publicAgentLabel, publicEnumLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
+import { useEvidenceRefresh } from "@/lib/use-evidence-refresh";
 
 type Shop = {
   id?: string;
@@ -144,7 +145,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
     setError("");
     try {
       const query = new URLSearchParams({ shop_uuid: selectedShopUuid, days: String(days) });
-      const response = await fetch(`/api/cloud/agent-performance?${query.toString()}`, { cache: "no-store" });
+      const response = await fetch(`/api/cloud/agent-performance?${query.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
       const rawBody: unknown = await response.json().catch(() => ({}));
       if (sequence !== performanceRequest.current) return;
       const body = normalizePerformancePayload(rawBody);
@@ -156,6 +157,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
           : publicErrorMessage(detail, { en: "Performance unavailable.", fr: "Performances indisponibles." }, language));
       }
       if (!body) throw new Error(ui("Cloud returned an invalid performance response.", "Le Cloud a renvoyé une réponse de performance invalide."));
+      if (shopUuid(body.shop) !== selectedShopUuid) throw new Error(ui("Store observation mismatch. Refresh to verify.", "Observation d’une autre boutique. Actualisez pour vérifier."));
       setPayload(body);
       setSelectedAgent((current) => body.items.some((item) => item.agent_name === current) ? current : body.items[0]?.agent_name || "");
     } catch (loadError) {
@@ -175,6 +177,7 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
   }, [loadShops]);
 
   useEffect(() => { void loadPerformance(); return () => { ++performanceRequest.current; }; }, [loadPerformance]);
+  useEvidenceRefresh(loadPerformance, Boolean(selectedShopUuid));
 
   const selected = useMemo(
     () => payload?.items.find((item) => item.agent_name === selectedAgent) || payload?.items[0] || null,

@@ -83,6 +83,9 @@ jobs:
       - name: Test outgoing relay
         run: npm run test:relay
 
+      - name: Test multi-platform recovery and truthful observations
+        run: npm run test:reliability
+
       - name: Test outgoing source synchronization
         run: npm run test:source-pull && npm run test:auto-source
 
@@ -99,7 +102,7 @@ jobs:
         run: npm run test:journeys
 
       - name: Test synchronization diagnostics in the browser
-        run: npm run test:diagnostics-ui
+        run: npm run test:diagnostics-ui && npm run test:reliability-ui
 
       - name: Smoke-test OAuth and Cloud proxy
         run: npm run smoke:integration
