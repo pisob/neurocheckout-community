@@ -38,3 +38,20 @@ test('Stripe destination must match the configured sandbox, never fall back to r
     'https://buy.stripe.com/test_fixture?prefilled_email=secret']) assert.equal(supportUrl(value, 'test'), false);
   assert.equal(supportUrl('https://buy.stripe.com/test_fixture', 'live'), false);
 });
+
+test('images are optional, bounded asset references, never external tracker URLs', () => {
+  const data = fixture();
+  const image = { asset_id: 'a'.repeat(64), width: 600, height: 200, animated: true, alt_fr: 'Visuel', alt_en: 'Creative' };
+  data.sponsor.image = image;
+  assert.deepEqual(parseFunding(data, now).sponsor.image, image);
+  for (const patch of [{ asset_id: '../secret' }, { asset_id: 'https://tracker.example.com/pixel' }, { width: 9999 },
+    { height: 0 }, { width: '600' }, { animated: 'true' }, { alt_fr: '<script>' }, { alt_en: '' }]) {
+    data.sponsor.image = { ...image, ...patch };
+    const result = parseFunding(data, now);
+    assert.equal(result.sponsor.image, null);
+    assert.equal(result.sponsor.fr.title, 'Hébergement');
+    assert.equal(result.support.mode, 'test');
+  }
+  data.sponsor.image = { ...image, src: 'https://tracker.example.com/pixel' };
+  assert.equal(parseFunding(data, now).sponsor.image.src, undefined);
+});

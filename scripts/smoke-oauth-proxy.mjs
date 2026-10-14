@@ -27,6 +27,9 @@ let relayReads = 0;
 let heartbeats = 0;
 let refreshRequests = 0;
 let fundingSupportRequests = 0;
+let mediaRequests = 0;
+const mediaAsset = 'a'.repeat(64);
+const mediaFixture = Buffer.from('UklGRkoAAABXRUJQVlA4ID4AAABwAwCdASooABQAPlEmkEYjoiGhJWgAcAoJZwB2APwAAFjO1ZgA/vfkn//8D8unDHh//8pVFqm3M2+qYAAAAA==', 'base64');
 const updateDirectory = mkdtempSync(join(tmpdir(), "nc-update-api-test-"));
 const stateDirectory = join(updateDirectory, "private-state");
 initializeLocalData(stateDirectory, "synthetic-shop");
@@ -57,6 +60,18 @@ async function requestBody(request) {
 }
 
 const cloud = createServer(async (request, response) => {
+  if (request.url.startsWith('/api/v1/public/community-sponsor-media/')) {
+    mediaRequests++;
+    assert.equal(request.headers.authorization, undefined);
+    assert.equal(request.headers.cookie, undefined);
+    assert.equal(request.headers.referer, undefined);
+    if (failureMode === 'media-redirect') { response.writeHead(302, { Location: 'https://example.invalid/tracker' }); return response.end(); }
+    if (failureMode === 'media-html') { response.writeHead(200, { 'Content-Type': 'text/html' }); return response.end('<script>secret</script>'); }
+    response.writeHead(200, { 'Content-Type': 'image/webp' });
+    if (failureMode === 'media-large') return response.end(Buffer.alloc(6 * 1024 * 1024));
+    if (failureMode === 'media-fake') return response.end('<html>fake webp</html>');
+    return response.end(mediaFixture);
+  }
   if (request.method === "POST" && request.url === "/api/v1/public/oauth/token") {
     const body = JSON.parse(await requestBody(request));
     if (body.grant_type === "refresh_token") {
@@ -351,6 +366,23 @@ try {
   assert.equal((await anonymous.json()).detail, "community_not_connected");
   assert.equal((await fetch(`${communityOrigin}/api/cloud/community-funding`)).status, 401);
   assert.equal((await fetch(`${communityOrigin}/api/cloud/community-funding/support`, { method: "POST", headers: { Origin: communityOrigin } })).status, 401);
+  const mediaPath = `/api/cloud/community-funding/media/${mediaAsset}/poster.webp`;
+  const media = await fetch(`${communityOrigin}${mediaPath}`, { headers: { Cookie: 'private=secret', Authorization: 'Bearer private-secret' } });
+  assert.equal(media.status, 200);
+  assert.equal(media.headers.get('content-type'), 'image/webp');
+  assert.equal(media.headers.get('x-content-type-options'), 'nosniff');
+  assert.deepEqual(Buffer.from(await media.arrayBuffer()), mediaFixture);
+  const beforeInvalidMedia = mediaRequests;
+  assert.equal((await fetch(`${communityOrigin}${mediaPath.replace(mediaAsset, 'invalid')}`)).status, 404);
+  assert.equal((await fetch(`${communityOrigin}${mediaPath.replace('poster.webp', 'evil.svg')}`)).status, 404);
+  assert.equal(mediaRequests, beforeInvalidMedia);
+  for (const bad of ['media-redirect', 'media-html', 'media-large', 'media-fake']) {
+    failureMode = bad;
+    const failedMedia = await fetch(`${communityOrigin}${mediaPath}`);
+    assert.ok(failedMedia.status >= 400, bad);
+    assert.equal(await failedMedia.text(), '');
+  }
+  failureMode = '';
   assert.equal((await fetch(`${communityOrigin}/api/cloud/recent-emails?shop_uuid=33333333-3333-4333-8333-333333333333`)).status,401);
   assert.equal((await fetch(`${communityOrigin}/api/cloud/journey-audit?shop_uuid=33333333-3333-4333-8333-333333333333`)).status,401);
   assert.equal((await fetch(`${communityOrigin}/api/local-update`)).status, 401);

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { fundingEligible, parseFunding, supportUrl, type Funding, type FundingCapabilities } from "@/lib/community-funding";
 import type { UiLanguage } from "@/lib/ui-language";
+import SponsorImage from "@/components/SponsorImage";
 
 type Props = { capabilities: FundingCapabilities | null; fresh: boolean; verifiedAt: number | null; language: UiLanguage; view: "overview" | "features" };
 
@@ -62,7 +63,8 @@ export default function CommunityFunding({ capabilities, fresh, verifiedAt, lang
 
   if (view === "overview" && sponsor) {
     const copy = sponsor[language];
-    return <aside className="community-funding" aria-labelledby="community-sponsor-title">
+    return <aside className={`community-funding${sponsor.image ? " community-funding-with-media" : ""}`} aria-labelledby="community-sponsor-title">
+      {sponsor.image ? <SponsorImage key={`${sponsor.id}-${sponsor.image.asset_id}`} image={sponsor.image} href={sponsor.url} language={language} /> : null}
       <div><p className="eyebrow">{ui("Sponsored · Supports Community", "Sponsorisé · Finance Community")}</p>
         <h2 id="community-sponsor-title">{copy.title}</h2><p>{copy.description}</p></div>
       <a className="button secondary" href={sponsor.url} target="_blank" rel="sponsored noopener noreferrer" referrerPolicy="no-referrer">

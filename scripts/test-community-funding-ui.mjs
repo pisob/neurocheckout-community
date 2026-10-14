@@ -5,6 +5,7 @@ import { once } from 'node:events';
 import { mkdirSync } from 'node:fs';
 
 const origin = 'http://127.0.0.1:13442';
+const mediaFixture = Buffer.from('UklGRioBAABXRUJQVlA4IB4BAAAQHgCdASpYAsgAPm02mUmkIqKhICgAgA2JaW7hd2Ee3AAAFpbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJx/AAA/v/FFv/1oWhA5//9izlsC04MKEZQoAAAAAAAAAAAAAAAAAAA', 'base64');
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', '13442'], {
   stdio: 'ignore', env: { ...process.env, NC_DEPLOYMENT_ENV: 'test', NC_LOCAL_DATA_PILOT_ENABLED: 'false', NC_CONNECTOR_PULL_ENABLED: 'false', NC_COMMUNITY_AVAILABILITY_ENABLED: 'false' },
 });
@@ -17,9 +18,15 @@ try {
   page.on('request', req => { if (!req.url().startsWith(origin)) external.push(req.url()); });
   let plan = 'community', status = 'free_active', failFunding = false, failCaps = false, available = true, wrongStripe = false, shortExpiry = false;
   let fundingRequests = 0, paymentRequests = 0;
+  let failImage = false;
+  const image = { asset_id: 'a'.repeat(64), width: 600, height: 200, animated: true, alt_fr: 'Visuel du partenaire', alt_en: 'Partner creative' };
   const sponsor = { id: 'hosting', url: 'https://partner.example.com/offer', fr: { title: 'Hébergement e-commerce', description: 'Un partenaire pour votre boutique.' }, en: { title: 'E-commerce hosting', description: 'A partner for your store.' } };
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname; let body = {}, code = 200;
+    if (path.includes('/community-funding/media/')) {
+      if (failImage) return route.fulfill({ status: 404 });
+      return route.fulfill({ contentType: 'image/webp', body: mediaFixture });
+    }
     if (path.endsWith('/capabilities')) {
       code = failCaps ? 503 : 200;
       body = { schema_version: '1.1', plan: { code: plan, edition: 'community' }, subscription: { status, active: true },
@@ -39,6 +46,33 @@ try {
   await expect(ad).toHaveAttribute('href', sponsor.url);
   await expect(ad).toHaveAttribute('rel', 'sponsored noopener noreferrer');
   assert.equal(paymentRequests, 0); assert.deepEqual(external, []);
+  sponsor.image = image;
+  await page.reload();
+  const creative = page.getByRole('img', { name: 'Partner creative' });
+  await creative.scrollIntoViewIfNeeded();
+  await expect(creative).toHaveAttribute('src', /image\.webp$/);
+  await expect(creative.locator('..')).toHaveAttribute('href', sponsor.url);
+  await expect(creative.locator('..')).toHaveAttribute('rel', 'sponsored noopener noreferrer');
+  await page.getByRole('button', { name: 'Pause animation', exact: true }).click();
+  await expect(creative).toHaveAttribute('src', /poster\.webp$/);
+  await page.getByRole('button', { name: 'Play animation', exact: true }).click();
+  await expect(creative).toHaveAttribute('src', /image\.webp$/);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(creative).toHaveAttribute('src', /poster\.webp$/);
+  await expect(page.getByRole('button', { name: 'Pause animation', exact: true })).toHaveCount(0);
+  mkdirSync('test-results/community-funding', { recursive: true });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await creative.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `test-results/community-funding/sponsor-${width}.png`, fullPage: true });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  }
+  // Media failure cannot hide the sponsor text, CTA or operational controls.
+  failImage = true; await page.reload();
+  await page.locator('.community-funding').scrollIntoViewIfNeeded();
+  await expect(page.getByRole('img', { name: 'Partner creative' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /View offer/ })).toBeVisible();
+  failImage = false; await page.reload();
   await page.getByRole('button', { name: /Plan & data/ }).click();
   await expect(page.getByRole('heading', { name: 'Support NeuroCheckout Community' })).toBeVisible();
   await page.getByRole('button', { name: 'Support Community', exact: true }).click();
@@ -93,7 +127,7 @@ try {
   await expect(page.locator('.community-funding')).toBeVisible();
   await expect(page.locator('.community-funding')).toHaveCount(0, { timeout: 4000 });
   assert.deepEqual(errors, []); assert.deepEqual(external, []);
-  console.log('PASS: free only, upgrades/trials/outage/expiry, sandbox support, no third-party requests, EN/FR, desktop/mobile.');
+  console.log('PASS: sponsor images, pause/reduced motion, failed-media text fallback, free only, upgrades/trials/outage/expiry, sandbox support, no third-party requests, EN/FR, desktop/mobile.');
 } finally {
   await browser?.close();
   if (server.exitCode === null) { const stopped = once(server, 'exit'); server.kill('SIGTERM'); await stopped; }
