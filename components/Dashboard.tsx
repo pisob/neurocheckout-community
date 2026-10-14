@@ -6,6 +6,7 @@ import CloudConfiguration from "@/components/CloudConfiguration";
 import EmailApprovals from "@/components/EmailApprovals";
 import MemberMessages from "@/components/MemberMessages";
 import PlanAndData from "@/components/PlanAndData";
+import CommunityFunding from "@/components/CommunityFunding";
 import PartnerProgram from "@/components/PartnerProgram";
 import AgentPerformance from "@/components/AgentPerformance";
 import JourneyAudit from "@/components/JourneyAudit";
@@ -763,6 +764,10 @@ export default function Dashboard() {
             ) : null}
 
             {activeView === "configuration" ? <div className="view-enter"><CloudConfiguration /></div> : null}
+            {activeView === "overview" || activeView === "features" ? <CommunityFunding
+              capabilities={capabilities} fresh={!syncDelayed && status === "connected" && !!lastSuccessfulSyncAt && observationTime - lastSuccessfulSyncAt.getTime() < 120_000}
+              verifiedAt={lastSuccessfulSyncAt?.getTime() ?? null} language={language} view={activeView}
+            /> : null}
           </>
         ) : null}
       </section>

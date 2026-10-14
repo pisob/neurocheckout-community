@@ -86,6 +86,9 @@ jobs:
       - name: Test multi-platform recovery and truthful observations
         run: npm run test:reliability
 
+      - name: Test free-only funding and safe destinations
+        run: npm run test:funding
+
       - name: Test outgoing source synchronization
         run: npm run test:source-pull && npm run test:auto-source
 
@@ -103,6 +106,9 @@ jobs:
 
       - name: Test synchronization diagnostics in the browser
         run: npm run test:diagnostics-ui && npm run test:reliability-ui
+
+      - name: Test optional sponsorship and voluntary support
+        run: npm run test:funding-ui
 
       - name: Smoke-test OAuth and Cloud proxy
         run: npm run smoke:integration

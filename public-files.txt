@@ -46,6 +46,7 @@ TRADEMARKS.md
 compose.yaml
 deploy/neurocheckout-community.service
 docs/INSTALLATION.md
+docs/COMMUNITY-FUNDING.md
 app/api/auth/callback/route.ts
 app/api/auth/logout/route.ts
 app/api/auth/start/route.ts
@@ -87,6 +88,12 @@ components/SynchronizationHealth.tsx
 lib/sent-email-preview.ts
 lib/email-history-archive.ts
 components/Dashboard.tsx
+components/CommunityFunding.tsx
+lib/community-funding.ts
+app/api/cloud/community-funding/route.ts
+app/api/cloud/community-funding/support/route.ts
+scripts/test-community-funding.mjs
+scripts/test-community-funding-ui.mjs
 components/EmailApprovals.tsx
 components/MemberMessages.tsx
 components/OptimizationRecommendations.tsx
