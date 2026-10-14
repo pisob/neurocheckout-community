@@ -1,14 +1,15 @@
-# NeuroCheckout Community v0.1.0-preview.35
+# NeuroCheckout Community v0.1.0-preview.36
 
 Official signed prerelease. Production connectivity is supported; this remains
 a preview pending full merchant acceptance.
 
-- Add optional sponsored text in Overview and voluntary support in Plan & data.
-- Show neither placement to Starter, Pro, Enterprise or trial accounts.
-- Keep support one-time and pay-what-you-want, with strictly separate Stripe test/live destinations.
-- Hide funding when unavailable or entitlements are stale; never interrupt synchronization or sending.
-- Preserve the reliability, recovery and safe-update protections of preview.34.
-- Add browser, entitlement and authenticated-proxy regression coverage.
+- Display optional static and animated sponsor images configured in the Cloud backoffice.
+- Respect reduced-motion preferences with a separate static poster and provide pause/play controls.
+- Keep the sponsor text and link available when an image fails to load.
+- Fetch validated first-party creatives without third-party trackers or member identifiers.
+- Show no advertising or support requests to Starter, Pro, Enterprise or trial accounts.
+- Preserve support payment modes, quotas, synchronization and preview.35 reliability protections.
+- Add media validation, browser and bounded-proxy regression coverage.
 
 Funding is controlled by NeuroCheckout Cloud and remains hidden until configured.
 There are no third-party advertising scripts, tracking pixels or customer-email placements.

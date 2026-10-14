@@ -4,6 +4,14 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.36 - 2026-10-14
+
+- Display optional static and animated sponsor images hosted by NeuroCheckout.
+- Provide pause/play and a separate static poster respecting reduced-motion preferences.
+- Preserve sponsor text and links when a media request fails.
+- Keep images and placements excluded from paid plans and trials; donations are unchanged.
+- Bound image transport, reject arbitrary external URLs, and extend browser/proxy regressions.
+
 ## 0.1.0-preview.35 - 2026-10-14
 
 - Add optional, clearly labelled sponsorship in Overview and voluntary one-time support in Plan & data.

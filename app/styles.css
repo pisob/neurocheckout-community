@@ -898,3 +898,11 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .community-funding .button:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 .funding-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 640px) { .community-funding { align-items: flex-start; flex-direction: column; gap: 1rem; } }
+.community-funding-with-media { flex-wrap: wrap; gap: 1.5rem; }
+.community-funding-with-media > div:not(.community-sponsor-media) { flex: 1 1 16rem; }
+.community-funding > .community-sponsor-media { flex: 0 1 20rem; width: 100%; max-width: 20rem; }
+.community-sponsor-media a { display: block; }
+.community-sponsor-media img { display: block; width: 100%; height: auto; max-height: 15rem; object-fit: contain; object-position: left center; }
+.funding-animation-toggle { margin-top: .5rem; padding: .5rem 0; border: 0; background: transparent; color: inherit; font: inherit; font-size: .8rem; text-decoration: underline; cursor: pointer; }
+.community-sponsor-media a:focus-visible, .funding-animation-toggle:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+@media (max-width: 640px) { .community-funding-with-media > div:not(.community-sponsor-media), .community-funding > .community-sponsor-media { flex-basis: auto; } }
