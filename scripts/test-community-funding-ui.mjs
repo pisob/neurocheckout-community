@@ -1,0 +1,100 @@
+import assert from 'node:assert/strict';
+import { chromium, expect } from '@playwright/test';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { mkdirSync } from 'node:fs';
+
+const origin = 'http://127.0.0.1:13442';
+const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', '13442'], {
+  stdio: 'ignore', env: { ...process.env, NC_DEPLOYMENT_ENV: 'test', NC_LOCAL_DATA_PILOT_ENABLED: 'false', NC_CONNECTOR_PULL_ENABLED: 'false', NC_COMMUNITY_AVAILABILITY_ENABLED: 'false' },
+});
+let browser;
+try {
+  for (let i = 0; i < 120; i++) { try { if ((await fetch(origin)).ok) break; } catch {} await new Promise(r => setTimeout(r, 100)); }
+  browser = await chromium.launch();
+  const page = await browser.newPage(); const errors = [], external = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('request', req => { if (!req.url().startsWith(origin)) external.push(req.url()); });
+  let plan = 'community', status = 'free_active', failFunding = false, failCaps = false, available = true, wrongStripe = false, shortExpiry = false;
+  let fundingRequests = 0, paymentRequests = 0;
+  const sponsor = { id: 'hosting', url: 'https://partner.example.com/offer', fr: { title: 'Hébergement e-commerce', description: 'Un partenaire pour votre boutique.' }, en: { title: 'E-commerce hosting', description: 'A partner for your store.' } };
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname; let body = {}, code = 200;
+    if (path.endsWith('/capabilities')) {
+      code = failCaps ? 503 : 200;
+      body = { schema_version: '1.1', plan: { code: plan, edition: 'community' }, subscription: { status, active: true },
+        manifest: { authority: 'neurocheckout_cloud', refresh_after_seconds: 60 }, limits: { shops: 1, active_agents: 8, emails: { limit: 100, used: 4, remaining: 96, window: 'rolling_24h' } },
+        features: { member_dashboard: true }, agents: { available: [] }, connectors: [], dashboard: {}, upgrade: { available: false, target_plans: [] } };
+    } else if (path.endsWith('/community-funding/support')) {
+      paymentRequests++; body = { url: wrongStripe ? 'https://buy.stripe.com/realPayment' : 'https://buy.stripe.com/test_fixture' };
+    } else if (path.endsWith('/community-funding')) {
+      fundingRequests++; code = failFunding ? 503 : 200;
+      body = { schema_version: 1, eligible: true, expires_at: new Date(Date.now()+(shortExpiry ? 1200 : 120000)).toISOString(), sponsor: available ? sponsor : null, support: available ? { mode: 'test' } : null };
+    } else if (path.endsWith('/shops')) body = { items: [] };
+    await route.fulfill({ status: code, contentType: 'application/json', body: JSON.stringify(body) });
+  });
+  await page.goto(origin);
+  await expect(page.getByRole('heading', { name: 'E-commerce hosting' })).toBeVisible();
+  const ad = page.getByRole('link', { name: /View offer/ });
+  await expect(ad).toHaveAttribute('href', sponsor.url);
+  await expect(ad).toHaveAttribute('rel', 'sponsored noopener noreferrer');
+  assert.equal(paymentRequests, 0); assert.deepEqual(external, []);
+  await page.getByRole('button', { name: /Plan & data/ }).click();
+  await expect(page.getByRole('heading', { name: 'Support NeuroCheckout Community' })).toBeVisible();
+  await page.getByRole('button', { name: 'Support Community', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Continue to Stripe ↗' })).toHaveAttribute('href', 'https://buy.stripe.com/test_fixture');
+  assert.equal(paymentRequests, 1);
+
+  // Refresh while upgrading: no reload or reinstall, no stale free fallback.
+  plan = 'pro'; status = 'paid_active';
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(page.locator('.community-funding')).toHaveCount(0);
+  const beforePaid = fundingRequests;
+  await page.getByRole('button', { name: /Overview/ }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(page.locator('.community-funding')).toHaveCount(0);
+  assert.equal(fundingRequests, beforePaid);
+  failCaps = true;
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(page.locator('.cloud-status')).toHaveText('Cloud data stale');
+  await expect(page.locator('.community-funding')).toHaveCount(0);
+  failCaps = false;
+
+  for (const paidPlan of ['starter', 'pro', 'enterprise']) {
+    plan = paidPlan; status = 'trial_active'; await page.reload();
+    await expect(page.locator('.cloud-status')).toHaveText('Account connected');
+    await expect(page.locator('.community-funding')).toHaveCount(0);
+    assert.equal(fundingRequests, beforePaid);
+  }
+  plan = 'community'; status = 'free_active'; failFunding = true; await page.reload();
+  await expect(page.locator('.cloud-status')).toHaveText('Account connected');
+  await expect(page.locator('.community-funding')).toHaveCount(0);
+  failFunding = false; available = false; await page.reload();
+  await expect(page.locator('.cloud-status')).toHaveText('Account connected');
+  await expect(page.locator('.community-funding')).toHaveCount(0);
+
+  available = true; await page.reload();
+  await expect(page.getByRole('heading', { name: 'E-commerce hosting' })).toBeVisible();
+  await page.getByRole('button', { name: /Plan & data/ }).click(); wrongStripe = true;
+  await page.getByRole('button', { name: 'Support Community', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Support payments' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Continue to Stripe/ })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'FR', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Soutenez NeuroCheckout Community' })).toBeVisible();
+  mkdirSync('test-results/community-funding', { recursive: true });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.locator('.community-funding').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `test-results/community-funding/support-${width}.png`, fullPage: true });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  }
+  shortExpiry = true; await page.goto(origin); await page.reload();
+  await expect(page.locator('.community-funding')).toBeVisible();
+  await expect(page.locator('.community-funding')).toHaveCount(0, { timeout: 4000 });
+  assert.deepEqual(errors, []); assert.deepEqual(external, []);
+  console.log('PASS: free only, upgrades/trials/outage/expiry, sandbox support, no third-party requests, EN/FR, desktop/mobile.');
+} finally {
+  await browser?.close();
+  if (server.exitCode === null) { const stopped = once(server, 'exit'); server.kill('SIGTERM'); await stopped; }
+}

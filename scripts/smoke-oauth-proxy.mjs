@@ -26,6 +26,7 @@ let signalBatches = 0;
 let relayReads = 0;
 let heartbeats = 0;
 let refreshRequests = 0;
+let fundingSupportRequests = 0;
 const updateDirectory = mkdtempSync(join(tmpdir(), "nc-update-api-test-"));
 const stateDirectory = join(updateDirectory, "private-state");
 initializeLocalData(stateDirectory, "synthetic-shop");
@@ -120,6 +121,16 @@ const cloud = createServer(async (request, response) => {
   }
   assert.equal(request.headers.authorization, "Bearer smoke-refreshed-access-token");
   assert.ok([packageVersion, "99.0.0"].includes(request.headers["x-neurocheckout-community-version"]));
+
+  if (request.method === "GET" && request.url === "/api/v1/member/community-funding") {
+    if (failureMode === "funding") return json(response, 500, { detail: "synthetic-private-funding-diagnostic" });
+    return json(response, 200, { schema_version: 1, eligible: false, sponsor: null, support: null });
+  }
+  if (request.method === "POST" && request.url === "/api/v1/member/community-funding/support") {
+    fundingSupportRequests++;
+    assert.equal(await requestBody(request), "");
+    return json(response, 200, { url: "https://buy.stripe.com/test_fixture" });
+  }
 
   if (request.method === "GET" && request.url === "/api/v1/member/capabilities") {
     if (failureMode === "transport") return request.socket.destroy();
@@ -338,6 +349,8 @@ try {
   const anonymous = await fetch(`${communityOrigin}/api/cloud/capabilities`);
   assert.equal(anonymous.status, 401);
   assert.equal((await anonymous.json()).detail, "community_not_connected");
+  assert.equal((await fetch(`${communityOrigin}/api/cloud/community-funding`)).status, 401);
+  assert.equal((await fetch(`${communityOrigin}/api/cloud/community-funding/support`, { method: "POST", headers: { Origin: communityOrigin } })).status, 401);
   assert.equal((await fetch(`${communityOrigin}/api/cloud/recent-emails?shop_uuid=33333333-3333-4333-8333-333333333333`)).status,401);
   assert.equal((await fetch(`${communityOrigin}/api/cloud/journey-audit?shop_uuid=33333333-3333-4333-8333-333333333333`)).status,401);
   assert.equal((await fetch(`${communityOrigin}/api/local-update`)).status, 401);
@@ -388,6 +401,22 @@ try {
   assert.equal((await journeyAudit.json()).event_summary.cart_snapshots, 1);
 
   const mutationHeaders = { Origin: communityOrigin, "Content-Type": "application/json" };
+  const funding = await communityFetch("/api/cloud/community-funding");
+  assert.equal(funding.status, 200);
+  assert.match(funding.headers.get("cache-control"), /no-store/);
+  const support = await communityFetch("/api/cloud/community-funding/support", { method: "POST", headers: mutationHeaders });
+  assert.equal(support.status, 200);
+  assert.equal((await support.json()).url, "https://buy.stripe.com/test_fixture");
+  assert.match(support.headers.get("cache-control"), /no-store/);
+  assert.equal((await communityFetch("/api/cloud/community-funding/support", { method: "POST", headers: { Origin: "https://foreign.invalid" } })).status, 403);
+  assert.equal(fundingSupportRequests, 1);
+  failureMode = "funding";
+  const fundingFailure = await communityFetch("/api/cloud/community-funding");
+  assert.equal(fundingFailure.status, 503);
+  assert.equal((await fundingFailure.text()).includes("synthetic-private"), false);
+  assert.ok(cookies.has("nc_community_session"));
+  assert.equal((await communityFetch("/api/cloud/capabilities")).status, 200);
+  failureMode = "";
   const billingRequests = [
     ["/api/cloud/subscription/select-plan", { plan_code: "starter" }, "plan_code", "starter"],
     ["/api/cloud/subscription/checkout", { billing_cycle: "annual", intent_id: "12345678-1234-4234-8234-123456789abc" }, "checkout_url", "https://checkout.stripe.example/session"],

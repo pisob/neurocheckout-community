@@ -18,6 +18,8 @@
     "test:update": "node scripts/test-local-update.mjs && node --test scripts/test-update-backup.mjs scripts/test-launcher-recovery.mjs scripts/test-update-source-guard.mjs",
     "test:reliability": "node --experimental-strip-types --test scripts/test-reliability.mjs scripts/test-merchant-recovery.mjs",
     "test:reliability-ui": "node scripts/test-reliability-ui.mjs",
+    "test:funding": "node --experimental-strip-types --test scripts/test-community-funding.mjs",
+    "test:funding-ui": "node scripts/test-community-funding-ui.mjs",
     "test:diagnostics": "node scripts/test-support-diagnostics.mjs",
     "test:hardening": "node --experimental-strip-types --test scripts/test-hardening.mjs scripts/test-release-readiness.mjs",
     "test:diagnostics-ui": "node scripts/test-sync-diagnostics-ui.mjs",

@@ -4,6 +4,7 @@
 .next/
 .community-updates/
 .community-state/
-node_modules/
+node_modules
+test-results/
 *.tsbuildinfo
 npm-debug.log*

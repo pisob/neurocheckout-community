@@ -889,3 +889,12 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 @media (max-width:1080px) { .partner-intro,.partner-command { grid-template-columns:1fr; } .partner-contract { border-top:1px solid var(--line); border-left:0; } .partner-columns { grid-template-columns:1fr; } .partner-finance { border-right:0; border-bottom:1px solid var(--line); } .partner-filters { grid-template-columns:1fr 1fr; } }
 @media (max-width:780px) { .partner-metrics,.partner-money-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .partner-metrics article:nth-child(2) { border-right:0; } .partner-metrics article:nth-child(-n+2) { border-bottom:1px solid var(--line); } .partner-money-grid > div { min-height:95px; } .partner-table { overflow-x:auto; } .partner-table-head,.partner-table-row { min-width:680px; } }
 @media (max-width:560px) { .partner-application,.partner-contract,.partner-filters,.partner-history { grid-template-columns:1fr; } .partner-application .wide { grid-column:auto; } .partner-contract span { border-right:0; border-bottom:1px solid var(--line); } .partner-link-line,.partner-pagination { align-items:flex-start; flex-direction:column; } .partner-link-line .button { width:100%; } }
+.community-funding { display: flex; align-items: center; justify-content: space-between; gap: 2rem; margin-top: 2rem; padding: 1.5rem 0; border-top: 1px solid var(--line, #263c50); }
+.community-funding > div { min-width: 0; max-width: 46rem; }
+.community-funding h2 { margin: .6rem 0; font-size: 1.05rem; }
+.community-funding p { margin: .5rem 0; line-height: 1.65; overflow-wrap: anywhere; }
+.community-funding .funding-note { font-size: .8rem; opacity: .8; }
+.community-funding .button { flex-shrink: 0; white-space: normal; text-align: center; }
+.community-funding .button:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+.funding-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 640px) { .community-funding { align-items: flex-start; flex-direction: column; gap: 1rem; } }

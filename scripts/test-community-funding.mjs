@@ -1,0 +1,40 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { fundingEligible, parseFunding, publicFundingUrl, supportUrl } from '../lib/community-funding.ts';
+
+const free = { plan: { code: 'community' }, subscription: { status: 'free_active', active: true } };
+test('only fresh confirmed free accounts see funding; paid, trial and unknown never do', () => {
+  for (const plan of ['community', 'starter', 'pro', 'enterprise', '', 'unknown']) {
+    for (const status of ['free_active', 'paid_active', 'trial_active', 'payment_failed_grace', 'cancelled', 'expired', 'pending']) {
+      assert.equal(fundingEligible({ plan: { code: plan }, subscription: { status, active: true } }, true), plan === 'community' && status === 'free_active');
+    }
+  }
+  assert.equal(fundingEligible(free, false), false);
+  assert.equal(fundingEligible(null, true), false);
+  assert.equal(fundingEligible({ ...free, subscription: { status: 'free_active', active: false } }, true), false);
+});
+
+const now = Date.now();
+const fixture = () => ({ schema_version: 1, eligible: true, expires_at: new Date(now + 60000).toISOString(),
+  sponsor: { id: 'hosting', url: 'https://partner.example.com/offer', fr: { title: 'Hébergement', description: 'Pour votre boutique.' }, en: { title: 'Hosting', description: 'For your store.' } }, support: { mode: 'test' } });
+test('funding is bounded, not a persistent paid-account fallback', () => {
+  const data = fixture();
+  assert.ok(parseFunding(data, now));
+  for (const value of [null, {}, { ...data, eligible: false }, { ...data, schema_version: 2 }, { ...data, expires_at: 'invalid' },
+    { ...data, expires_at: new Date(now-1).toISOString() }, { ...data, expires_at: new Date(now+200000).toISOString() }]) assert.equal(parseFunding(value, now), null);
+  data.sponsor.fr.title = '<img src=x onerror=alert(1)>';
+  assert.equal(parseFunding(data, now).sponsor, null);
+});
+test('external destinations never carry credentials, trackers or local addresses', () => {
+  assert.ok(publicFundingUrl('https://partner.example.com/service'));
+  for (const value of ['javascript:alert(1)', 'http://partner.example.com', 'https://127.0.0.1/', 'https://[::1]/',
+    'https://localhost/', 'https://shop.local', 'https://shop.internal', 'https://user:secret@example.com',
+    'https://example.com?email=member@example.com', 'https://example.com#track', 'https://example.com\\@evil.com']) assert.equal(publicFundingUrl(value), false, value);
+});
+test('Stripe destination must match the configured sandbox, never fall back to real payments', () => {
+  assert.ok(supportUrl('https://buy.stripe.com/test_fixture', 'test'));
+  assert.ok(supportUrl('https://buy.stripe.com/fixture', 'live'));
+  for (const value of ['https://buy.stripe.com/fixture', 'https://buy.stripe.com.evil.com/test_fixture', 'https://evil.com/pay',
+    'https://buy.stripe.com/test_fixture?prefilled_email=secret']) assert.equal(supportUrl(value, 'test'), false);
+  assert.equal(supportUrl('https://buy.stripe.com/test_fixture', 'live'), false);
+});

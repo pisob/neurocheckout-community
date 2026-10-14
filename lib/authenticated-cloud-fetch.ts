@@ -65,6 +65,7 @@ export async function authenticatedCloudFetch(
   request: NextRequest,
   path: string,
   init: RequestInit = {},
+  timeoutMs = 60_000,
 ): Promise<NextResponse> {
   const rejected = rejectForeignMutation(request);
   if (rejected) return rejected;
@@ -91,7 +92,7 @@ export async function authenticatedCloudFetch(
         ...(workspaceShop ? { "X-NeuroCheckout-Workspace-Shop": workspaceShop } : {}),
       },
       cache: "no-store",
-    });
+    }, timeoutMs);
 
     let cloudResponse = await send(session.access_token);
     if (cloudResponse.status === 401 && !refreshed) {
