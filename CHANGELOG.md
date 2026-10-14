@@ -4,6 +4,14 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.35 - 2026-10-14
+
+- Add optional, clearly labelled sponsorship in Overview and voluntary one-time support in Plan & data.
+- Show funding only for confirmed free Community accounts, never paid plans or trials.
+- Keep Stripe test and live destinations separate and validate support links before redirecting.
+- Hide optional funding on stale entitlements or network errors without interrupting synchronization.
+- Add browser and authenticated-proxy regressions for funding and paid-plan exclusion.
+
 ## 0.1.0-preview.34 - 2026-10-14
 
 - Separate store connection, fresh source data, pending processing and delivery evidence.

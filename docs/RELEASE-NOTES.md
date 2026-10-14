@@ -1,15 +1,18 @@
-# NeuroCheckout Community v0.1.0-preview.34
+# NeuroCheckout Community v0.1.0-preview.35
 
 Official signed prerelease. Production connectivity is supported; this remains
 a preview pending full merchant acceptance.
 
-- Distinguish connection, fresh store data, processing, sending eligibility and delivery evidence.
-- Refresh quotas, agent performance and email conversions automatically after network recovery.
-- Display unavailable observations as unknown, not zero or unlimited usage.
-- Prevent overlapping relay attempts and preserve acknowledged-send protection on replay.
-- Protect customized source files and local commits during automatic updates.
-- Add regression coverage for guest/registered carts across all three supported
-  platform contracts, encrypted recovery, multi-store isolation and browser journeys.
+- Add optional sponsored text in Overview and voluntary support in Plan & data.
+- Show neither placement to Starter, Pro, Enterprise or trial accounts.
+- Keep support one-time and pay-what-you-want, with strictly separate Stripe test/live destinations.
+- Hide funding when unavailable or entitlements are stale; never interrupt synchronization or sending.
+- Preserve the reliability, recovery and safe-update protections of preview.34.
+- Add browser, entitlement and authenticated-proxy regression coverage.
+
+Funding is controlled by NeuroCheckout Cloud and remains hidden until configured.
+There are no third-party advertising scripts, tracking pixels or customer-email placements.
+Contributions do not change your plan, quota or features. See `docs/COMMUNITY-FUNDING.md`.
 
 Cloud remains authoritative for quotas, consent, scheduling and sending. A successful
 connection is not permission to send, and SMTP acceptance is not proof of inbox receipt.
