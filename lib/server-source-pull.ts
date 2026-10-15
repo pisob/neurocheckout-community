@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { sourceRetryDelay } from "@/scripts/source-pull-client.mjs";
 
 type SourceRuntime = {
   started: boolean;
@@ -44,15 +45,14 @@ export async function startSourcePull() {
     if (runtime.running) { runtime.requested = true; return; }
     runtime.running = true;
     runtime.requested = false;
-    let ok = false, complete = false;
+    let result: {ok: boolean; complete?: boolean; code?: string} = {ok: false};
     try {
       const { pullSourceOnce } = await import("@/scripts/source-pull-client.mjs");
-      const result = await pullSourceOnce(options);
-      ok = result.ok; complete = result.complete === true;
+      result = await pullSourceOnce(options);
     } catch { /* Missing configuration or network loss leaves source-managed reads paused. */ }
     runtime.running = false;
-    failures = ok ? 0 : Math.min(failures + 1, 5);
-    const delay = runtime.requested ? 0 : ok ? (complete ? 15_000 : 1000) : Math.min(30_000, 1000 * 2 ** failures);
+    failures = result.ok ? 0 : Math.min(failures + 1, 5);
+    const delay = runtime.requested ? 0 : sourceRetryDelay(result, failures);
     runtime.timer = setTimeout(() => void tick(), delay + (runtime.requested ? 0 : Math.random() * 1000));
     runtime.timer.unref();
   };

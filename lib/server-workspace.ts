@@ -3,7 +3,7 @@ import { workspaceRoot } from "@/lib/workspace";
 import { cloudApiBaseUrl, communityClientId, sessionSecret, workspaceEnabled } from "@/lib/config";
 import { relayOnce } from "@/scripts/server-data-relay.mjs";
 import { heartbeatOnce } from "@/scripts/server-availability.mjs";
-import { pullSourceOnce, pauseSourceReads } from "@/scripts/source-pull-client.mjs";
+import { pullSourceOnce, pauseSourceReads, sourceRetryDelay } from "@/scripts/source-pull-client.mjs";
 import { version } from "@/package.json";
 
 const runtime = globalThis as typeof globalThis & { communityWorkspaceRequests?: Map<string, () => void> };
@@ -45,10 +45,12 @@ export function startWorkspaceWorkers() {
           if (active()) setTimeout(relay, ok ? 250 : Math.min(30_000, 1000 * 2 ** relayFailures)).unref();
         };
         let sourceRunning = false, sourceRequested = false;
+        let sourceNextAttemptAt = 0, sourceFailures = 0;
         let sourceTimer: ReturnType<typeof setTimeout> | undefined;
         const source = async () => {
           if (!active()) return;
           if (sourceRunning) { sourceRequested = true; return; }
+          const forceSource = sourceRequested;
           sourceRunning = true; sourceRequested = false;
           let delay = 30_000;
           try {
@@ -56,8 +58,14 @@ export function startWorkspaceWorkers() {
             const authorized = await heartbeatOnce(options);
             if (!authorized) pauseSourceReads(options);
             else if (process.env.NC_CONNECTOR_PULL_ENABLED === "true") {
-              const result = await pullSourceOnce(options);
-              delay = result.ok ? (result.complete ? 15_000 : 1000) : 30_000;
+              if (forceSource || Date.now() >= sourceNextAttemptAt) {
+                const result = await pullSourceOnce(options);
+                sourceFailures = result.ok ? 0 : Math.min(sourceFailures + 1, 5);
+                sourceNextAttemptAt = Date.now() + sourceRetryDelay(result, sourceFailures);
+              }
+              // Heartbeats continue during connector backoff. One exhausted
+              // tunnel must not mark the whole installation offline.
+              delay = Math.min(30_000, Math.max(1000, sourceNextAttemptAt - Date.now()));
             }
           } catch { try { pauseSourceReads(options); } catch { /* No readable vault. */ } }
           sourceRunning = false;

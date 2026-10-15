@@ -70,6 +70,11 @@ export async function postSourcePage(endpoint, body, headers, { resolveTarget = 
       headers: { ...headers, "Content-Length": String(Buffer.byteLength(body)), "Accept-Encoding": "identity" },
     }, res => {
       const abort = (code = "source_unavailable") => { reject(new Error(code)); res.destroy(); req.destroy(); };
+      // ngrok rejects the request before it reaches the connector. Do not suggest
+      // replacing a working API key or consume the provider's HTML error body.
+      if (res.statusCode === 403 && res.headers['ngrok-error-code'] === 'ERR_NGROK_727') {
+        abort('source_tunnel_quota_exhausted'); return;
+      }
       if ([401, 403].includes(res.statusCode)) { abort('source_auth_rejected'); return; }
       if (res.statusCode !== 200 || (res.headers["content-encoding"] || "identity") !== "identity" ||
           (res.headers["content-type"] || "").split(";")[0] !== "application/json" ||
@@ -119,8 +124,16 @@ export async function pullSourceOnce(options, transport = postSourcePage) {
     if (store && error?.message !== 'source_sync_busy') {
       try { recordSourceDiagnostic(store, sourceFailureCode(error)); } catch {}
     }
-    return { ok: false };
+    return { ok: false, code: sourceFailureCode(error) };
   } finally { store?.close(); }
+}
+
+export function sourceRetryDelay(result, failures = 1) {
+  if (result.ok) return result.complete ? 15_000 : 1000;
+  // A depleted monthly allowance is not a transient authentication problem.
+  // Keep periodic recovery and allow an explicit user retry after remediation.
+  if (result.code === 'source_tunnel_quota_exhausted') return 15 * 60_000;
+  return Math.min(30_000, 1000 * 2 ** Math.min(5, Math.max(1, failures)));
 }
 
 export function pauseSourceReads(options) {

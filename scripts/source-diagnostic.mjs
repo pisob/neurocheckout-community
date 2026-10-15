@@ -1,4 +1,4 @@
-const codes = new Set(['source_auth_rejected', 'source_unavailable', 'source_signature_rejected', 'source_sync_invalid']);
+const codes = new Set(['source_auth_rejected', 'source_unavailable', 'source_signature_rejected', 'source_sync_invalid', 'source_tunnel_quota_exhausted']);
 export function sourceFailureCode(error) {
   return codes.has(error?.message) ? error.message : 'source_unavailable';
 }

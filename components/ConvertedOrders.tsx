@@ -14,6 +14,8 @@ type ConvertedOrder = {
   order_id?: string | null;
   cart_id?: string | null;
   order_total?: number | null;
+  recorded_order_status?: string | null;
+  order_status_recorded_at?: string | null;
   attribution_agent_name?: string | null;
   influence_agent_names: string[];
   agent_value_distribution: Array<{ agent_name: string; role: string; value: number }>;
@@ -267,9 +269,11 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
                   <h2>{selected.order_id || ui("Attributed order", "Commande attribuée")}</h2>
                   <time>{formatDate(selected.converted_at)}</time>
                   <strong className="conversion-value">{formatMoney(selected.order_total, currency)}</strong>
+                  <p className="sent-preview-note">{ui("Attributed order value — not verified payment. Cancellation and refund tracking are not available in this view.", "Valeur de commande attribuée — paiement non vérifié. Le suivi des annulations et remboursements n’est pas disponible dans cette vue.")}</p>
                   <dl>
                     <div><dt>{ui("Customer", "Client")}</dt><dd>{ui("Protected customer", "Client protégé")}<small>{selected.customer.email_masked || ui("Contact protected", "Contact protégé")}</small></dd></div>
                     <div><dt>{ui("Cart reference", "Référence panier")}</dt><dd>{selected.cart_id || "—"}</dd></div>
+                    <div><dt>{ui("Recorded order status", "Statut de commande enregistré")}</dt><dd>{selected.recorded_order_status || ui("Unavailable", "Indisponible")}<small>{selected.order_status_recorded_at ? formatDate(selected.order_status_recorded_at) : ui("Not a live payment status", "Ce n’est pas un statut de paiement en temps réel")}</small></dd></div>
                     <div><dt>{ui("Primary attribution", "Attribution principale")}</dt><dd>{selected.attribution_agent_name ? AGENT_LABELS[language][selected.attribution_agent_name] || publicAgentLabel(selected.attribution_agent_name, language) : "—"}</dd></div>
                   </dl>
                   {selected.influence_agent_names.length > 0 ? <div className="influence-list"><span>{ui("Contributing agents", "Agents contributeurs")}</span>{selected.influence_agent_names.map((agent) => <i key={agent}>{AGENT_LABELS[language][agent] || publicAgentLabel(agent, language)}</i>)}</div> : null}
