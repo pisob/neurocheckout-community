@@ -9,6 +9,7 @@ import { randomBytes } from 'node:crypto';
 import { saveRelayCredential, relayOnce } from './server-data-relay.mjs';
 import { LocalDataStore } from './local-data-store.mjs';
 import { EmailArchive } from './email-archive.mjs';
+import { createUpdateBackup, restoreUpdateBackup } from './update-backup.mjs';
 
 for (const platform of ['prestashop','woocommerce','magento']) for (const guest of [true,false]) {
   test(`${platform}: ${guest?'guest':'registered'} cart survives lost acknowledgement, restart and repeated archive confirmation`,async t=>{
@@ -60,4 +61,45 @@ test('overlapping relay attempts do not consume two polls or release another req
   for(let i=0;i<2;i++)assert.equal(await relayOnce(options,()=>{throw new Error('must not fetch');}),false);
   release();assert.equal(await first,true);
   assert.equal(await relayOnce(options,async url=>Response.json(url.endsWith('/api/health')?{service:'neurocheckout-community'}:{commands:[]})),true);
+});
+
+test('restoring a pre-acknowledgement backup replays the same identity, never a new send identity', async t => {
+  const root = mkdtempSync(resolve(tmpdir(), 'nc-restore-replay-'));
+  t.after(() => rmSync(root, {recursive: true, force: true}));
+  const directory = resolve(root, 'state');
+  const options = {directory, enabled: true, environment: 'production', cloudUrl: 'https://www.neurocheckout.com', clientId: 'fixture', port: '13499', version: 'fixture', secret: 'synthetic-secret-longer-than-32-characters'};
+  await saveRelayCredential(options, {token: 'nc_data_' + randomBytes(32).toString('base64url'), installation_id: '11111111-1111-4111-8111-111111111111', shop_id: 'restore-fixture'});
+  let store = new LocalDataStore(directory, Date.now, 'production');
+  store.put({kind: 'cart', sourceId: 'cart-before-backup', revision: 1, operation: 'upsert', observedAt: new Date().toISOString(), payload: {total: 35, email: 'fixture@example.invalid'}});
+  const original = JSON.parse(JSON.stringify(store.signals())); store.close();
+  assert.equal(original.length, 1);
+  const backup = createUpdateBackup({root, stateDirectory: directory, destination: resolve(root, 'backup')});
+  const accepted = new Set();
+  let loseResponse = true, transmitted = 0;
+  const transport = async (url, init) => {
+    if (url.endsWith('/api/health')) return Response.json({service: 'neurocheckout-community'});
+    if (url.endsWith('/signals')) {
+      const incoming = JSON.parse(init.body).signals;
+      assert.deepEqual(incoming, original, 'restoration must retain IDs, references, revisions and observation time');
+      assert.equal(init.body.includes('fixture@example.invalid'), false);
+      for (const signal of incoming) accepted.add(signal.id);
+      transmitted++;
+      if (loseResponse) {loseResponse = false; throw new Error('response lost after acceptance');}
+      return Response.json({accepted_ids: incoming.map(signal => signal.id)});
+    }
+    assert.ok(url.endsWith('/poll'));
+    return Response.json({commands: []});
+  };
+  assert.equal(await relayOnce(options, transport), false);
+  assert.equal(transmitted, 1);
+  assert.equal(accepted.size, 1);
+  const restored = restoreUpdateBackup(backup, resolve(root, 'restored'));
+  const restoredOptions = {...options, directory: resolve(restored, 'state')};
+  assert.equal(await relayOnce(restoredOptions, transport), true);
+  assert.equal(transmitted, 2);
+  assert.equal(accepted.size, 1, 'Cloud can deduplicate the identical replay; this is not an SMTP simulation');
+  store = new LocalDataStore(restoredOptions.directory, Date.now, 'production');
+  assert.equal(store.signals().length, 0);
+  assert.equal(store.read({kind: 'cart', reference: store.reference('cart', 'cart-before-backup'), minimumRevision: 1}).payload.total, 35);
+  store.close();
 });
