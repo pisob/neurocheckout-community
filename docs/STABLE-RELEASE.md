@@ -52,6 +52,10 @@ to a private JSON attestation for that tag's exact Git tree and package version.
 The preview workflow remains separate from the manually dispatched stable
 workflow. Stable publishing requires a signed tag, CI, a tree-bound acceptance
 attestation inside that signed tag and the `community-stable` environment gate.
+Publication is disabled unless the repository variable
+`COMMUNITY_STABLE_PUBLICATION_ENABLED` is explicitly `true`. Configure an
+independent required reviewer on the `community-stable` environment **before**
+enabling that variable. Naming an environment in YAML alone is not protection.
 Preparing this workflow does **not** certify the current candidate or authorize
 invented evidence. Configure its required maintainer reviewers before use.
 

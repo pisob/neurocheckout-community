@@ -21,6 +21,9 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   publish:
+    # Fail closed until maintainers configure the independent environment review.
+    # Merely naming an environment can create it without protection in GitHub.
+    if: vars.COMMUNITY_STABLE_PUBLICATION_ENABLED == 'true'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
