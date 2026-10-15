@@ -11,6 +11,11 @@ const shops = [
   { shop_uuid: '11111111-1111-4111-8111-111111111111', shop_id: 'fixture-woo', platform: 'woocommerce', has_active_api_key: true },
   { shop_uuid: '22222222-2222-4222-8222-222222222222', shop_id: 'fixture-magento', platform: 'magento', has_active_api_key: false },
 ];
+const publishedDpa = {
+  version: '1.2', source: 'published', locale: 'en',
+  html: '<p>Synthetic published agreement.</p>',
+  document_sha256: 'a'.repeat(64), acceptance_text: 'I accept the synthetic published DPA 1.2.',
+};
 let browser;
 try {
   for (let n = 0; n < 100; n++) {
@@ -42,6 +47,8 @@ try {
         mutations.push({ path, body: request.postDataJSON() });
         body = { status: 'synchronizing' };
       } else body = { available: true, configured: selected === shops[0], shopId: selected.shop_id };
+    } else if (path.endsWith('/connector-key/dpa')) {
+      body = { ...publishedDpa, locale: url.searchParams.get('locale') };
     } else if (path.endsWith('/connector-key')) {
       mutations.push({ path, body: request.postDataJSON() });
       body = { api_key: 'synthetic-magento-key' };
@@ -55,11 +62,18 @@ try {
   await selector.selectOption(shops[1].shop_uuid);
   await expect(selector).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Create key', exact: true })).toBeDisabled();
+  await expect(page.locator('#configuration input[type=checkbox]')).toBeEnabled();
   await page.locator('#configuration input[type=checkbox]').check();
   await page.getByRole('button', { name: 'Create key', exact: true }).click();
   await page.getByText('synthetic-magento-key', { exact: true }).waitFor();
   assert.equal(mutations.length, 2);
   assert(mutations.every(item => item.body.shop_uuid === shops[1].shop_uuid));
+  const accepted = mutations.find(item => item.path.endsWith('/connector-key')).body;
+  assert.equal(accepted.dpa_accepted, true);
+  assert.equal(accepted.dpa_version, publishedDpa.version);
+  assert.equal(accepted.dpa_locale, publishedDpa.locale);
+  assert.equal(accepted.dpa_document_sha256, publishedDpa.document_sha256);
+  assert.equal(accepted.dpa_acceptance_text, publishedDpa.acceptance_text);
   await expect(selector).toBeEnabled();
   await selector.selectOption(shops[0].shop_uuid);
   await expect(selector).toBeEnabled();
