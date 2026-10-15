@@ -1,17 +1,21 @@
-# NeuroCheckout Community v0.1.0-preview.38
+# NeuroCheckout Community v0.1.0-preview.39
 
 Official signed prerelease. Production connectivity is supported; this remains
 a preview pending full merchant acceptance.
 
-- Display the currently published Cloud DPA when creating or rotating a connector key.
-- Bind explicit consent to the displayed version, language and content fingerprint.
-- Block unavailable documents and require new consent when publication changes.
-- Isolate the document preview from scripts, forms and external resources.
+- Review manual email approvals separately for each authorized store.
+- Read exact signed email originals from the encrypted local vault, not Cloud storage.
+- Disable approval if the original is missing, changed or belongs to another installation.
+- Keep approved emails visible while Cloud delivery waits for the installation.
+- Preserve the original subject and content across retries, even if a newly selected template differs.
+- Sanitize previews, including images, without following recovery links or loading tracking pixels.
 - Preserve existing keys, synchronization, encrypted data and delivery history.
-- Verify consent in English and French and isolation across selected stores.
 
-Requires the coordinated Cloud published-document endpoint. Existing keys keep
-working; older clients can use the Cloud API-key page for creation or rotation.
+Requires the coordinated Cloud local-approval deployment and activation. Older
+clients remain blocked from automatic sending when their store uses manual approval.
+An approval expires after 18 hours or when the cart revision/authorization changes.
+Approval itself consumes no email quota. Cloud rechecks the cart, suppression,
+quota and delivery fence before sending; unknown SMTP outcomes are not retried automatically.
 
 Connector version reporting improvements are distributed separately through each
 connector's reviewed release; updating Community alone does not update a store module.

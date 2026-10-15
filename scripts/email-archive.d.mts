@@ -1,4 +1,5 @@
 export class EmailArchive {
+  installationId(): string | null;
   constructor(directory: string, clock?: () => number, environment?: string);
   store: { config: { shopId: string }; bindInstallation(id: string): void };
   db: {

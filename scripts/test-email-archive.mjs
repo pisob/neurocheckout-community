@@ -11,6 +11,10 @@ test('copies are encrypted, immutable across retries and survive restart', t => 
  const dir=setup(t);let archive=new EmailArchive(dir);
  assert.deepEqual(archive.prepare(copy(1)).copy,copy(1));
  assert.deepEqual(archive.prepare({...copy(1),body_html:'regenerated'}).copy,copy(1));
+ assert.deepEqual(archive.prepare({...copy(1),subject:'A different generated subject',copy_signature:'b'.repeat(64)}).copy,copy(1));
+ assert.equal(archive.installationId(),null);
+ archive.store.bindInstallation('11111111-1111-4111-8111-111111111111');
+ assert.equal(archive.installationId(),'11111111-1111-4111-8111-111111111111');
  assert.throws(()=>archive.prepare({...copy(1),recipient_email:'other@example.invalid'}),/conflict/);
  assert.equal(archive.db.prepare('SELECT sent_at FROM email_archive').get().sent_at,null);
  archive.close();

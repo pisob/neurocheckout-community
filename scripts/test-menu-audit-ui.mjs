@@ -74,6 +74,50 @@ try {
     });
   }
   let pendingRequested = false;
+  const secondShop = { shop_uuid: '22222222-2222-4222-8222-222222222222', shop_id: 'second-fixture', platform: 'woocommerce' };
+  await scenario('local approvals select the store and send only the reviewed signature', async (u, req) => {
+    if (u.pathname.endsWith('/shops')) return { body: { items: [shop, secondShop] } };
+    if (u.pathname.endsWith('/email-approvals')) {
+      const selected = u.searchParams.get('shop_uuid') === secondShop.shop_uuid ? secondShop : shop;
+      return { body: { items: [{ ...approval(41, 'pending'), shop_id: selected.shop_id, shop_uuid: selected.shop_uuid,
+        subject: 'Review ' + selected.shop_id, content_location: 'community_local', preview_available: true,
+        community_copy_signature: 'a'.repeat(64), body_html: '<p>Original reviewed copy</p><img src="https://invalid.example/open.gif"><script>parent.alert(1)</script>' }], total: 1, offset: 0 } };
+    }
+    if (u.pathname.endsWith('/approve')) {
+      assert.equal(u.searchParams.get('shop_uuid'), secondShop.shop_uuid);
+      assert.deepEqual(req.postDataJSON(), { copy_signature: 'a'.repeat(64) });
+      return { body: { ok: true, delivery: { queued: true } } };
+    }
+    return null;
+  }, async p => {
+    await p.goto(origin + '/#email-approvals');
+    await p.getByRole('heading', { name: 'Review ' + shop.shop_id, exact: true }).waitFor();
+    await p.getByLabel('Store', { exact: true }).selectOption(secondShop.shop_uuid);
+    await p.getByRole('heading', { name: 'Review ' + secondShop.shop_id, exact: true }).waitFor();
+    await expect(p.frameLocator('.approval-preview iframe').locator('body')).toContainText('Original reviewed copy');
+    assert.equal(await p.frameLocator('.approval-preview iframe').locator('script,img[src]').count(), 0);
+    p.once('dialog', dialog => dialog.accept());
+    await p.getByRole('button', { name: 'Approve and send', exact: true }).click();
+    await p.getByText('Email approved and handed to Cloud delivery.', { exact: true }).waitFor();
+    return ['/api/cloud/email-approvals/fixture-41/approve'];
+  });
+  await scenario('missing local original cannot be approved', async u => u.pathname.endsWith('/email-approvals') ? { body: {
+    items: [{ ...approval(42,'pending'), shop_uuid: shop.shop_uuid, content_location: 'community_local',
+      preview_available: false, subject: '', recipient_email: '', body_text: '' }], total: 1, offset: 0,
+  } } : null, async p => {
+    await p.goto(origin + '/#email-approvals');
+    await p.getByRole('heading', { name: 'Local preview unavailable', exact: true }).waitFor();
+    await expect(p.getByRole('button', { name: 'Approve and send', exact: true })).toBeDisabled();
+    await expect(p.getByRole('button', { name: 'Reject', exact: true })).toBeEnabled();
+  });
+  await scenario('approvals without stores never query an unspecified store', async u => {
+    if (u.pathname.endsWith('/shops')) return { body: { items: [] } };
+    assert(!u.pathname.endsWith('/email-approvals'));
+    return null;
+  }, async p => {
+    await p.goto(origin + '/#email-approvals');
+    await p.getByRole('heading', { name: 'Connect a store to review emails', exact: true }).waitFor();
+  });
   await scenario('in-flight sends are visible in All and cannot be sent twice', async u => u.pathname.endsWith('/email-approvals') && u.searchParams.get('status') === 'all' ? { body: { items: [approval(1, 'sending')], total: 1, offset: 0 } } : null, async p => {
     await p.goto(origin + '/#email-approvals');
     await p.getByRole('button', { name: 'All', exact: true }).click();

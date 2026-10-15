@@ -128,10 +128,10 @@ async function performRelayOnce(options, fetchImpl) {
     const item = await smallJson(response, 128 * 1024);
     if (!item || Object.keys(item).length !== 1 || !Array.isArray(item.commands) || item.commands.length > 1) return false;
     for (const command of item.commands) {
-      if (!command || Object.keys(command).sort().join(",") !== "operation,record,request_id" || !["read", "archive_email", "confirm_email"].includes(command.operation) || !/^[a-f0-9]{32}$/.test(command.request_id)) return false;
+      if (!command || Object.keys(command).sort().join(",") !== "operation,record,request_id" || !["read", "archive_email", "confirm_email", "read_email"].includes(command.operation) || !/^[a-f0-9]{32}$/.test(command.request_id)) return false;
       let result, store;
       try {
-        if (["archive_email", "confirm_email"].includes(command.operation)) {
+        if (["archive_email", "confirm_email", "read_email"].includes(command.operation)) {
           const archive = new EmailArchive(options.directory, Date.now, options.environment);
           try {
             if (archive.store.config.shopId !== credential.shop_id) throw new Error("relay_store_mismatch");
@@ -140,6 +140,12 @@ async function performRelayOnce(options, fetchImpl) {
               if (!command.record || Object.keys(command.record).sort().join() !== "delivery_id,sent_at") throw new Error("email_archive_invalid");
               archive.confirm(command.record.delivery_id, command.record.sent_at);
               result = { status: "ok", archived: true };
+            } else if (command.operation === "read_email") {
+              if (!command.record || Object.keys(command.record).sort().join() !== "copy_signature,delivery_id" ||
+                  typeof command.record.copy_signature !== "string" || !/^[a-f0-9]{64}$/.test(command.record.copy_signature)) throw Error("email_archive_invalid");
+              const copy = archive.get(command.record.delivery_id);
+              if (!copy || copy.copy_signature !== command.record.copy_signature) throw Error("email_archive_unavailable");
+              result = { status: "ok", archived: true, copy };
             } else result = { status: "ok", ...archive.prepare(command.record) };
           } finally { archive.close(); }
         } else {

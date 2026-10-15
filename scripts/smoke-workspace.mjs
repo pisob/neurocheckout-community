@@ -27,6 +27,7 @@ initializeLocalData(root, parent.shop_id);
 const originalKeys = readFileSync(resolve(root, 'local-data-keys.json'));
 const archive = new EmailArchive(root); archive.prepare(copy('Woo original')); archive.close();
 let authorized = true, childHeartbeats = 0, childPolls = 0, childCopies = 0;
+let approved = 0, rejected = 0;
 const cloudErrors = [];
 const json = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
 const body = async request => { const chunks = []; for await (const chunk of request) chunks.push(chunk); return JSON.parse(Buffer.concat(chunks).toString() || '{}'); };
@@ -77,6 +78,19 @@ const cloud = createServer(async (req, res) => {
       return json(res, 200, { shop: grant, items: [{ delivery_id: 'community-edge-1', status: 'sent', sent_at: new Date().toISOString() }] });
     }
     if (url.pathname.endsWith('/shops')) return json(res, 200, { items: authorized ? [parent, child] : [parent] });
+    if (url.pathname.includes('/email-approvals')) {
+      const grant = url.searchParams.get('shop_uuid') === parent.shop_uuid ? parent : child;
+      assert.equal(req.headers['x-neurocheckout-workspace-shop'], grant.shop_uuid);
+      if (!authorized && grant === child) return json(res, 403, { detail: 'forbidden' });
+      if (url.pathname.endsWith('/approve')) {
+        assert.deepEqual(await body(req), { copy_signature: 'a'.repeat(64) }); approved++;
+        return json(res, 200, { ok: true, delivery: { queued: true } });
+      }
+      if (url.pathname.endsWith('/reject')) { rejected++; return json(res, 200, { ok: true }); }
+      return json(res, 200, { items: [{ id: 'review-1', ...grant, delivery_id: 'community-edge-1',
+        status: 'pending', subject: '', recipient_email: '', content_location: 'community_local',
+        community_copy_signature: 'a'.repeat(64) }], total: 1, offset: 0 });
+    }
     return json(res, 404, {});
   } catch (error) { cloudErrors.push(error.message); json(res, 500, { detail: 'synthetic_failure' }); }
 });
@@ -126,9 +140,27 @@ try {
     assert.equal((await response.json()).items[0].subject, grant === parent ? 'Woo original' : 'Magento original');
   }
   const before = childPolls;
+  for (const grant of [parent, child]) {
+    const response = await request(`/api/cloud/email-approvals?shop_uuid=${grant.shop_uuid}`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('cache-control'), /no-store/);
+    const item = (await response.json()).items[0];
+    assert.equal(item.preview_available, true);
+    assert.equal(item.subject, grant === parent ? 'Woo original' : 'Magento original');
+  }
+  const approvePath = `/api/cloud/email-approvals/review-1/approve?shop_uuid=${child.shop_uuid}`;
+  assert.equal((await request(approvePath, { method: 'POST', body: JSON.stringify({ copy_signature: 'a'.repeat(64) }) })).status, 200);
+  assert.equal((await request(approvePath, { method: 'POST', body: JSON.stringify({ body_html: 'injected' }) })).status, 422);
+  assert.equal((await request(approvePath, { method: 'POST', headers: { Origin: 'https://foreign.invalid' }, body: '{}' })).status, 403);
+  assert.equal(approved, 1);
+  assert.equal((await request(`/api/cloud/email-approvals/review-1/reject?shop_uuid=${child.shop_uuid}`, { method: 'POST' })).status, 200);
+  assert.equal(rejected, 1);
   await stop(); await start();
   await waitFor(() => childPolls > before, 'child did not resume without browser login');
   authorized = false;
+  assert.equal((await request(`/api/cloud/email-approvals?shop_uuid=${child.shop_uuid}`)).status, 403);
+  assert.equal((await request(approvePath, { method: 'POST', body: JSON.stringify({ copy_signature: 'a'.repeat(64) }) })).status, 403);
+  assert.equal(approved, 1);
   assert.equal((await request(`/api/cloud/recent-emails?shop_uuid=${child.shop_uuid}`)).status, 403);
   assert.equal((await request(`/api/cloud/recent-emails?shop_uuid=${parent.shop_uuid}`)).status, 200);
   assert.deepEqual(readFileSync(resolve(root, 'local-data-keys.json')), originalKeys);

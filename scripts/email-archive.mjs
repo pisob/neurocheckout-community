@@ -17,6 +17,9 @@ export class EmailArchive {
     this.clean();
   }
   close() { this.store.close(); }
+  installationId() {
+    return this.db.prepare("SELECT value FROM meta WHERE name='installation_id'").get()?.value || null;
+  }
   clean() {
     this.db.prepare('DELETE FROM email_archive WHERE COALESCE(sent_at,created_at) < ?').run(this.clock() - 30 * DAY);
     this.db.prepare('DELETE FROM email_archive WHERE sent_at IS NULL AND created_at < ?').run(this.clock() - DAY);
@@ -45,7 +48,9 @@ export class EmailArchive {
       if (this.db.prepare('SELECT 1 FROM email_archive WHERE id=?').get(value.delivery_id)) {
         // Retries must send the same content, never replace an already stored copy.
         const stored = this.get(value.delivery_id);
-        if (['delivery_id','recipient_email','subject','agent_name'].some(key => stored[key] !== value[key])) throw Error('email_archive_conflict');
+        // A retry can select another template. Keep the reviewed original,
+        // including its subject and signature; never overwrite it.
+        if (['delivery_id','recipient_email','agent_name'].some(key => stored[key] !== value[key])) throw Error('email_archive_conflict');
         return { archived: true, copy: stored };
       }
       if (this.db.prepare('SELECT count(*) n FROM email_archive WHERE sent_at IS NULL').get().n >= 100) throw Error('email_archive_full');
