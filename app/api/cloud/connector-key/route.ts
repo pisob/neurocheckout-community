@@ -9,6 +9,10 @@ export async function POST(request: NextRequest) {
     shop_uuid?: string;
     operation?: "create" | "rotate";
     dpa_accepted?: boolean;
+    dpa_version?: string;
+    dpa_acceptance_text?: string;
+    dpa_document_sha256?: string;
+    dpa_locale?: string;
   };
   const shopUuid = String(payload.shop_uuid || "").trim();
   if (!UUID_PATTERN.test(shopUuid)) {
@@ -23,8 +27,10 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({
       shop_uuid: shopUuid,
       dpa_accepted: true,
-      dpa_version: "1.0",
-      dpa_acceptance_text: "I accept the NeuroCheckout Data Processing Addendum (DPA), version 1.0, and confirm that I am authorised to accept it on behalf of my organisation.",
+      dpa_version: payload.dpa_version,
+      dpa_acceptance_text: payload.dpa_acceptance_text,
+      dpa_document_sha256: payload.dpa_document_sha256,
+      dpa_locale: payload.dpa_locale,
     }),
   });
 }

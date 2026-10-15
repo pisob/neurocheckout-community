@@ -1,5 +1,13 @@
 # NeuroCheckout Community
 
+Connector-key creation and rotation require review of the currently published
+Cloud DPA. The displayed version, language and content fingerprint are submitted
+with explicit consent. A changed or unavailable document blocks the operation;
+it never substitutes a draft or a hardcoded acceptance. Existing connector keys
+and synchronization are unchanged. This flow requires the corresponding Cloud
+published-document endpoint. Tests: `test:connector-key-dpa` and
+`test:connector-key-dpa-ui` (English and French, synthetic data).
+
 NeuroCheckout Community is the official self-hosted dashboard for connecting an
 online store to NeuroCheckout Cloud. Product and cart details are kept in an
 encrypted local vault, while enabled services are provided through an

@@ -7,6 +7,8 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
+    "test:connector-key-dpa": "node --experimental-strip-types --test scripts/test-connector-key-dpa.mjs",
+    "test:connector-key-dpa-ui": "node scripts/test-connector-key-dpa-ui.mjs",
     "dev": "next dev -p 3400",
     "build": "next build",
     "start": "node scripts/start-standalone.mjs",

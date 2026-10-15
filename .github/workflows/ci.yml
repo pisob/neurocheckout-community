@@ -59,6 +59,9 @@ jobs:
       - name: Test the native setup
         run: npm run test:native
 
+      - name: Test published connector DPA contract
+        run: npm run test:connector-key-dpa
+
       - name: Test update verification and rollback
         run: npm run test:update
 
@@ -106,6 +109,9 @@ jobs:
 
       - name: Test audited menu links, pagination, scope and response races
         run: npm run test:menu-audit-ui
+
+      - name: Test published DPA consent in English and French
+        run: npm run test:connector-key-dpa-ui
 
       - name: Test synchronization diagnostics in the browser
         run: npm run test:diagnostics-ui && npm run test:reliability-ui
