@@ -4,6 +4,14 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.41 - 2026-10-15
+
+- Keep long cart and order references readable on desktop and mobile.
+- Distinguish attributed order value from verified payment and show recorded order status when available, without claiming live refund or cancellation tracking.
+- Identify exhausted ngrok request quotas and retry source checks every 15 minutes while preserving Cloud heartbeats, explicit retry and healthy sibling stores.
+- Extend source-backoff and restored-backup replay regression coverage.
+- Require explicit merchant acceptance and at least 72 hours of exact-candidate observation before a stable release; this remains a validation preview.
+
 ## 0.1.0-preview.38 - 2026-10-15
 
 - Read the published Cloud DPA before creating or rotating a connector key.

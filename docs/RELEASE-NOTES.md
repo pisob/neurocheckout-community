@@ -1,12 +1,16 @@
-# Unreleased — stable-readiness candidate
+# NeuroCheckout Community v0.1.0-preview.41
+
+## Source recovery and attribution evidence
 
 - Keep long cart/order references readable on desktop and mobile.
 - Distinguish attributed order value from verified payment; show the historical native order status when available. Live refunds and cancellations are not tracked by this view.
 - Identify an exhausted ngrok request allowance without misdiagnosing a connector key. Back off source requests for 15 minutes while maintaining Cloud heartbeats and healthy sibling stores; explicit retry remains available.
+- Extend regression coverage for isolated source backoff and restored backups that retain the original replay identity.
 - Require real automatic journeys, fault/replay tests, quota lifecycle evidence, explicit merchant acceptance and at least 72 hours of exact-candidate observation before a stable release can be signed and published.
 
-These changes do not certify a stable release. Normal-delay merchant journeys
-and real mailbox image reception must still be verified on reachable stores.
+This is a validation preview, not a stable certification. Normal-delay merchant
+journeys and real mailbox image reception must still be verified on reachable
+stores. Updating Community does not update Cloud or store connectors.
 
 # NeuroCheckout Community v0.1.0-preview.40
 
