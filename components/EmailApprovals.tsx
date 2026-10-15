@@ -138,10 +138,13 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
   );
   const localPreviewMissing = selected?.content_location === "community_local" &&
     (!selected.preview_available || !selected.community_copy_signature || selected.shop_uuid !== shopUuid);
-  const [preview, setPreview] = useState("");
+  const [preview, setPreview] = useState<{ source: typeof selected; html: string } | null>(null);
+  const [loadedPreview, setLoadedPreview] = useState<typeof preview>(null);
   useEffect(() => {
-    setPreview(selected?.body_html ? sentEmailPreview(selected.body_html, selected.preview_asset_base_url) : "");
+    setPreview(selected?.body_html ? { source: selected, html: sentEmailPreview(selected.body_html, selected.preview_asset_base_url) } : null);
   }, [selected]);
+  const previewReady = Boolean(preview?.html && preview.source === selected);
+  const previewLoading = Boolean(selected?.body_html && (!previewReady || loadedPreview !== preview));
 
   const formatDate = (value?: string | null) => {
     if (!value) return ui("Not available", "Non disponible");
@@ -151,7 +154,7 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
   };
 
   const act = async (kind: "approve" | "reject") => {
-    if (!selected || busyId || loading || error || shopsError || (kind === "approve" && localPreviewMissing)) return;
+    if (!selected || busyId || loading || error || shopsError || (kind === "approve" && (localPreviewMissing || previewLoading))) return;
     const confirmed = window.confirm(kind === "approve"
       ? ui("Approve this exact email for Cloud delivery when the store is connected?", "Approuver cet email pour envoi Cloud dès que la boutique est connectée ?")
       : ui("Reject this email? It will not be sent.", "Rejeter cet email ? Il ne sera pas envoyé."));
@@ -186,11 +189,11 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
 
   return (
     <section className="view-enter operational-view approvals-view">
-      <div className="analytics-filterbar">
+      <div className="analytics-toolbar"><div className="analytics-filters">
         <label>{ui("Store", "Boutique")}<select aria-label={ui("Store", "Boutique")} value={shopUuid} disabled={Boolean(busyId) || shopsLoading} onChange={event => { changePage(0); setShopUuid(event.target.value); }}>
           {shops.map(shop => <option key={shop.shop_uuid} value={shop.shop_uuid}>{shop.shop_id} · {shop.platform || "store"}</option>)}
         </select></label>
-      </div>
+      </div></div>
       <div className="operational-toolbar">
         <div className="filter-tabs" role="group" aria-label={ui("Approval status", "Statut de validation")}>
           {(["pending", "sending", "sent", "rejected", "expired", "all"] as ApprovalFilter[]).map((value) => (
@@ -248,8 +251,9 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
                 <div><dt>{ui("Expires", "Expiration")}</dt><dd>{formatDate(selected.expires_at)}</dd></div>
               </dl>
               <div className="email-document">
-                {selected.body_html ? (
-                  <iframe sandbox="" title={ui("Sanitized email preview", "Aperçu email nettoyé")} srcDoc={preview} />
+                {selected.body_html ? (previewReady && preview ? (
+                  <iframe key={`${selected.shop_uuid}:${selected.id}:${selected.community_copy_signature || ""}`} sandbox="" referrerPolicy="no-referrer" title={ui("Sanitized email preview", "Aperçu email nettoyé")} srcDoc={preview.html} onLoad={() => setLoadedPreview(preview)} />
+                ) : <p role="status">{ui("Loading preview…", "Chargement de l’aperçu…")}</p>
                 ) : (
                   <pre>{selected.body_text || ui("No preview content is available.", "Aucun contenu d’aperçu n’est disponible.")}</pre>
                 )}
@@ -258,7 +262,7 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
               {selected.last_error ? <p className="config-error">{ui("The last delivery attempt did not complete.", "La dernière tentative d’envoi n’a pas abouti.")}</p> : null}
               {selected.status === "pending" || selected.status === "failed" ? (
                 <div className="approval-actions">
-                  <button className="button primary" type="button" disabled={Boolean(busyId) || localPreviewMissing} onClick={() => void act("approve")}>{ui("Approve and send", "Approuver et envoyer")}</button>
+                  <button className="button primary" type="button" disabled={Boolean(busyId) || localPreviewMissing || previewLoading} onClick={() => void act("approve")}>{ui("Approve and send", "Approuver et envoyer")}</button>
                   <button className="button danger" type="button" disabled={Boolean(busyId)} onClick={() => void act("reject")}>{ui("Reject", "Rejeter")}</button>
                 </div>
               ) : null}

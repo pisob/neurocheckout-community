@@ -1,3 +1,12 @@
+# NeuroCheckout Community v0.1.0-preview.40
+
+## Approval preview reliability
+
+- Mount the sandboxed email preview only after the selected original has been sanitized. This avoids the blank initial preview observed in Opera.
+- Bind the preview to the selected shop and exact copy; keep approval disabled until that preview loads.
+- Use the existing styled store selector in Email approvals.
+- Regression coverage checks store switching, exact signatures, tracking removal, and that no empty preview frame is mounted.
+
 # NeuroCheckout Community v0.1.0-preview.39
 
 Official signed prerelease. Production connectivity is supported; this remains

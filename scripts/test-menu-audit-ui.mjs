@@ -81,21 +81,33 @@ try {
       const selected = u.searchParams.get('shop_uuid') === secondShop.shop_uuid ? secondShop : shop;
       return { body: { items: [{ ...approval(41, 'pending'), shop_id: selected.shop_id, shop_uuid: selected.shop_uuid,
         subject: 'Review ' + selected.shop_id, content_location: 'community_local', preview_available: true,
-        community_copy_signature: 'a'.repeat(64), body_html: '<p>Original reviewed copy</p><img src="https://invalid.example/open.gif"><script>parent.alert(1)</script>' }], total: 1, offset: 0 } };
+        community_copy_signature: (selected === secondShop ? 'b' : 'a').repeat(64), body_html: '<p>Original reviewed copy ' + selected.shop_id + '</p><img src="https://invalid.example/open.gif"><script>parent.alert(1)</script>' }], total: 1, offset: 0 } };
     }
     if (u.pathname.endsWith('/approve')) {
       assert.equal(u.searchParams.get('shop_uuid'), secondShop.shop_uuid);
-      assert.deepEqual(req.postDataJSON(), { copy_signature: 'a'.repeat(64) });
+      assert.deepEqual(req.postDataJSON(), { copy_signature: 'b'.repeat(64) });
       return { body: { ok: true, delivery: { queued: true } } };
     }
     return null;
   }, async p => {
+    await p.addInitScript(() => {
+      window.__ncEmptyApprovalFrames = 0;
+      new MutationObserver(mutations => {
+        for (const mutation of mutations) for (const node of mutation.addedNodes) {
+          if (!(node instanceof Element)) continue;
+          const frames = node.matches('.email-document iframe') ? [node] : [...node.querySelectorAll('.email-document iframe')];
+          for (const frame of frames) if (!frame.getAttribute('srcdoc')) window.__ncEmptyApprovalFrames++;
+        }
+      }).observe(document, { childList: true, subtree: true });
+    });
     await p.goto(origin + '/#email-approvals');
     await p.getByRole('heading', { name: 'Review ' + shop.shop_id, exact: true }).waitFor();
     await p.getByLabel('Store', { exact: true }).selectOption(secondShop.shop_uuid);
     await p.getByRole('heading', { name: 'Review ' + secondShop.shop_id, exact: true }).waitFor();
-    await expect(p.frameLocator('.approval-preview iframe').locator('body')).toContainText('Original reviewed copy');
+    await expect(p.frameLocator('.approval-preview iframe').locator('body')).toContainText('Original reviewed copy ' + secondShop.shop_id);
     assert.equal(await p.frameLocator('.approval-preview iframe').locator('script,img[src]').count(), 0);
+    assert.equal(await p.evaluate(() => window.__ncEmptyApprovalFrames), 0, 'Never mount a blank iframe before the sanitized copy is ready');
+    await expect(p.getByRole('button', { name: 'Approve and send', exact: true })).toBeEnabled();
     p.once('dialog', dialog => dialog.accept());
     await p.getByRole('button', { name: 'Approve and send', exact: true }).click();
     await p.getByText('Email approved and handed to Cloud delivery.', { exact: true }).waitFor();
