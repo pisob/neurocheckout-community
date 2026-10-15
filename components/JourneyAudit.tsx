@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEvidenceRefresh } from "@/lib/use-evidence-refresh";
 
 import { publicEnumLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
@@ -162,7 +163,7 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
         session_page: String(page),
         session_filter: filter,
       });
-      const response = await fetch(`/api/cloud/journey-audit?${query.toString()}`, { cache: "no-store" });
+      const response = await fetch(`/api/cloud/journey-audit?${query.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
       const body = await response.json().catch(() => ({}));
       if (sequence !== auditRequest.current) return;
       if (!response.ok) {
@@ -172,6 +173,12 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
           { en: "Journey audit unavailable.", fr: "Audit de parcours indisponible." },
           language,
         ));
+      }
+      if (!body?.shop || shopUuid(body.shop) !== selectedShopUuid || body.period_days !== days ||
+          !body.event_summary || typeof body.event_summary !== "object" ||
+          !Array.isArray(body.recent_sessions) || !Array.isArray(body.recent_audits) ||
+          !Number.isSafeInteger(body.audit_count) || body.audit_count < 0) {
+        throw new Error(ui("Journey data could not be verified for this store. Refresh to retry.", "Les données de parcours n’ont pas pu être vérifiées pour cette boutique. Actualisez pour réessayer."));
       }
       const nextPayload = body as JourneyPayload;
       const sessions = Array.isArray(nextPayload.recent_sessions) ? nextPayload.recent_sessions : [];
@@ -194,6 +201,7 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
   }, [loadShops]);
 
   useEffect(() => { void loadAudit(); return () => { ++auditRequest.current; }; }, [loadAudit]);
+  useEvidenceRefresh(loadAudit, Boolean(selectedShopUuid));
 
   const selectedSession = useMemo(
     () => payload?.recent_sessions.find((item) => item.session_key === selectedSessionKey) || payload?.recent_sessions[0] || null,

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { reliabilityStages, quotaObservation, emailStatusTotal } from '../lib/reliability.ts';
+import { reliabilityStages, quotaObservation, emailStatusTotal, validCloudHealth } from '../lib/reliability.ts';
 
 const now=100_000;
 test('missing email observations never become zero conversions',()=>{
@@ -12,6 +12,12 @@ test('missing email observations never become zero conversions',()=>{
   assert.equal(emailStatusTotal({...counts,converted:NaN},'converted'),null);
 });
 const cloud={online:true,queue:{pending:0,processing:0,retrying:0,failed:0},data_quality:{incomplete:0},evidence:{received:1,sent:1,converted:1}};
+test('a healthy label alone is not valid synchronization evidence', () => {
+  assert.equal(validCloudHealth({...cloud,state:'healthy'}), true);
+  for (const invalid of [null, {}, {state:'healthy',online:true}, {...cloud,state:'unknown'}, {...cloud,state:'healthy',queue:{}}, {...cloud,state:'healthy',evidence:{received:1,sent:-1,converted:0}}]) {
+    assert.equal(validCloudHealth(invalid), false);
+  }
+});
 const local={available:true,configured:true,ready:true,shop_id:'shop-a',source:{last_complete_at:now,diagnostic:{code:'ok',checked_at:now}},outbox:{pending:0}};
 const stages=(c=cloud,l=local,shop='shop-a')=>Object.fromEntries(reliabilityStages(c,l,shop,now).map(s=>[s.id,s.state]));
 test('heartbeat never authorizes sending; data freshness, store scope and pending work are independent',()=>{

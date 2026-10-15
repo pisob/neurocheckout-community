@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEvidenceRefresh } from "@/lib/use-evidence-refresh";
 
 import { publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
@@ -72,13 +73,18 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const requestSequence = useRef(0);
+  const pendingReads = useRef(new Set<string>());
 
   const load = useCallback(async () => {
+    if (pendingReads.current.size) return;
+    const sequence = ++requestSequence.current;
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`/api/cloud/notifications?locale=${language}&limit=100`, { cache: "no-store" });
+      const response = await fetch(`/api/cloud/notifications?locale=${language}&limit=100`, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
       const payload = await response.json().catch(() => ({}));
+      if (sequence !== requestSequence.current) return;
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error(ui(
@@ -99,7 +105,12 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
           language,
         ));
       }
-      const dynamicItems = Array.isArray(payload?.items) ? payload.items as MemberMessage[] : [];
+      if (!Array.isArray(payload?.items) || !payload.items.every((item: MemberMessage) =>
+        item && typeof item.id === "string" && typeof item.title === "string" &&
+        typeof item.body === "string" && typeof item.unread === "boolean")) {
+        throw new Error(ui("The Cloud message service returned an invalid response. Please retry.", "Le service de messages Cloud a renvoyé une réponse invalide. Réessayez."));
+      }
+      const dynamicItems = payload.items as MemberMessage[];
       const readIds = localReadIds();
       const builtIn = { ...welcomeMessage(language), unread: !readIds.has(WELCOME_MESSAGE_ID) };
       const nextItems = [builtIn, ...dynamicItems.filter((item) => item.id !== builtIn.id)]
@@ -111,17 +122,20 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
       setItems(nextItems);
       setSelectedId((current) => nextItems.some((item) => item.id === current) ? current : nextItems[0]?.id || "");
     } catch (loadError) {
+      if (sequence !== requestSequence.current) return;
       setItems([]);
       setSelectedId("");
       setError(loadError instanceof Error ? loadError.message : ui("Unable to load messages.", "Impossible de charger les messages."));
     } finally {
-      setLoading(false);
+      if (sequence === requestSequence.current) setLoading(false);
     }
   }, [language]);
 
   useEffect(() => {
     void load();
+    return () => { ++requestSequence.current; };
   }, [load]);
+  useEvidenceRefresh(load, true);
 
   const selected = useMemo(
     () => items.find((item) => item.id === selectedId) || items[0] || null,
@@ -140,12 +154,16 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
   const openMessage = async (item: MemberMessage) => {
     setSelectedId(item.id);
     if (!item.unread) return;
+    // Invalidate any read snapshot obtained before this acknowledgement.
+    ++requestSequence.current;
+    setLoading(false);
     setError("");
     setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, unread: false } : candidate));
     if (item.localOnly) {
       markLocalRead(item.id);
       return;
     }
+    pendingReads.current.add(item.id);
     try {
       const response = await fetch(`/api/cloud/notifications/${encodeURIComponent(item.id)}/read`, { method: "POST", cache: "no-store" });
       const payload = await response.json().catch(() => ({}));
@@ -162,6 +180,8 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
     } catch (readError) {
       setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, unread: true } : candidate));
       setError(readError instanceof Error ? readError.message : ui("Unable to mark this message as read.", "Impossible de marquer ce message comme lu."));
+    } finally {
+      pendingReads.current.delete(item.id);
     }
   };
 

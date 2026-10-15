@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Capabilities } from "@/components/Dashboard";
 import type { UiLanguage } from "@/lib/ui-language";
+import { reliabilityStages, validCloudHealth } from "@/lib/reliability";
 
 type Shop = { shop_uuid?: string; id?: string; canonical_shop_id?: string; shop_id: string; platform?: string };
 
@@ -11,17 +12,20 @@ export default function SetupChecklist({ capabilities, language }: { capabilitie
   const [shop, setShop] = useState<Shop | null>(null);
   const [checked, setChecked] = useState(false);
   const [healthy, setHealthy] = useState(false);
+  const [sourceVerified, setSourceVerified] = useState(false);
   const [busy, setBusy] = useState(true);
   const [failed, setFailed] = useState(false);
   const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]);
     const load = async () => {
-      setBusy(true); setFailed(false); setHealthy(false); setChecked(false); setShop(null);
+      setBusy(true); setFailed(false); setHealthy(false); setSourceVerified(false); setChecked(false); setShop(null);
       try {
-        const response = await fetch("/api/cloud/shops", { cache: "no-store", signal: controller.signal });
+        const response = await fetch("/api/cloud/shops", { cache: "no-store", signal });
         if (!response.ok) throw new Error();
         const body = await response.json();
+        if (!Array.isArray(body.items)) throw new Error();
         const selected: Shop | undefined = body.items?.[0];
         if (controller.signal.aborted) return;
         setShop(selected || null);
@@ -30,10 +34,21 @@ export default function SetupChecklist({ capabilities, language }: { capabilitie
         if (id) {
           try { setChecked(localStorage.getItem(`nc-setup-email-reviewed:${id}`) === "yes"); } catch { /* Optional browser preference. */ }
           if (capabilities.features.sync_health) {
-            const healthResponse = await fetch(`/api/cloud/sync-health?${new URLSearchParams({ shop_uuid: id })}`, { cache: "no-store", signal: controller.signal });
+            const query = new URLSearchParams({ shop_uuid: id });
+            const [healthResponse, localResponse] = await Promise.all([
+              fetch(`/api/cloud/sync-health?${query}`, { cache: "no-store", signal }),
+              fetch(`/api/local-data/sync-health?${query}`, { cache: "no-store", signal }),
+            ]);
             if (!healthResponse.ok) throw new Error();
             const health = await healthResponse.json();
-            if (!controller.signal.aborted) setHealthy(health.state === "healthy" && health.online === true);
+            if (!validCloudHealth(health)) throw new Error();
+            const local = localResponse.ok ? await localResponse.json() : null;
+            const stages = reliabilityStages(health, local, selected.shop_id);
+            const verified = stages.some(stage => stage.id === "source" && stage.state === "verified");
+            if (!controller.signal.aborted) {
+              setSourceVerified(verified);
+              setHealthy(health.state === "healthy" && health.online === true && verified && stages.some(stage => stage.id === "processing" && stage.state === "verified"));
+            }
           }
         }
       } catch { if (!controller.signal.aborted) setFailed(true); }
@@ -44,7 +59,7 @@ export default function SetupChecklist({ capabilities, language }: { capabilitie
   }, [refresh, capabilities.features.sync_health]);
 
   const connector = capabilities.connectors?.find(item => item.shop_id === shop?.shop_id);
-  const connectorReady = Boolean(connector?.installed_version && connector.last_seen_at && ["current", "available"].includes(connector.status));
+  const connectorReady = Boolean(connector?.installed_version && connector.last_seen_at && ["current", "available"].includes(connector.status)) || (!connector && sourceVerified);
   const steps = [
     { title: ui("Connect your account", "Connecter votre compte"), done: true, detail: ui("Your Cloud account is connected.", "Votre compte Cloud est connecté."), href: "#features" },
     { title: ui("Check your store", "Vérifier votre boutique"), done: Boolean(shop), detail: shop ? `${shop.shop_id} · ${shop.platform || ""}` : ui("Check the store assigned to this installation.", "Vérifiez la boutique attribuée à cette installation."), href: "?tool=shop#configuration" },

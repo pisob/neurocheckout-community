@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { publicAgentLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
+import { useEvidenceRefresh } from "@/lib/use-evidence-refresh";
 
-type ApprovalStatus = "pending" | "failed" | "sent" | "rejected" | "expired";
+type ApprovalStatus = "pending" | "failed" | "sending" | "sent" | "rejected" | "expired";
 
 type ApprovalItem = {
   id: string;
@@ -22,6 +23,7 @@ type ApprovalItem = {
 };
 
 type ApprovalFilter = "pending" | "sent" | "rejected" | "expired" | "all";
+const PAGE_SIZE = 50;
 
 function safePreviewDocument(html: string): string {
   const csp = [
@@ -52,14 +54,19 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState<number | null>(null);
+  const requestSequence = useRef(0);
 
   const load = useCallback(async () => {
+    const sequence = ++requestSequence.current;
     setLoading(true);
     setError("");
     try {
-      const query = new URLSearchParams({ status: filter, limit: "50", offset: "0" });
-      const response = await fetch(`/api/cloud/email-approvals?${query.toString()}`, { cache: "no-store" });
+      const query = new URLSearchParams({ status: filter, limit: String(PAGE_SIZE), offset: String(offset) });
+      const response = await fetch(`/api/cloud/email-approvals?${query.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
       const payload = await response.json().catch(() => ({}));
+      if (sequence !== requestSequence.current) return;
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error(ui(
@@ -73,21 +80,46 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
           language,
         ));
       }
-      const nextItems = Array.isArray(payload?.items) ? payload.items as ApprovalItem[] : [];
+      if (!Array.isArray(payload?.items) || !payload.items.every((item: ApprovalItem) =>
+        item && typeof item.id === "string" && typeof item.shop_id === "string" &&
+        typeof item.subject === "string" && typeof item.recipient_email === "string" &&
+        ["pending", "failed", "sending", "sent", "rejected", "expired"].includes(item.status) &&
+        (filter === "all" || item.status === filter || (filter === "pending" && item.status === "failed"))) ||
+        (payload.total !== undefined && (!Number.isSafeInteger(payload.total) || payload.total < 0)) ||
+        (payload.offset !== undefined && payload.offset !== offset)) {
+        throw new Error(ui("Cloud returned an invalid approval queue. Refresh to verify.", "Le Cloud a renvoyé une file de validation invalide. Actualisez pour vérifier."));
+      }
+      const nextItems = payload.items as ApprovalItem[];
+      const nextTotal = payload.total ?? (offset + nextItems.length);
+      if (offset > 0 && nextItems.length === 0 && nextTotal <= offset) {
+        setOffset(Math.max(0, Math.ceil(nextTotal / PAGE_SIZE) - 1) * PAGE_SIZE);
+        return;
+      }
+      setTotal(nextTotal);
       setItems(nextItems);
       setSelectedId((current) => nextItems.some((item) => item.id === current) ? current : nextItems[0]?.id || "");
     } catch (loadError) {
+      if (sequence !== requestSequence.current) return;
       setItems([]);
+      setTotal(null);
       setSelectedId("");
       setError(loadError instanceof Error ? loadError.message : ui("Unable to load approvals.", "Impossible de charger les validations."));
     } finally {
-      setLoading(false);
+      if (sequence === requestSequence.current) setLoading(false);
     }
-  }, [filter, language]);
+  }, [filter, language, offset]);
 
   useEffect(() => {
     void load();
+    return () => { ++requestSequence.current; };
   }, [load]);
+  useEvidenceRefresh(load, !busyId);
+
+  const changePage = (nextOffset: number, nextFilter = filter) => {
+    ++requestSequence.current;
+    setLoading(true); setItems([]); setSelectedId(""); setTotal(null); setError(""); setNotice("");
+    setOffset(nextOffset); setFilter(nextFilter);
+  };
 
   const selected = useMemo(
     () => items.find((item) => item.id === selectedId) || items[0] || null,
@@ -102,13 +134,14 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
   };
 
   const act = async (kind: "approve" | "reject") => {
-    if (!selected || busyId) return;
+    if (!selected || busyId || loading || error) return;
     const confirmed = window.confirm(kind === "approve"
       ? ui("Approve and send this email now?", "Approuver et envoyer cet email maintenant ?")
       : ui("Reject this email? It will not be sent.", "Rejeter cet email ? Il ne sera pas envoyé."));
     if (!confirmed) return;
 
     setBusyId(selected.id);
+    ++requestSequence.current;
     setError("");
     setNotice("");
     try {
@@ -138,7 +171,7 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
       <div className="operational-toolbar">
         <div className="filter-tabs" role="group" aria-label={ui("Approval status", "Statut de validation")}>
           {(["pending", "sent", "rejected", "expired", "all"] as ApprovalFilter[]).map((value) => (
-            <button className={filter === value ? "active" : ""} key={value} type="button" onClick={() => setFilter(value)}>
+            <button className={filter === value ? "active" : ""} key={value} type="button" disabled={Boolean(busyId)} onClick={() => { if (value !== filter) changePage(0, value); }}>
               {{
                 pending: ui("Pending", "En attente"),
                 sent: ui("Sent", "Envoyés"),
@@ -149,7 +182,7 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
             </button>
           ))}
         </div>
-        <button className="text-action" type="button" onClick={() => void load()}>{ui("Refresh", "Actualiser")}</button>
+        <button className="text-action" type="button" disabled={Boolean(busyId) || loading} onClick={() => void load()}>{ui("Refresh", "Actualiser")}</button>
       </div>
 
       {error ? <p className="config-error" role="alert">{error}</p> : null}
@@ -157,7 +190,7 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
 
       {loading ? (
         <div className="operational-state"><span className="loader" /><p>{ui("Loading approval queue…", "Chargement de la file de validation…")}</p></div>
-      ) : items.length === 0 ? (
+      ) : error ? null : items.length === 0 ? (
         <div className="operational-state">
           <p className="eyebrow">{ui("Queue clear", "File vide")}</p>
           <h2>{ui("No email requires action", "Aucun email ne demande d’action")}</h2>
@@ -205,6 +238,11 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
           ) : null}
         </div>
       )}
+      {!error && total !== null && total > 0 ? <div className="analytics-pagination" aria-label={ui("Approval pages", "Pages de validation")}>
+        <button className="text-action" disabled={loading || Boolean(busyId) || offset === 0} onClick={() => changePage(Math.max(0, offset - PAGE_SIZE))}>{ui("Previous", "Précédent")}</button>
+        <span>{offset + 1}–{Math.min(offset + items.length, total)} / {total}</span>
+        <button className="text-action" disabled={loading || Boolean(busyId) || offset + PAGE_SIZE >= total} onClick={() => changePage(offset + PAGE_SIZE)}>{ui("Next", "Suivant")}</button>
+      </div> : null}
     </section>
   );
 }
