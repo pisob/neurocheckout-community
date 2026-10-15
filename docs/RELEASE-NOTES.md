@@ -1,17 +1,17 @@
-# NeuroCheckout Community v0.1.0-preview.37
+# NeuroCheckout Community v0.1.0-preview.38
 
 Official signed prerelease. Production connectivity is supported; this remains
 a preview pending full merchant acceptance.
 
-- Distinguish Cloud failures from empty approval queues and reject obsolete filter responses.
-- Add pagination beyond the first 50 email approvals; protect send/reject actions during refresh.
-- Open linked menus consistently, including browser back/forward navigation.
-- Show a useful setup path for accounts without stores, without an endless loading indicator.
-- Require fresh store-source evidence before reporting setup readiness.
-- Display the authorized store attached to an email quota when supplied by Cloud.
-- Refresh messages and journey evidence safely, with response validation and bounded timeouts.
-- Preserve encrypted data, quotas, delivery history and optional funding settings.
-- Add 13 synthetic browser scenarios for menu, error, pagination and concurrency regressions.
+- Display the currently published Cloud DPA when creating or rotating a connector key.
+- Bind explicit consent to the displayed version, language and content fingerprint.
+- Block unavailable documents and require new consent when publication changes.
+- Isolate the document preview from scripts, forms and external resources.
+- Preserve existing keys, synchronization, encrypted data and delivery history.
+- Verify consent in English and French and isolation across selected stores.
+
+Requires the coordinated Cloud published-document endpoint. Existing keys keep
+working; older clients can use the Cloud API-key page for creation or rotation.
 
 Connector version reporting improvements are distributed separately through each
 connector's reviewed release; updating Community alone does not update a store module.

@@ -4,6 +4,14 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.38 - 2026-10-15
+
+- Read the published Cloud DPA before creating or rotating a connector key.
+- Bind explicit consent to its version, language and content fingerprint.
+- Block unavailable documents and require fresh consent after publication changes.
+- Keep existing keys, encrypted local data and synchronization unchanged.
+- Test English/French consent and isolated multi-store key creation.
+
 ## 0.1.0-preview.37 - 2026-10-15
 
 - Distinguish unavailable email approvals from an empty queue; reject stale filter responses.
