@@ -52,6 +52,8 @@ export type Capabilities = {
       remaining: number | null;
       window: string | null;
       scope: string | null;
+      shop_uuid?: string | null;
+      shop_id?: string | null;
       next_release_at?: string | null;
       window_hours?: number | null;
     };
@@ -193,7 +195,7 @@ const SUPERVISOR_AGENT = "agent_supervisor";
 function viewFromHash(): DashboardView {
   if (typeof window === "undefined") return "overview";
   const candidate = window.location.hash.replace("#", "") as DashboardView;
-  return candidate in VIEW_COPY.en ? candidate : "overview";
+  return Object.hasOwn(VIEW_COPY.en, candidate) ? candidate : "overview";
 }
 
 let localDataBootstrapPromise: Promise<void> | null = null;
@@ -437,9 +439,19 @@ export default function Dashboard() {
     };
   }, [status]);
 
+  useEffect(() => {
+    const navigate = () => setActiveView(viewFromHash());
+    window.addEventListener("hashchange", navigate);
+    window.addEventListener("popstate", navigate);
+    return () => {
+      window.removeEventListener("hashchange", navigate);
+      window.removeEventListener("popstate", navigate);
+    };
+  }, []);
+
   const selectView = (view: DashboardView) => {
     setActiveView(view);
-    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${view}`);
+    if (window.location.hash !== `#${view}`) window.history.pushState(null, "", `${window.location.pathname}${window.location.search}#${view}`);
   };
 
   const logout = async () => {
@@ -717,7 +729,9 @@ export default function Dashboard() {
                 <div className="usage-facts">
                   <div><span>{ui("Allowed stores", "Boutiques autorisées")}</span><strong>{capabilities.limits.shops ?? "∞"}</strong></div>
                   <div><span>{ui("Available agents", "Agents disponibles")}</span><strong>{activeAgentCount || capabilities.limits.active_agents || "∞"}</strong></div>
-                  <div><span>{ui("Quota scope", "Périmètre du quota")}</span><strong>{capabilities.limits.emails.scope || ui("Account", "Compte")}</strong></div>
+                  <div><span>{ui("Quota scope", "Périmètre du quota")}</span><strong>{capabilities.limits.emails.scope === "shop"
+                    ? capabilities.limits.emails.shop_id ? ui(`Store: ${capabilities.limits.emails.shop_id}`, `Boutique : ${capabilities.limits.emails.shop_id}`) : ui("Store (identity unavailable)", "Boutique (identité indisponible)")
+                    : capabilities.limits.emails.scope === "account" ? ui("Account · all stores", "Compte · toutes les boutiques") : ui("Scope unavailable", "Périmètre indisponible")}</strong></div>
                   <div><span>{ui("Subscription status", "Statut abonnement")}</span><strong>{publicEnumLabel(capabilities.subscription.status, language, ui("Status unavailable", "Statut indisponible"))}</strong></div>
                 </div>
                 {capabilities.upgrade.available ? <div className="usage-upgrade"><p>{ui("Higher limits are activated automatically after subscription.", "Les limites supérieures sont activées automatiquement après souscription.")}</p>{upgradeAction}</div> : null}

@@ -104,6 +104,9 @@ jobs:
       - name: Test user journeys in the browser
         run: npm run test:journeys
 
+      - name: Test audited menu links, pagination, scope and response races
+        run: npm run test:menu-audit-ui
+
       - name: Test synchronization diagnostics in the browser
         run: npm run test:diagnostics-ui && npm run test:reliability-ui
 

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 import { synchronizationDiagnostic } from "@/lib/sync-diagnostic";
-import { reliabilityStages } from "@/lib/reliability";
+import { reliabilityStages, validCloudHealth } from "@/lib/reliability";
 
 type Shop = { id?: string; shop_uuid?: string; canonical_shop_id?: string; shop_id: string; platform?: string };
 type Connector = {
@@ -65,16 +65,21 @@ export default function SynchronizationHealth({ language, connectors }: { langua
   const connector = connectors.find((item) => item.shop_id === selectedShop?.shop_id);
 
   const loadShops = useCallback(async () => {
-    const response = await fetch("/api/cloud/shops", { cache: "no-store" });
+    const response = await fetch("/api/cloud/shops", { cache: "no-store", signal: AbortSignal.timeout(12_000) });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(publicErrorMessage(
       body?.detail,
       { en: "Stores unavailable.", fr: "Boutiques indisponibles." },
       language,
     ));
-    const items = Array.isArray(body?.items) ? body.items as Shop[] : [];
+    if (!Array.isArray(body?.items)) throw new Error(ui("Stores unavailable.", "Boutiques indisponibles."));
+    const items = body.items as Shop[];
     setShops(items);
     setSelectedShopUuid((current) => items.some(shop => shopUuid(shop) === current) ? current : (items[0] ? shopUuid(items[0]) : ""));
+    if (!items.length) {
+      ++healthRequest.current;
+      setCloud(null); setLocal(null); setHealthShop(""); setLoading(false);
+    }
   }, [language]);
 
   const loadHealth = useCallback(async (quiet = false) => {
@@ -97,12 +102,7 @@ export default function SynchronizationHealth({ language, connectors }: { langua
         { en: "Synchronization status unavailable.", fr: "État de synchronisation indisponible." },
         language,
       ));
-      if (!cloudBody?.queue || !cloudBody?.data_quality || !cloudBody?.evidence ||
-          typeof cloudBody.online !== 'boolean' ||
-          !['healthy','synchronizing','recovering','attention','offline'].includes(cloudBody.state) ||
-          ![cloudBody.queue.pending, cloudBody.queue.processing, cloudBody.queue.retrying, cloudBody.queue.failed,
-            cloudBody.data_quality.incomplete, cloudBody.evidence.received, cloudBody.evidence.sent, cloudBody.evidence.converted]
-            .every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0)) {
+      if (!validCloudHealth(cloudBody)) {
         throw new Error(ui("Synchronization status unavailable. Refresh to verify it again.", "État de synchronisation indisponible. Actualisez pour le vérifier à nouveau."));
       }
       setCloud(cloudBody as CloudHealth);
@@ -191,6 +191,7 @@ export default function SynchronizationHealth({ language, connectors }: { langua
     {notice ? <p className="config-notice" role="status">{notice}</p> : null}
     {loading ? <div className="operational-state"><span className="loader" /><p>{ui("Checking the full synchronization path…", "Vérification du parcours de synchronisation…")}</p></div> : null}
 
+    {!loading && !error && shops.length === 0 ? <div className="operational-state"><p className="eyebrow">{ui("Store required", "Boutique requise")}</p><h2>{ui("Connect a store to check synchronization", "Connectez une boutique pour vérifier la synchronisation")}</h2><a href="?tool=shop#configuration">{ui("Open configuration", "Ouvrir la configuration")}</a></div> : null}
     {!loading && cloud && healthShop === selectedShopUuid ? <>
       <header className={`sync-health-summary ${status}`}>
         <div><p className="eyebrow">{ui("Current state", "État actuel")}</p><h2>{stateCopy[status]}</h2><p>{cloud.online ? ui("Community and Cloud are exchanging authenticated signals.", "Community et le Cloud échangent des signaux authentifiés.") : ui("Cloud is preserving pending work until Community returns.", "Le Cloud conserve le travail en attente jusqu’au retour de Community.")}</p></div>
@@ -211,7 +212,7 @@ export default function SynchronizationHealth({ language, connectors }: { langua
       </section>
 
       <div className="sync-path" aria-label={ui("Synchronization path", "Parcours de synchronisation")}>
-        <article className={diagnostic.code === "source_verified" ? "ok" : "warn"}><span>01</span><div><strong>{ui("Store connector", "Connecteur boutique")}</strong><small>{connector ? `${connector.platform} · ${connector.installed_version}` : ui("Waiting for connector", "Connecteur en attente")}</small></div><i /></article>
+        <article className={diagnostic.code === "source_verified" ? "ok" : "warn"}><span>01</span><div><strong>{ui("Store connector", "Connecteur boutique")}</strong><small>{connector ? `${connector.platform} · ${connector.installed_version}` : sourceVerified ? ui("Source verified · version not reported", "Source vérifiée · version non communiquée") : ui("Connector activity not yet verified", "Activité du connecteur non encore vérifiée")}</small></div><i /></article>
         <article className={sourceVerified ? "ok" : "warn"}><span>02</span><div><strong>{ui("Encrypted local vault", "Coffre local chiffré")}</strong><small>{sourceVerified ? ui("Source synchronized", "Source synchronisée") : ui("Source catching up", "Mise à niveau de la source")}</small></div><i /></article>
         <article className={stages.find(stage => stage.id === "processing")?.state === "verified" ? "ok" : "warn"}><span>03</span><div><strong>{ui("Cloud reconciliation", "Réconciliation Cloud")}</strong><small>{cloud.queue.pending} {ui("pending", "en attente")} · {cloud.queue.retrying} {ui("retrying", "en reprise")}</small></div><i /></article>
         <article className={cloud.evidence.converted > 0 ? "ok" : "neutral"}><span>04</span><div><strong>{ui("Delivery evidence", "Preuves de traitement")}</strong><small>{cloud.evidence.sent} {ui("sent", "envoyés")} · {cloud.evidence.converted} {ui("converted", "convertis")}</small></div><i /></article>

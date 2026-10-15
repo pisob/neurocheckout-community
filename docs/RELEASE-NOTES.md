@@ -1,15 +1,20 @@
-# NeuroCheckout Community v0.1.0-preview.36
+# NeuroCheckout Community v0.1.0-preview.37
 
 Official signed prerelease. Production connectivity is supported; this remains
 a preview pending full merchant acceptance.
 
-- Display optional static and animated sponsor images configured in the Cloud backoffice.
-- Respect reduced-motion preferences with a separate static poster and provide pause/play controls.
-- Keep the sponsor text and link available when an image fails to load.
-- Fetch validated first-party creatives without third-party trackers or member identifiers.
-- Show no advertising or support requests to Starter, Pro, Enterprise or trial accounts.
-- Preserve support payment modes, quotas, synchronization and preview.35 reliability protections.
-- Add media validation, browser and bounded-proxy regression coverage.
+- Distinguish Cloud failures from empty approval queues and reject obsolete filter responses.
+- Add pagination beyond the first 50 email approvals; protect send/reject actions during refresh.
+- Open linked menus consistently, including browser back/forward navigation.
+- Show a useful setup path for accounts without stores, without an endless loading indicator.
+- Require fresh store-source evidence before reporting setup readiness.
+- Display the authorized store attached to an email quota when supplied by Cloud.
+- Refresh messages and journey evidence safely, with response validation and bounded timeouts.
+- Preserve encrypted data, quotas, delivery history and optional funding settings.
+- Add 13 synthetic browser scenarios for menu, error, pagination and concurrency regressions.
+
+Connector version reporting improvements are distributed separately through each
+connector's reviewed release; updating Community alone does not update a store module.
 
 Funding is controlled by NeuroCheckout Cloud and remains hidden until configured.
 There are no third-party advertising scripts, tracking pixels or customer-email placements.

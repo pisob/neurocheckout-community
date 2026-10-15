@@ -14,6 +14,16 @@ type Local = {
   source?: { diagnostic?: { code: string; checked_at: number } | null; last_complete_at?: number | null };
   outbox?: { pending: number };
 };
+export function validCloudHealth(value: unknown): value is Health & { state: string } {
+  if (!value || typeof value !== "object") return false;
+  const health = value as Health & { state?: string };
+  return Boolean(health.queue && health.data_quality && health.evidence &&
+    typeof health.online === "boolean" &&
+    ["healthy", "synchronizing", "recovering", "attention", "offline"].includes(health.state || "") &&
+    [health.queue.pending, health.queue.processing, health.queue.retrying, health.queue.failed,
+      health.data_quality.incomplete, health.evidence.received, health.evidence.sent, health.evidence.converted]
+      .every(count => typeof count === "number" && Number.isSafeInteger(count) && count >= 0));
+}
 export function reliabilityStages(cloud: Health | null, local: Local | null, shopId: string, now = Date.now()): ReliabilityStage[] {
   const matches = Boolean(local?.available && local.shop_id === shopId);
   const diagnostic = matches ? local?.source?.diagnostic : null;

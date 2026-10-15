@@ -4,6 +4,16 @@ All notable changes to NeuroCheckout Community are documented in this file.
 
 ## Unreleased
 
+## 0.1.0-preview.37 - 2026-10-15
+
+- Distinguish unavailable email approvals from an empty queue; reject stale filter responses.
+- Paginate approval history and guard send/reject actions during refresh or failures.
+- Follow in-app links and browser back/forward navigation consistently.
+- Handle accounts without stores and validate synchronization evidence before showing readiness.
+- Identify the store attached to an email quota when Cloud provides its authorized scope.
+- Refresh journey and message evidence safely after network recovery.
+- Add browser regressions for audited menus, pagination, malformed responses and response races.
+
 ## 0.1.0-preview.36 - 2026-10-14
 
 - Display optional static and animated sponsor images hosted by NeuroCheckout.
