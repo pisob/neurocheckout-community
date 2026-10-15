@@ -48,6 +48,8 @@ jobs:
           bash -n tools/build-community-release.sh
           bash -n tools/verify-community-release.sh
           bash -n tools/build-connector-release.sh
+          bash -n tools/build-operator-preview41.sh
+          python3 -I scripts/test-operator-preview41-bundle.py
           test "$(gpg --batch --with-colons --import-options show-only --import RELEASE-PUBLIC-KEY.asc | awk -F: '$1 == "fpr" { print $10; exit }')" = "2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0"
           grep -Fq "https://github.com/pisob/neurocheckout-community" README.md
           grep -Fq "https://github.com/pisob/neurocheckout-community" SECURITY.md
