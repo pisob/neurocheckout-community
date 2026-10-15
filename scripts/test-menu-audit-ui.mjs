@@ -54,6 +54,25 @@ try {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   browser = await chromium.launch();
+  await scenario('long cart and order references remain readable inside the conversion panel', async u => {
+    if (!u.pathname.endsWith('/converted-orders')) return null;
+    return { body: { shop, count: 1, items: [{ order_id: 'order-' + 'a'.repeat(150),
+      cart_id: 'wc-cart-' + 'b'.repeat(250), order_total: 35, customer: {}, recorded_order_status: 'on-hold', order_status_recorded_at: '2026-10-15T12:00:00Z',
+      converted_at: '2026-10-15T12:00:00Z', attribution_agent_name: 'abandoned_cart', influence_agent_names: [] }] } };
+  }, async p => {
+    await p.goto(origin + '/#converted-orders');
+    await p.locator('.conversion-inspector dd').first().waitFor();
+    await expect(p.locator('.conversion-inspector')).toContainText('not verified payment');
+    await expect(p.locator('.conversion-inspector')).toContainText('Cancellation and refund tracking are not available');
+    await expect(p.locator('.conversion-inspector')).toContainText('Recorded order status');
+    await expect(p.locator('.conversion-inspector')).toContainText('on-hold');
+    for (const width of [1440, 820, 390]) {
+      await p.setViewportSize({ width, height: 1000 });
+      await expect(p.locator('.conversion-inspector')).toBeVisible();
+      assert(await p.locator('.conversion-inspector').evaluate(node => node.scrollWidth <= node.clientWidth + 1), `panel does not overflow at ${width}px`);
+      await expect(p.locator('.conversion-inspector dd').nth(1)).toHaveText('wc-cart-' + 'b'.repeat(250));
+    }
+  });
   await scenario('hash links, browser history and prototype-safe view names', async u => u.pathname.endsWith('/recent-emails') ? { status: 503 } : null, async p => {
     await p.goto(origin + '/#converted-orders');
     await p.getByRole('link', { name: 'Check synchronization', exact: true }).click();

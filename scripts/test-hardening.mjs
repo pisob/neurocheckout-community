@@ -71,6 +71,10 @@ test('offline, refused, stale and incomplete signals are distinct; stale never c
     [{configured:false},'connector_not_configured'],[{source:null},'source_status_stale'],
     [{source:{code:'ok',checked_at:1}},'source_status_stale'],[{ready:false},'source_catching_up'],
     [{source:{code:'source_auth_rejected',checked_at:199999}},'source_auth_rejected'],
+    [{source:{code:'source_tunnel_quota_exhausted',checked_at:199999}},'source_tunnel_quota_exhausted'],
+    [{now:900000,source:{code:'source_tunnel_quota_exhausted',checked_at:1}},'source_tunnel_quota_exhausted'],
+    [{now:970000,source:{code:'source_tunnel_quota_exhausted',checked_at:1}},'source_status_stale'],
+    [{source:{code:'source_tunnel_quota_exhausted',checked_at:240001}},'source_status_stale'],
     [{source:{code:'source_signature_rejected',checked_at:199999}},'source_signature_rejected'],
   ]) {
     const result=synchronizationDiagnostic({...base,...changes}); assert.equal(result.code,code);

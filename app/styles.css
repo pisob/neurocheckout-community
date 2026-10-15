@@ -515,6 +515,10 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 .conversion-list .analytics-list-head { grid-template-columns: minmax(190px, 1fr) minmax(155px, .8fr) minmax(110px, .55fr); }
 .conversion-list > button { display: grid; width: 100%; grid-template-columns: 30px minmax(170px, 1fr) minmax(135px, .8fr) minmax(110px, .55fr); align-items: center; gap: 14px; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 16px 16px 16px 0; color: var(--text); text-align: left; transition: background .18s ease; }
 .conversion-inspector > time { display: block; margin-top: 10px; color: var(--muted); font-size: 9px; }
+.conversion-inspector h2,
+.conversion-inspector dd,
+.conversion-list > button > span { min-width: 0; overflow-wrap: anywhere; }
+.conversion-inspector dt { flex-shrink: 0; }
 .conversion-value { display: block; margin-top: 26px; color: var(--cyan); font-size: 36px; letter-spacing: -.04em; }
 .influence-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 26px; }
 .influence-list > span { width: 100%; margin-bottom: 5px; color: var(--muted); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }

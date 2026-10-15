@@ -49,14 +49,32 @@ This is not merchant acceptance and does not declare the candidate released.
 
 The signing builder refuses a stable tag unless `NC_STABLE_READINESS_FILE` points
 to a private JSON attestation for that tag's exact Git tree and package version.
-The existing GitHub publishing workflow remains **preview-only**; a stable
-publishing workflow requires a separate reviewed change after acceptance.
+The preview workflow remains separate from the manually dispatched stable
+workflow. Stable publishing requires a signed tag, CI, a tree-bound acceptance
+attestation inside that signed tag and the `community-stable` environment gate.
+Preparing this workflow does **not** certify the current candidate or authorize
+invented evidence. Configure its required maintainer reviewers before use.
+
+Additional gates cover normal-delay automatic journeys on PrestaShop,
+WooCommerce and Magento, interruption/replay recovery and quota-plan transitions.
+Real payment is not required: sandbox or offline orders must be clearly identified.
+An attributed order must never be described as proof of captured payment.
+
+Observe the exact candidate tree for at least **72 actual hours**, with at least
+four evidence samples and no interval longer than 24 hours. The final sample
+must be at most 24 hours old. Any critical incident, duplicate send, data loss,
+unavailable sample or source change invalidates acceptance. Record a new clean
+observation window after a correction; never backdate or accelerate samples.
+Retain detailed measurements privately and use redacted evidence references in
+the attestation embedded in the public signed tag. The owner must separately
+accept the tested merchant journey; approval to implement changes is not that
+acceptance.
 
 Evidence format (replace pending entries only after verification):
 
 ```json
 {
-  "schema": 1,
+  "schema": 2,
   "version": "0.1.0",
   "source_tree": "GIT_TREE_OF_THE_CANDIDATE",
   "blockers": [],
@@ -66,8 +84,13 @@ Evidence format (replace pending entries only after verification):
     "diagnostics": {"status": "pending"},
     "signed_distribution": {"status": "pending"},
     "security_audit": {"status": "pending"},
-    "merchant_journey": {"status": "pending"}
-  }
+    "merchant_journey": {"status": "pending"},
+    "automatic_journeys": {"status": "pending"},
+    "failure_recovery": {"status": "pending"},
+    "quota_lifecycle": {"status": "pending"}
+  },
+  "owner_acceptance": {"accepted": false},
+  "observation": {"source_tree": "GIT_TREE_OF_THE_CANDIDATE", "samples": []}
 }
 ```
 
@@ -75,3 +98,12 @@ Each passed entry requires `evidence`, `reviewed_by` and an ISO `checked_at` dat
 Run `node scripts/release-readiness.mjs TAG PRIVATE_EVIDENCE_JSON` before signing.
 An attestation records accountable review; it cannot replace the actual tests.
 Changing candidate sources invalidates the previous tree-bound attestation.
+Each observation sample requires `checked_at`, `status: "passed"`, a redacted
+`evidence` reference and numeric zero values for `critical_incidents`,
+`duplicate_sends` and `data_loss_events`. Missing observations are never zero.
+
+After private evidence review, add one `NC-STABLE-READINESS-BASE64: ...` line
+(base64-encoded redacted JSON) to the annotated tag alongside its existing
+`NC-ARCHIVE-SIGNATURE-BASE64` line, then sign the entire tag. The stable workflow
+verifies both signatures and rechecks the attestation. Do not put customer
+identities, tokens, machine paths or private email contents into the public tag.

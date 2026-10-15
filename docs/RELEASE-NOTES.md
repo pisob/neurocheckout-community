@@ -1,3 +1,13 @@
+# Unreleased — stable-readiness candidate
+
+- Keep long cart/order references readable on desktop and mobile.
+- Distinguish attributed order value from verified payment; show the historical native order status when available. Live refunds and cancellations are not tracked by this view.
+- Identify an exhausted ngrok request allowance without misdiagnosing a connector key. Back off source requests for 15 minutes while maintaining Cloud heartbeats and healthy sibling stores; explicit retry remains available.
+- Require real automatic journeys, fault/replay tests, quota lifecycle evidence, explicit merchant acceptance and at least 72 hours of exact-candidate observation before a stable release can be signed and published.
+
+These changes do not certify a stable release. Normal-delay merchant journeys
+and real mailbox image reception must still be verified on reachable stores.
+
 # NeuroCheckout Community v0.1.0-preview.40
 
 ## Approval preview reliability

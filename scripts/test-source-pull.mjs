@@ -9,7 +9,7 @@ import { readSourceDiagnostic } from './source-diagnostic.mjs';
 import { LocalDataStore, initializeLocalData } from "./local-data-store.mjs";
 import { handleLocalData, signLocalRequest } from "./local-data-handler.mjs";
 import { SourceSynchronizer, connectorEndpoint } from "./local-source-sync.mjs";
-import { pullSourceOnce, pauseSourceReads, postSourcePage, publicSourceTarget, sourceResponseSignature, sourceRequestSignature } from "./source-pull-client.mjs";
+import { pullSourceOnce, pauseSourceReads, postSourcePage, publicSourceTarget, sourceResponseSignature, sourceRequestSignature, sourceRetryDelay } from "./source-pull-client.mjs";
 
 const source = { endpoint: "https://store.example.invalid/module/neurocheckoutconnector/communitydata", secret: "ab".repeat(32) };
 const streamId = "a".repeat(32), cursor1 = "b".repeat(64), cursor2 = "c".repeat(64);
@@ -132,6 +132,10 @@ test("signed outgoing pull recovers, rejects response replay and never advances 
   assert.equal(readSourceDiagnostic(store).code, 'ok');
   assert.equal((await pullSourceOnce(options, async () => { throw new Error('source_auth_rejected'); })).ok, false);
   assert.equal(readSourceDiagnostic(store).code, 'source_auth_rejected');
+  const quota = await pullSourceOnce(options, async () => { throw new Error('source_tunnel_quota_exhausted'); });
+  assert.equal(quota.code, 'source_tunnel_quota_exhausted');
+  assert.equal(readSourceDiagnostic(store).code, 'source_tunnel_quota_exhausted');
+  assert.throws(() => store.requireSourceFresh(), /source_unavailable/);
   assert.equal((await pullSourceOnce(options, async () => { throw new Error(payload.email); })).ok, false);
   assert.equal(readSourceDiagnostic(store).code, 'source_unavailable');
   assert.throws(() => store.requireSourceFresh(), /source_unavailable/);
@@ -247,6 +251,21 @@ test('HTTP authentication refusal remains distinct from network failure without 
     await assert.rejects(postSourcePage(source.endpoint,'{}',{},httpFixture({status})), /source_auth_rejected/);
   }
   await assert.rejects(postSourcePage(source.endpoint,'{}',{},httpFixture({status:503})), /source_unavailable/);
+});
+
+test('only the exact ngrok quota refusal changes the diagnostic and retry cadence', async () => {
+  const fixture = httpFixture({status: 403, headers: {'ngrok-error-code': 'ERR_NGROK_727'}, chunks: [Buffer.from('PRIVATE_PROVIDER_HTML')]});
+  await assert.rejects(postSourcePage(source.endpoint, '{}', {}, fixture), /^Error: source_tunnel_quota_exhausted$/);
+  assert.equal(fixture.destroyed, true);
+  for (const code of ['ERR_NGROK_3200', 'ERR_NGROK_727 trailing', ['ERR_NGROK_727'], undefined]) {
+    await assert.rejects(postSourcePage(source.endpoint, '{}', {}, httpFixture({status: 403, headers: {'ngrok-error-code': code}})), /source_auth_rejected/);
+  }
+  await assert.rejects(postSourcePage(source.endpoint, '{}', {}, httpFixture({status: 401, headers: {'ngrok-error-code': 'ERR_NGROK_727'}})), /source_auth_rejected/);
+  assert.equal(sourceRetryDelay({ok: false, code: 'source_tunnel_quota_exhausted'}, 1), 900_000);
+  assert.equal(sourceRetryDelay({ok: false, code: 'source_auth_rejected'}, 5), 30_000);
+  assert.equal(sourceRetryDelay({ok: false}, 1), 2000);
+  assert.equal(sourceRetryDelay({ok: true, complete: true}, 5), 15_000);
+  assert.equal(sourceRetryDelay({ok: true, complete: false}, 5), 1000);
 });
 
 test("all three source routes accept public HTTPS only and preserve the signed path", async () => {
