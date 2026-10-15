@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { publicErrorMessage } from "@/lib/public-presentation";
 import { useUiLanguage, type UiLanguage } from "@/lib/ui-language";
+import { isConnectorKeyDpa, type ConnectorKeyDpa } from "@/lib/connector-key-dpa";
 
 type Shop = {
   id?: string;
@@ -116,10 +117,28 @@ export default function CloudConfiguration() {
   const [connectorKey, setConnectorKey] = useState<string | null>(null);
   const [localSyncActive, setLocalSyncActive] = useState(false);
   const [dpaAccepted, setDpaAccepted] = useState(false);
+  const [dpaDocument, setDpaDocument] = useState<ConnectorKeyDpa | null>(null);
+  const [dpaUnavailable, setDpaUnavailable] = useState(false);
+  const [dpaReload, setDpaReload] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<"shop" | "email" | "byok" | "connector">("shop");
+
+  useEffect(() => {
+    let cancelled = false;
+    setDpaAccepted(false);
+    setDpaDocument(null);
+    setDpaUnavailable(false);
+    if (activeTool !== "connector" || !selectedShopUuid) return;
+    void fetch(`/api/cloud/connector-key/dpa?locale=${language}`, { cache: "no-store" })
+      .then(async (response) => {
+        const document: unknown = await response.json();
+        if (!response.ok || !isConnectorKeyDpa(document) || document.locale !== language) throw new Error("dpa_unavailable");
+        if (!cancelled) setDpaDocument(document);
+      }).catch(() => { if (!cancelled) setDpaUnavailable(true); });
+    return () => { cancelled = true; };
+  }, [language, activeTool, selectedShopUuid, dpaReload]);
 
   useEffect(() => {
     const tool = new URL(window.location.href).searchParams.get("tool");
@@ -410,6 +429,7 @@ export default function CloudConfiguration() {
   };
 
   const issueConnectorKey = async (operation: "create" | "rotate") => {
+    if (!dpaAccepted || !isConnectorKeyDpa(dpaDocument) || dpaDocument.locale !== language) return;
     setBusy("connector");
     setError(null);
     setConnectorKey(null);
@@ -417,10 +437,19 @@ export default function CloudConfiguration() {
       const response = await fetch("/api/cloud/connector-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shop_uuid: selectedShopUuid, operation, dpa_accepted: dpaAccepted }),
+        body: JSON.stringify({ shop_uuid: selectedShopUuid, operation, dpa_accepted: true,
+          dpa_version: dpaDocument.version, dpa_acceptance_text: dpaDocument.acceptance_text,
+          dpa_document_sha256: dpaDocument.document_sha256, dpa_locale: dpaDocument.locale }),
       });
       const payload = (await readJson(response)) as { api_key?: string };
-      if (!response.ok || !payload.api_key) throw new Error(detail(payload, ui("Connector key rejected", "Clé connecteur refusée"), language));
+      if (!response.ok || !payload.api_key) {
+        if ((payload as { detail?: string }).detail === "dpa_document_changed") {
+          setDpaAccepted(false);
+          setDpaReload((value) => value + 1);
+          throw new Error(ui("The DPA changed. Review and accept the new published document.", "Le DPA a changé. Relisez et acceptez le nouveau document publié."));
+        }
+        throw new Error(detail(payload, ui("Connector key rejected", "Clé connecteur refusée"), language));
+      }
       setConnectorKey(payload.api_key);
       await activateLocalSync();
       setNotice(ui("Key created and encrypted local synchronization started. Copy the connector key now; it will not be displayed again.", "Clé créée et synchronisation locale chiffrée démarrée. Copiez maintenant la clé connecteur : elle ne sera plus affichée."));
@@ -556,8 +585,15 @@ export default function CloudConfiguration() {
         <article className="configuration-block tool-panel compact-tool">
           <div className="configuration-copy"><p className="eyebrow">{ui("Connector", "Connecteur")}</p><h2>{ui("Store-specific key", "Clé dédiée à la boutique")}</h2><p>{ui("This key signs events from the ecommerce module. It never grants access to the member dashboard.", "Cette clé signe les événements du module e-commerce. Elle n’autorise jamais l’accès au dashboard membre.")}</p></div>
           <div className="configuration-form compact-form">
-            <label className="checkbox-line"><input type="checkbox" checked={dpaAccepted} onChange={(event) => setDpaAccepted(event.target.checked)} /><span>{ui("I accept the NeuroCheckout DPA v1.0 and confirm that I am authorized to accept it for my organization.", "J’accepte le DPA NeuroCheckout v1.0 et confirme être autorisé à l’accepter pour mon organisation.")}</span></label>
-            <div className="actions left"><button className="button primary" type="button" disabled={!dpaAccepted || busy !== null} onClick={() => void issueConnectorKey(selectedShop.has_active_api_key ? "rotate" : "create")}>{selectedShop.has_active_api_key ? ui("Rotate key", "Faire une rotation") : ui("Create key", "Créer la clé")}</button></div>
+            {dpaDocument ? <details><summary>{ui("Read published DPA", "Lire le DPA publié")} · {dpaDocument.version}</summary>
+              <iframe title={ui("Published DPA", "DPA publié")} sandbox="" referrerPolicy="no-referrer" style={{ width: "100%", height: 320, background: "white" }}
+                srcDoc={`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'"><style>body{font:16px/1.5 sans-serif;color:#172033;padding:16px}</style></head><body>${dpaDocument.html}</body></html>`} />
+            </details> : <p role={dpaUnavailable ? "alert" : "status"}>{dpaUnavailable
+              ? ui("Published DPA unavailable. Retry before creating or rotating a key.", "DPA publié indisponible. Réessayez avant de créer ou renouveler une clé.")
+              : ui("Loading published DPA…", "Chargement du DPA publié…")}</p>}
+            {dpaUnavailable ? <button className="button secondary-blue" type="button" onClick={() => setDpaReload((value) => value + 1)}>{ui("Retry", "Réessayer")}</button> : null}
+            <label className="checkbox-line"><input type="checkbox" checked={dpaAccepted} disabled={!dpaDocument || dpaDocument.locale !== language} onChange={(event) => setDpaAccepted(event.target.checked)} /><span>{dpaDocument?.acceptance_text || ui("Load the DPA before accepting it.", "Chargez le DPA avant de l’accepter.")}</span></label>
+            <div className="actions left"><button className="button primary" type="button" disabled={!dpaDocument || dpaDocument.locale !== language || !dpaAccepted || busy !== null} onClick={() => void issueConnectorKey(selectedShop.has_active_api_key ? "rotate" : "create")}>{selectedShop.has_active_api_key ? ui("Rotate key", "Faire une rotation") : ui("Create key", "Créer la clé")}</button></div>
             {selectedShop.has_active_api_key && !localSyncActive ? <div className="actions left"><button className="button secondary-blue" type="button" disabled={!dpaAccepted || busy !== null} onClick={() => void activateLocalSync().catch((syncError) => setError(syncError instanceof Error ? syncError.message : ui("Local synchronization unavailable", "Synchronisation locale indisponible")))}>{busy === "local-sync" ? ui("Starting…", "Démarrage…") : ui("Retry encrypted local synchronization", "Relancer la synchronisation locale chiffrée")}</button></div> : null}
             {localSyncActive ? <div className="selected-shop-note"><span>{ui("Local data", "Données locales")}</span><strong>{ui("Synchronization active", "Synchronisation active")}</strong><small>{ui("Products and carts are stored in this Community vault.", "Les produits et paniers sont stockés dans ce coffre Community.")}</small></div> : null}
             {connectorKey ? <div className="one-time-secret"><strong>{ui("Secret displayed once", "Secret affiché une seule fois")}</strong><code>{connectorKey}</code></div> : null}
