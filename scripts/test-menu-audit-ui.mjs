@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 const require = createRequire(import.meta.url);
-const { chromium } = require(process.env.NC_PLAYWRIGHT_MODULE || '@playwright/test');
+const { chromium, expect } = require(process.env.NC_PLAYWRIGHT_MODULE || '@playwright/test');
 const origin = 'http://127.0.0.1:13429';
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', '13429'], {
   stdio: 'ignore', env: { ...process.env, NC_DEPLOYMENT_ENV: 'test', NC_LOCAL_DATA_PILOT_ENABLED: 'false', NC_CONNECTOR_PULL_ENABLED: 'false', NC_COMMUNITY_AVAILABILITY_ENABLED: 'false' },
@@ -181,11 +181,14 @@ try {
     await p.goto(origin);
     const checklist = p.locator('.setup-checklist');
     await p.waitForFunction(() => document.querySelector('.setup-checklist')?.getAttribute('aria-busy') === 'false');
-    assert.equal(await checklist.locator('li > div > span').filter({ hasText: /^Done$/ }).count(), 4);
+    await expect(checklist.locator('li > div > span').filter({ hasText: /^Done$/ })).toHaveCount(4);
     freshSource = false;
     await checklist.getByRole('button', { name: 'Check again', exact: true }).click();
-    await p.waitForFunction(() => document.querySelector('.setup-checklist')?.getAttribute('aria-busy') === 'false');
-    assert.equal(await checklist.locator('li > div > span').filter({ hasText: /^Done$/ }).count(), 2);
+    // The click can return before React has committed busy=true. Waiting only
+    // for busy=false may read the previous successful render; await the new
+    // semantic result without weakening the stale-source readiness assertion.
+    await expect(checklist.locator('li > div > span').filter({ hasText: /^Done$/ })).toHaveCount(2);
+    await expect(checklist).toHaveAttribute('aria-busy', 'false');
   });
 } finally {
   await browser?.close();
