@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { publicAgentLabel, publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
 import { useEvidenceRefresh } from "@/lib/use-evidence-refresh";
+import { sentEmailPreview } from "@/lib/sent-email-preview";
 
 type ApprovalStatus = "pending" | "failed" | "sending" | "sent" | "rejected" | "expired";
 
@@ -20,30 +21,16 @@ type ApprovalItem = {
   created_at?: string | null;
   expires_at?: string | null;
   last_error?: string | null;
+  shop_uuid?: string;
+  content_location?: string;
+  community_copy_signature?: string;
+  preview_available?: boolean;
+  preview_asset_base_url?: string;
 };
 
-type ApprovalFilter = "pending" | "sent" | "rejected" | "expired" | "all";
+type ApprovalFilter = "pending" | "sending" | "sent" | "rejected" | "expired" | "all";
+type ApprovalShop = { shop_uuid: string; shop_id: string; platform?: string };
 const PAGE_SIZE = 50;
-
-function safePreviewDocument(html: string): string {
-  const csp = [
-    "default-src 'none'",
-    "img-src data:",
-    "style-src 'unsafe-inline'",
-    "connect-src 'none'",
-    "form-action 'none'",
-    "base-uri 'none'",
-  ].join("; ");
-  const guard = "<style>html{color-scheme:light}a,button,input,select,textarea,form{pointer-events:none!important}</style>";
-  const content = String(html || "");
-  if (/<head[\s>]/i.test(content)) {
-    return content.replace(
-      /<head([^>]*)>/i,
-      `<head$1><meta http-equiv="Content-Security-Policy" content="${csp}">${guard}`,
-    );
-  }
-  return `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="${csp}">${guard}</head><body>${content}</body></html>`;
-}
 
 export default function EmailApprovals({ language }: { language: UiLanguage }) {
   const ui = (english: string, french: string) => language === "fr" ? french : english;
@@ -57,13 +44,36 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState<number | null>(null);
   const requestSequence = useRef(0);
+  const [shops, setShops] = useState<ApprovalShop[]>([]);
+  const [shopUuid, setShopUuid] = useState("");
+  const [shopsLoading, setShopsLoading] = useState(true);
+  const [shopsError, setShopsError] = useState("");
+  const shopSequence = useRef(0);
+  const loadShops = useCallback(async () => {
+    const sequence = ++shopSequence.current;
+    setShopsLoading(true); setShopsError("");
+    try {
+      const response = await fetch("/api/cloud/shops", { cache: "no-store", signal: AbortSignal.timeout(12_000) });
+      const payload = await response.json();
+      if (!response.ok || !Array.isArray(payload?.items)) throw Error("unavailable");
+      const nextShops = payload.items.map((shop: Record<string, unknown>) => ({ ...shop, shop_uuid: String(shop.shop_uuid || shop.canonical_shop_id || shop.id || "") })) as ApprovalShop[];
+      if (nextShops.some(shop => !/^[a-f0-9-]{36}$/i.test(shop.shop_uuid) || typeof shop.shop_id !== "string")) throw Error("invalid");
+      if (sequence !== shopSequence.current) return;
+      setShops(nextShops);
+      setShopUuid(current => nextShops.some(shop => shop.shop_uuid === current) ? current : nextShops[0]?.shop_uuid || "");
+    } catch {
+      if (sequence === shopSequence.current) setShopsError(language === "fr" ? "Impossible de charger les boutiques. Réessayez." : "Unable to load stores. Please retry.");
+    } finally { if (sequence === shopSequence.current) setShopsLoading(false); }
+  }, [language]);
+  useEffect(() => { void loadShops(); return () => { ++shopSequence.current; }; }, [loadShops]);
 
   const load = useCallback(async () => {
     const sequence = ++requestSequence.current;
+    if (!shopUuid) { setLoading(false); setItems([]); setSelectedId(""); setTotal(null); return; }
     setLoading(true);
     setError("");
     try {
-      const query = new URLSearchParams({ status: filter, limit: String(PAGE_SIZE), offset: String(offset) });
+      const query = new URLSearchParams({ shop_uuid: shopUuid, status: filter, limit: String(PAGE_SIZE), offset: String(offset) });
       const response = await fetch(`/api/cloud/email-approvals?${query.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
       const payload = await response.json().catch(() => ({}));
       if (sequence !== requestSequence.current) return;
@@ -83,6 +93,7 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
       if (!Array.isArray(payload?.items) || !payload.items.every((item: ApprovalItem) =>
         item && typeof item.id === "string" && typeof item.shop_id === "string" &&
         typeof item.subject === "string" && typeof item.recipient_email === "string" &&
+        (!item.shop_uuid || item.shop_uuid === shopUuid) &&
         ["pending", "failed", "sending", "sent", "rejected", "expired"].includes(item.status) &&
         (filter === "all" || item.status === filter || (filter === "pending" && item.status === "failed"))) ||
         (payload.total !== undefined && (!Number.isSafeInteger(payload.total) || payload.total < 0)) ||
@@ -107,7 +118,7 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
     } finally {
       if (sequence === requestSequence.current) setLoading(false);
     }
-  }, [filter, language, offset]);
+  }, [filter, language, offset, shopUuid]);
 
   useEffect(() => {
     void load();
@@ -125,6 +136,12 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
     () => items.find((item) => item.id === selectedId) || items[0] || null,
     [items, selectedId],
   );
+  const localPreviewMissing = selected?.content_location === "community_local" &&
+    (!selected.preview_available || !selected.community_copy_signature || selected.shop_uuid !== shopUuid);
+  const [preview, setPreview] = useState("");
+  useEffect(() => {
+    setPreview(selected?.body_html ? sentEmailPreview(selected.body_html, selected.preview_asset_base_url) : "");
+  }, [selected]);
 
   const formatDate = (value?: string | null) => {
     if (!value) return ui("Not available", "Non disponible");
@@ -134,9 +151,9 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
   };
 
   const act = async (kind: "approve" | "reject") => {
-    if (!selected || busyId || loading || error) return;
+    if (!selected || busyId || loading || error || shopsError || (kind === "approve" && localPreviewMissing)) return;
     const confirmed = window.confirm(kind === "approve"
-      ? ui("Approve and send this email now?", "Approuver et envoyer cet email maintenant ?")
+      ? ui("Approve this exact email for Cloud delivery when the store is connected?", "Approuver cet email pour envoi Cloud dès que la boutique est connectée ?")
       : ui("Reject this email? It will not be sent.", "Rejeter cet email ? Il ne sera pas envoyé."));
     if (!confirmed) return;
 
@@ -146,8 +163,9 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
     setNotice("");
     try {
       const response = await fetch(
-        `/api/cloud/email-approvals/${encodeURIComponent(selected.id)}/${kind}`,
-        { method: "POST", cache: "no-store" },
+        `/api/cloud/email-approvals/${encodeURIComponent(selected.id)}/${kind}?${new URLSearchParams({ shop_uuid: shopUuid })}`,
+        { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(kind === "approve" && selected.content_location === "community_local" ? { copy_signature: selected.community_copy_signature } : {}) },
       );
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(publicErrorMessage(
@@ -168,12 +186,18 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
 
   return (
     <section className="view-enter operational-view approvals-view">
+      <div className="analytics-filterbar">
+        <label>{ui("Store", "Boutique")}<select aria-label={ui("Store", "Boutique")} value={shopUuid} disabled={Boolean(busyId) || shopsLoading} onChange={event => { changePage(0); setShopUuid(event.target.value); }}>
+          {shops.map(shop => <option key={shop.shop_uuid} value={shop.shop_uuid}>{shop.shop_id} · {shop.platform || "store"}</option>)}
+        </select></label>
+      </div>
       <div className="operational-toolbar">
         <div className="filter-tabs" role="group" aria-label={ui("Approval status", "Statut de validation")}>
-          {(["pending", "sent", "rejected", "expired", "all"] as ApprovalFilter[]).map((value) => (
+          {(["pending", "sending", "sent", "rejected", "expired", "all"] as ApprovalFilter[]).map((value) => (
             <button className={filter === value ? "active" : ""} key={value} type="button" disabled={Boolean(busyId)} onClick={() => { if (value !== filter) changePage(0, value); }}>
               {{
                 pending: ui("Pending", "En attente"),
+                sending: ui("Approved / sending", "Approuvés / envoi"),
                 sent: ui("Sent", "Envoyés"),
                 rejected: ui("Rejected", "Rejetés"),
                 expired: ui("Expired", "Expirés"),
@@ -182,15 +206,18 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
             </button>
           ))}
         </div>
-        <button className="text-action" type="button" disabled={Boolean(busyId) || loading} onClick={() => void load()}>{ui("Refresh", "Actualiser")}</button>
+        <button className="text-action" type="button" disabled={Boolean(busyId) || loading || shopsLoading} onClick={() => { if (shopsError || !shopUuid) void loadShops(); else void load(); }}>{ui("Refresh", "Actualiser")}</button>
       </div>
 
       {error ? <p className="config-error" role="alert">{error}</p> : null}
+      {shopsError ? <p className="config-error" role="alert">{shopsError}</p> : null}
       {notice ? <p className="config-notice" role="status">{notice}</p> : null}
 
-      {loading ? (
+      {loading || shopsLoading ? (
         <div className="operational-state"><span className="loader" /><p>{ui("Loading approval queue…", "Chargement de la file de validation…")}</p></div>
-      ) : error ? null : items.length === 0 ? (
+      ) : error || shopsError ? null : !shopUuid ? (
+        <div className="operational-state"><h2>{ui("Connect a store to review emails", "Connectez une boutique pour valider les emails")}</h2><a href="#configuration">{ui("Open configuration", "Ouvrir la configuration")}</a></div>
+      ) : items.length === 0 ? (
         <div className="operational-state">
           <p className="eyebrow">{ui("Queue clear", "File vide")}</p>
           <h2>{ui("No email requires action", "Aucun email ne demande d’action")}</h2>
@@ -201,8 +228,8 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
           <div className="approval-list" aria-label={ui("Emails awaiting review", "Emails à vérifier")}>
             {items.map((item) => (
               <button className={selected?.id === item.id ? "active" : ""} key={item.id} type="button" onClick={() => setSelectedId(item.id)}>
-                <span className="approval-list-heading"><strong>{item.subject}</strong><i>{item.status}</i></span>
-                <small>{item.recipient_email}</small>
+                <span className="approval-list-heading"><strong>{item.subject || ui("Local preview unavailable", "Aperçu local indisponible")}</strong><i>{item.status}</i></span>
+                <small>{item.recipient_email || ui("Protected recipient", "Destinataire protégé")}</small>
                 <span className="approval-list-meta"><span>{item.shop_id}</span><time>{formatDate(item.created_at)}</time></span>
               </button>
             ))}
@@ -211,7 +238,7 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
           {selected ? (
             <article className="approval-preview">
               <header>
-                <div><p className="eyebrow">{ui("Delivery preview", "Aperçu de l’envoi")}</p><h2>{selected.subject}</h2></div>
+                <div><p className="eyebrow">{ui("Delivery preview", "Aperçu de l’envoi")}</p><h2>{selected.subject || ui("Local preview unavailable", "Aperçu local indisponible")}</h2></div>
                 <span className="status-pill">{selected.status}</span>
               </header>
               <dl className="approval-facts">
@@ -222,15 +249,16 @@ export default function EmailApprovals({ language }: { language: UiLanguage }) {
               </dl>
               <div className="email-document">
                 {selected.body_html ? (
-                  <iframe sandbox="" title={ui("Sanitized email preview", "Aperçu email nettoyé")} srcDoc={safePreviewDocument(selected.body_html)} />
+                  <iframe sandbox="" title={ui("Sanitized email preview", "Aperçu email nettoyé")} srcDoc={preview} />
                 ) : (
                   <pre>{selected.body_text || ui("No preview content is available.", "Aucun contenu d’aperçu n’est disponible.")}</pre>
                 )}
               </div>
+              {localPreviewMissing ? <p role="status">{ui("The exact original is unavailable in this installation’s encrypted vault. Approval is disabled; reconnect the original installation to review it.", "L’original exact est indisponible dans le coffre chiffré de cette installation. L’approbation est désactivée ; reconnectez l’installation d’origine pour le vérifier.")}</p> : null}
               {selected.last_error ? <p className="config-error">{ui("The last delivery attempt did not complete.", "La dernière tentative d’envoi n’a pas abouti.")}</p> : null}
               {selected.status === "pending" || selected.status === "failed" ? (
                 <div className="approval-actions">
-                  <button className="button primary" type="button" disabled={Boolean(busyId)} onClick={() => void act("approve")}>{ui("Approve and send", "Approuver et envoyer")}</button>
+                  <button className="button primary" type="button" disabled={Boolean(busyId) || localPreviewMissing} onClick={() => void act("approve")}>{ui("Approve and send", "Approuver et envoyer")}</button>
                   <button className="button danger" type="button" disabled={Boolean(busyId)} onClick={() => void act("reject")}>{ui("Reject", "Rejeter")}</button>
                 </div>
               ) : null}

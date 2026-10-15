@@ -75,7 +75,7 @@ jobs:
         run: npm run test:email-archive
 
       - name: Test email history
-        run: npm run test:email-history
+        run: npm run test:email-history && npm run test:email-approvals
 
       - name: Test plan presentation and public messages
         run: npm run test:experience

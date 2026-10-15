@@ -58,11 +58,12 @@ test("authenticated relay archives large copies and confirms only metadata", asy
   const mock=async (url,init)=>{
     if(url.endsWith("/api/health"))return Response.json({service:"neurocheckout-community"});
     assert.equal(init.headers.Authorization,`Bearer ${auth.token}`);
-    if(url.endsWith("/poll"))return Response.json({commands:[{operation,request_id:"b".repeat(32),record:operation==="archive_email"?copy:{delivery_id:copy.delivery_id,sent_at:new Date().toISOString()}}]});
+    if(url.endsWith("/poll"))return Response.json({commands:[{operation,request_id:"b".repeat(32),record:operation==="archive_email"?copy:operation==="read_email"?{delivery_id:copy.delivery_id,copy_signature:copy.copy_signature}:{delivery_id:copy.delivery_id,sent_at:new Date().toISOString()}}]});
     const reply=JSON.parse(init.body);assert.equal(reply.result.status,"ok");assert.equal(reply.result.archived,true);
-    if(operation==="archive_email")assert.deepEqual(reply.result.copy,copy);
+    if(operation!=="confirm_email")assert.deepEqual(reply.result.copy,copy);
     return Response.json({accepted:true});
   };
+  assert.equal(await relayOnce(options,mock),true);operation="read_email";
   assert.equal(await relayOnce(options,mock),true);operation="confirm_email";
   assert.equal(await relayOnce(options,mock),true);
   const archive=new EmailArchive(options.directory);assert.deepEqual(archive.get(copy.delivery_id),copy);

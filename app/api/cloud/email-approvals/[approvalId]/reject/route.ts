@@ -9,9 +9,12 @@ export async function POST(
   context: { params: Promise<{ approvalId: string }> },
 ) {
   const { approvalId } = await context.params;
+  const query = new URLSearchParams();
+  const shop = request.nextUrl.searchParams.get("shop_uuid");
+  if (shop) query.set("shop_uuid", shop);
   return authenticatedCloudFetch(
     request,
-    `/api/v1/member/email-approvals/${encodeURIComponent(approvalId)}/reject`,
+    `/api/v1/member/email-approvals/${encodeURIComponent(approvalId)}/reject?${query}`,
     { method: "POST" },
   );
 }
