@@ -1,0 +1,53 @@
+name: Build operator validation bundle (preview.41)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: community-operator-preview41-bundle
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'pisob/neurocheckout-community' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - name: Check out reviewed operator tooling (not the application build source)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check operator tooling offline
+        run: |
+          bash -n tools/build-operator-preview41.sh
+          python3 -I scripts/test-operator-preview41-bundle.py
+
+      - name: Verify signed preview.41 and build a bounded native x64 bundle
+        run: bash tools/build-operator-preview41.sh
+
+      # Artifacts contain public source and generated output only. They are not
+      # confidential, official signed release assets, or stable certification.
+      - name: Upload operator bundle, manifest and checksum only
+        id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: community-preview41-linux-x64-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/community-preview41-operator/preview41-operator-linux-x64.tar.gz
+            ${{ runner.temp }}/community-preview41-operator/preview41-operator-linux-x64.tar.gz.sha256
+            ${{ runner.temp }}/community-preview41-operator/build-manifest.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          overwrite: false
+
+      - name: Record artifact identity
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        run: |
+          printf 'Operator-only source build; not an official signed binary or stable release.\n\nArtifact ID: %s\n\nGitHub artifact SHA256: %s\n' "$ARTIFACT_ID" "$ARTIFACT_DIGEST" >> "$GITHUB_STEP_SUMMARY"
