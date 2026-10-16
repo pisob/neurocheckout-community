@@ -190,3 +190,83 @@ test('Woo history budgets, response replay and current source/installation bindi
   sync.configure(wooSource);store.db.prepare('UPDATE source_sync SET ready=1,last_complete_at=? WHERE id=1').run(Date.now());
   await assert.rejects(readCustomerHistory(store,wooInput(),wooTransport(()=>{},()=>store.db.prepare("UPDATE meta SET value='foreign' WHERE name='installation_id'").run())),/customer_history_unavailable/);
 });
+
+const prestaSource={...source,endpoint:'https://shop.example.invalid/module/neurocheckoutconnector/communitydata'};
+const prestaInput=()=>({nativeShopId:'1',customerId:'7',customerEmail:'private@example.test'});
+function prestaHistory() {
+  return {schema:'prestashop-customer-history-v1',native_shop_id:1,customer_id:7,customer_email:'private@example.test',
+    customer_created_at:'2020-01-01 00:00:00',native_timezone:'Europe/Paris',read_at:new Date().toISOString().replace(/\.\d{3}Z$/,'Z'),
+    complete:true,order_count:1,marketing_consent:'denied',orders:[{order_id:'1',current_state_id:'3',state_paid:false,state_logable:false,valid:false,
+      created_at:'2020-02-01 00:00:00',updated_at:'2020-02-01 00:00:00',currency:'EUR',total_paid_tax_incl:'48.125000',total_paid_real:'0.000000',
+      items:[{item_id:'11',product_id:'3',attribute_id:'4',quantity:'2',quantity_refunded:'1',quantity_returned:'0',total_price_tax_incl:'48.125000',total_price_tax_excl:'40.000000'}],
+      credit_slips:[{slip_id:'21',created_at:'2020-02-02 00:00:00',updated_at:'2020-02-02 00:00:00',type:1,
+        total_products_tax_incl:'24.062500',total_shipping_tax_incl:'0.000000',items:[{item_id:'11',quantity:'1',amount_tax_incl:null,amount_tax_excl:'20.000000'}]}]}],
+    payments:[{payment_id:'31',created_at:'2020-02-02 00:00:00',amount:'-2.000000',currency:'USD',conversion_rate:'1.125000',order_ids:['1'],invoice_order_ids:[]}]};
+}
+function prestaTransport(change=()=>{},after=()=>{}) {
+  return async(url,body,headers)=>{
+    assert.equal(url,prestaSource.endpoint);const request=JSON.parse(body);
+    assert.deepEqual(request,{schema:1,shopId:'synthetic-shop',operation:'customer_history',...prestaInput()});
+    assert.equal(headers['X-NC-Source-Signature'],sourceRequestSignature(prestaSource.secret,new URL(url).pathname,
+      request.shopId,headers['X-NC-Source-Time'],headers['X-NC-Source-Nonce'],body));
+    const page={schema:1,shopId:'synthetic-shop',operation:'customer_history',requestHash:createHash('sha256').update(body).digest('hex'),history:prestaHistory()};
+    change(page);const raw=Buffer.from(JSON.stringify(page));after();
+    return {body:raw,signature:sourceResponseSignature(prestaSource.secret,headers['X-NC-Source-Nonce'],raw)};
+  };
+}
+test('Presta history is transient and separates order totals, native payments and credits',async t=>{
+  const {store,directory}=fixture(t,prestaSource),value=await readCustomerHistory(store,prestaInput(),prestaTransport());
+  assert.equal(value.history.orders[0].total_paid_real,'0.000000');assert.equal(value.history.payments[0].amount,'-2.000000');
+  assert.equal(value.history.orders[0].credit_slips[0].items[0].amount_tax_incl,null);
+  assert.equal(value.history.native_timezone,'Europe/Paris');assert.equal(value.history.marketing_consent,'denied');
+  assert.equal(store.db.prepare('SELECT count(*) n FROM records').get().n,0);assert.equal(store.signals().length,0);
+  for(const name of readdirSync(directory).filter(n=>n.startsWith('local-data.sqlite')))
+    assert.equal(readFileSync(resolve(directory,name)).includes(Buffer.from('private@example.test')),false);
+  const empty=prestaHistory();empty.orders=[];empty.payments=[];empty.order_count=0;
+  assert.deepEqual(validateCustomerHistory(empty,prestaInput()).orders,[]);
+  const shared=prestaHistory();shared.orders.push({...shared.orders[0],order_id:'2',items:[{...shared.orders[0].items[0],item_id:'12'}],credit_slips:[]});
+  shared.order_count=2;shared.payments[0].order_ids.push('2');shared.payments[0].invoice_order_ids=['1','2'];
+  assert.equal(validateCustomerHistory(shared,prestaInput()).payments.length,1);
+});
+test('Presta requests cannot address a different platform or inject identity/routing fields',async t=>{
+  const {store}=fixture(t,prestaSource);
+  for(const patch of [{nativeShopId:1},{nativeShopId:'01'},{customerId:true},{customerEmail:'bad'},{storeId:'1'},{blogId:'1'},{since:'2020'},{url:'https://other.invalid'}])
+    await assert.rejects(readCustomerHistory(store,{...prestaInput(),...patch},()=>assert.fail('no network')),/customer_history_unavailable/);
+  for(const config of [source,wooSource])await assert.rejects(readCustomerHistory(fixture(t,config).store,prestaInput(),()=>assert.fail('no network')),/customer_history_unavailable/);
+  for(const request of [input(),wooInput()])await assert.rejects(readCustomerHistory(store,request,()=>assert.fail('no network')),/customer_history_unavailable/);
+});
+test('Presta refuses malformed, foreign, duplicate, partial or stale order/payment/credit facts',async t=>{
+  const {store}=fixture(t,prestaSource);
+  const changes=[p=>p.shopId='other',p=>p.requestHash='0'.repeat(64),p=>p.history.schema='woocommerce-customer-history-v1',
+    p=>p.history.native_shop_id=2,p=>p.history.customer_id=8,p=>p.history.customer_email='other@example.test',p=>p.history.complete=false,
+    p=>p.history.order_count=true,p=>p.history.native_timezone='invalid',p=>p.history.customer_created_at='2020-02-30 00:00:00',
+    p=>p.history.read_at='2020-01-01T00:00:00Z',p=>p.history.marketing_consent=true,p=>p.history.private='address',
+    p=>p.history.orders[0].valid=1,p=>p.history.orders[0].state_paid='1',p=>p.history.orders[0].total_paid_real=48,
+    p=>p.history.orders[0].total_paid_tax_incl='NaN',p=>p.history.orders[0].items=[],p=>p.history.orders[0].currency='eur',
+    p=>p.history.orders[0].items[0].quantity='-1',p=>p.history.orders[0].items[0].attribute_id=1,
+    p=>p.history.orders[0].credit_slips[0].type=true,p=>p.history.orders[0].credit_slips[0].items[0].item_id='999',
+    p=>p.history.orders[0].credit_slips[0].payment_refunded=true,p=>p.history.orders[0].credit_slips[0].items[0].amount_tax_incl='-24',
+    p=>p.history.payments[0].conversion_rate='0',p=>p.history.payments[0].amount=2,p=>p.history.payments[0].order_ids=['999'],
+    p=>p.history.payments[0].invoice_order_ids=['999'],p=>p.history.payments.push(p.history.payments[0]),
+    p=>p.history.orders[0].items.push(p.history.orders[0].items[0]),p=>p.history.payments[0].order_ids.push('1')];
+  for(const change of changes)await assert.rejects(readCustomerHistory(store,prestaInput(),prestaTransport(change)),/customer_history_unavailable/);
+  for(const consent of ['granted','denied','unknown']){const h=prestaHistory();h.marketing_consent=consent;assert.equal(validateCustomerHistory(h,prestaInput()).marketing_consent,consent);}
+});
+test('Presta budgets, signed replays and current installation/source binding are enforced',async t=>{
+  const {store,sync}=fixture(t,prestaSource);let previous;
+  await readCustomerHistory(store,prestaInput(),async(...args)=>{previous=await prestaTransport()(...args);return previous;});
+  for(const value of [previous,{...previous,body:Buffer.alloc(65537)},{...previous,signature:'0'.repeat(64)}])
+    await assert.rejects(readCustomerHistory(store,prestaInput(),async()=>value),/customer_history_unavailable/);
+  for(const mode of ['orders','payments','lines','bytes']) {
+    const h=prestaHistory();
+    if(mode==='orders'){h.orders=Array(129).fill(h.orders[0]);h.order_count=129;}
+    if(mode==='payments')h.payments=Array(129).fill(h.payments[0]);
+    if(mode==='lines'||mode==='bytes'){h.orders[0].credit_slips=[];h.orders[0].items=Array.from({length:mode==='lines'?513:512},(_,i)=>({...h.orders[0].items[0],item_id:String(i+100)}));}
+    assert.throws(()=>validateCustomerHistory(h,prestaInput()),/customer_history_unavailable/);
+  }
+  await assert.rejects(readCustomerHistory(store,prestaInput(),prestaTransport(()=>{},()=>{
+    sync.configure({...prestaSource,secret:'cd'.repeat(32)});store.db.prepare('UPDATE source_sync SET ready=1,last_complete_at=? WHERE id=1').run(Date.now());
+  })),/customer_history_unavailable/);
+  sync.configure(prestaSource);store.db.prepare('UPDATE source_sync SET ready=1,last_complete_at=? WHERE id=1').run(Date.now());
+  await assert.rejects(readCustomerHistory(store,prestaInput(),prestaTransport(()=>{},()=>store.db.prepare("UPDATE meta SET value='foreign' WHERE name='installation_id'").run())),/customer_history_unavailable/);
+});

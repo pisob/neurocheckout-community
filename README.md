@@ -81,6 +81,17 @@ in memory and current source/installation bindings are checked before and after
 the read. Tests are included in `npm run test:relay`; matching connector and Cloud
 candidates are required. This does not activate marketing or change consent.
 
+The same transient history read now supports PrestaShop with a separate exact
+shop/account contract. It preserves native orders, credit notes and unique
+shared-payment relationships without classifying credits as bank refunds or
+allocating one payment to several orders. Local timestamps and the current
+runtime timezone remain native facts, not asserted historic UTC. Limits are
+128 orders/payments/credit notes, 512 combined lines and 64,000 bytes. Platform
+mix-ups, altered responses, foreign relations, replay and binding changes fail
+closed; no history enters the catalog/outbox. `npm run test:relay` covers this
+contract. Matching connector and Cloud candidates are required; this remains
+a preparation component, not a complete independent-email sender.
+
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.

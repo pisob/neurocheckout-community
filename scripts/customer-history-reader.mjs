@@ -3,6 +3,7 @@ import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import {SourceSynchronizer,connectorEndpoint} from './local-source-sync.mjs';
 import {postSourcePage,sourceRequestSignature,sourceResponseSignature} from './source-pull-client.mjs';
 import {validateWooCustomerHistoryRequest,validateWooCustomerHistory} from './woo-customer-history.mjs';
+import {validatePrestaCustomerHistoryRequest,validatePrestaCustomerHistory} from './presta-customer-history.mjs';
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join(',')===[...keys].sort().join(',');
 const id=v=>typeof v==='string'&&/^[1-9][0-9]{0,9}$/.test(v);
 const decimal=v=>typeof v==='string'&&/^\d{1,10}(?:\.\d{1,4})?$/.test(v);
@@ -12,6 +13,7 @@ const date=(v,now)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/
   &&Number.isFinite(Date.parse(v.replace(' ','T')+'Z'))&&Date.parse(v.replace(' ','T')+'Z')<=now+15000
   &&new Date(v.replace(' ','T')+'Z').toISOString().slice(0,19).replace('T',' ')===v;
 export function validateCustomerHistoryRequest(input) {
+  if(input&&Object.hasOwn(input,'nativeShopId'))return validatePrestaCustomerHistoryRequest(input);
   if(input&&Object.hasOwn(input,'blogId'))return validateWooCustomerHistoryRequest(input);
   if(!exact(input,['storeId','websiteId','customerId','customerEmail'])
       ||!['storeId','websiteId','customerId'].every(k=>id(input[k]))||!email(input.customerEmail))fail();
@@ -19,6 +21,7 @@ export function validateCustomerHistoryRequest(input) {
 }
 export function validateCustomerHistory(h,input,now=Date.now()) {
   validateCustomerHistoryRequest(input);
+  if(Object.hasOwn(input,'nativeShopId'))return validatePrestaCustomerHistory(h,input,now);
   if(Object.hasOwn(input,'blogId'))return validateWooCustomerHistory(h,input,now);
   if(!exact(h,['schema','store_id','website_id','customer_id','customer_email','customer_group_id',
       'customer_created_at','read_at','complete','order_count','orders','marketing_consent'])
@@ -59,7 +62,7 @@ export async function readCustomerHistory(store,request,transport=sourceTranspor
     const installationId=store.db.prepare("SELECT value FROM meta WHERE name='installation_id'").get()?.value;
     if(!installationId)fail();
     const sync=new SourceSynchronizer(store),config=sync.configuration(),path=connectorEndpoint(config.endpoint).pathname;
-    const allowedPath=Object.hasOwn(input,'blogId')
+    const allowedPath=Object.hasOwn(input,'nativeShopId') ? /\/module\/neurocheckoutconnector\/communitydata$/ : Object.hasOwn(input,'blogId')
       ? /\/wp-json\/neurocheckout\/v1\/communitydata$/ : /\/neurocheckout\/community\/pull$/;
     if(!allowedPath.test(path))fail();
     const body=JSON.stringify({schema:1,shopId:store.config.shopId,operation:'customer_history',...input});
