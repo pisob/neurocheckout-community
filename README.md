@@ -71,6 +71,16 @@ Malformed, stale, replayed or foreign results and source/credential changes are
 covered by `npm run test:relay`. This capability is not a completed recommendation
 sender and does not by itself activate campaigns.
 
+The same candidate transport now supports native WooCommerce account history,
+with a separate strict site/account contract and posts/HPOS facts. It preserves
+paid-date unknowns, refund amounts and original/refund line links without
+reclassifying an order as paid. It refuses more than 128 orders, 128 refunds,
+512 lines or 64,000 bytes; partial data never becomes a successful empty history.
+WooCommerce commands cannot address a Magento source or vice versa. History stays
+in memory and current source/installation bindings are checked before and after
+the read. Tests are included in `npm run test:relay`; matching connector and Cloud
+candidates are required. This does not activate marketing or change consent.
+
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
