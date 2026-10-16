@@ -56,9 +56,15 @@ test('size limits and authenticated ciphertext reject unsafe data',t=>{
 });
 test('recommendation copies remain distinct from carts, encrypted and immutable after restart and backup',t=>{
  const dir=setup(t);let archive=new EmailArchive(dir);
- const marketing={...copy(1),delivery_id:'community-marketing-1',agent_name:'customer_preference_proactive'};
+ const marketing={...copy(1),delivery_id:'community-marketing-1',agent_name:'customer_preference_proactive',variant_id:42,language:'en'};
  archive.prepare(copy(1));archive.prepare(marketing);
- assert.deepEqual(archive.prepare({...marketing,subject:'regenerated'}).copy,marketing);
+ assert.deepEqual(archive.prepare({...marketing,subject:'regenerated',variant_id:43,language:'fr'}).copy,marketing);
+ for(const change of [{variant_id:null},{variant_id:true},{variant_id:0},{variant_id:'42'},{variant_id:9007199254740992},{language:null},{language:'invalid-language'}]) {
+  assert.throws(()=>archive.prepare({...marketing,...change}),/invalid/);
+ }
+ for(const key of ['variant_id','language']) {
+  const missing={...marketing};delete missing[key];assert.throws(()=>archive.prepare(missing),/invalid/);
+ }
  assert.throws(()=>archive.prepare({...marketing,agent_name:'intelligent_email_marketing'}),/conflict/);
  assert.throws(()=>archive.prepare({...marketing,delivery_id:'community-marketing-2',agent_name:'abandoned_cart'}),/invalid/);
  const second={...marketing,delivery_id:'community-marketing-2',agent_name:'intelligent_email_marketing'};

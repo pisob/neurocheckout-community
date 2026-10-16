@@ -51,10 +51,11 @@ test("online relay reports a stale connector separately and resumes without leak
   } finally { store.close(); }
 });
 
-test("authenticated relay archives large copies and confirms only metadata", async t => {
+for(const marketing of [false,true]) test(`authenticated relay archives large ${marketing?'marketing':'cart'} copies and confirms only metadata`, async t => {
   const options=fixture(t), auth=credential();await saveRelayCredential(options,auth);
   let operation="archive_email";
   const copy={delivery_id:"community-edge-1",recipient_email:"private@example.invalid",subject:"Original",body_html:"<p>"+"x".repeat(5000)+"</p>",body_text:"Original",agent_name:"abandoned_cart",copy_signature:"a".repeat(64)};
+  if(marketing)Object.assign(copy,{delivery_id:'community-marketing-1',agent_name:'customer_preference_proactive',variant_id:42,language:'en'});
   const mock=async (url,init)=>{
     if(url.endsWith("/api/health"))return Response.json({service:"neurocheckout-community"});
     assert.equal(init.headers.Authorization,`Bearer ${auth.token}`);

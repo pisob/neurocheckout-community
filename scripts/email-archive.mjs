@@ -39,9 +39,12 @@ export class EmailArchive {
   }
   prepare(value) {
     const keys = ['delivery_id','recipient_email','subject','body_html','body_text','agent_name','copy_signature'];
+    const marketing = typeof value?.delivery_id === 'string' && value.delivery_id.startsWith('community-marketing-');
+    if (marketing) keys.push('variant_id','language');
     if (!value || Object.keys(value).sort().join() !== keys.sort().join() || !validId(value.delivery_id)) throw Error('email_archive_invalid');
-    if (value.delivery_id.startsWith('community-marketing-') &&
-        !['customer_preference_proactive','intelligent_email_marketing'].includes(value.agent_name)) throw Error('email_archive_invalid');
+    if (marketing && (!['customer_preference_proactive','intelligent_email_marketing'].includes(value.agent_name) ||
+        !Number.isSafeInteger(value.variant_id) || value.variant_id < 1 || typeof value.language !== 'string' ||
+        !/^[a-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})?$/.test(value.language))) throw Error('email_archive_invalid');
     if (typeof value.copy_signature !== 'string' || !/^[a-f0-9]{64}$/.test(value.copy_signature)) throw Error('email_archive_invalid');
     for (const [name, max] of [['recipient_email',320],['subject',998],['body_html',65536],['body_text',16384],['agent_name',100]]) {
       if (typeof value[name] !== 'string' || Buffer.byteLength(value[name]) > max) throw Error('email_archive_invalid');

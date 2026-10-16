@@ -36,7 +36,7 @@ initializeLocalData(stateDirectory, "synthetic-shop");
 const localKeys = loadLocalDataConfig(stateDirectory);
 const emailArchive=new EmailArchive(stateDirectory);
 for(const id of [1,2])emailArchive.prepare({delivery_id:`community-edge-${id}`,recipient_email:'email-copy@example.invalid',subject:'Archived original',body_html:'<p>PRIVATE ARCHIVED ORIGINAL</p>',body_text:'PRIVATE ARCHIVED ORIGINAL',agent_name:'abandoned_cart',copy_signature:'a'.repeat(64)});
-emailArchive.prepare({delivery_id:'community-marketing-1',recipient_email:'email-copy@example.invalid',subject:'Recommendation original',body_html:'<p>PRIVATE RECOMMENDATION ORIGINAL</p>',body_text:'PRIVATE RECOMMENDATION ORIGINAL',agent_name:'customer_preference_proactive',copy_signature:'b'.repeat(64)});
+emailArchive.prepare({delivery_id:'community-marketing-1',recipient_email:'email-copy@example.invalid',subject:'Recommendation original',body_html:'<p>PRIVATE RECOMMENDATION ORIGINAL</p>',body_text:'PRIVATE RECOMMENDATION ORIGINAL',agent_name:'customer_preference_proactive',copy_signature:'b'.repeat(64),variant_id:42,language:'en'});
 emailArchive.close();
 const observed = {
   tokenExchange: false,

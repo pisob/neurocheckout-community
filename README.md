@@ -294,7 +294,9 @@ Only a matching store, installation and copy signature can supply that preview.
 Approving sends the signature, not editable email content. A recommendation copy
 cannot be substituted with a cart copy that happens to have the same numeric ID.
 Missing originals remain unavailable and cannot be confirmed as archived. This
-client-side compatibility does not itself activate campaigns or email delivery.
+client-side compatibility also preserves the original template variant and
+language during retries; an already archived copy is never overwritten by newly
+generated content. It does not itself activate campaigns or email delivery.
 
 Older messages without a saved copy display **Preview unavailable**. An absent
 opening, click or conversion record is not inferred from viewing the preview.
