@@ -59,6 +59,15 @@ outbox. Community only transports them; selection and sending remain Cloud
 responsibilities. This capability alone does not activate recommendation emails.
 Regression checks are included in `npm run test:relay` and `npm run test:source-pull`.
 
+The same candidate transport supports recipient-specific WooCommerce prices,
+with a separate exact site/account contract. The configured endpoint must match
+the requested platform. Native tax display amounts, precision and context binding
+stay intact; stale, incomplete, foreign or altered replies are refused. Prices
+remain in memory, not in the catalog or outbox. Woo and Magento cannot substitute
+for each other's contracts. `npm run test:relay` covers these boundaries; matching
+connector/Cloud candidates and final sending-policy checks are still required.
+This capability alone does not activate a recommendation campaign.
+
 With matching services, the candidate also relays an on-demand native Magento
 account order history. It uses the same configured signed source, current
 installation and six-second deadline, with a 64 KiB response limit. The exact
