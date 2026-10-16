@@ -47,6 +47,18 @@ independent recommendation emails. Regression tests include a synthetic catalog
 of 2,045 products, altered/expired cursors, source outages and store isolation
 (`npm run test:local-data` and `npm run test:relay`).
 
+The candidate can also relay a recipient-specific Magento price read on demand,
+with matching connector and Cloud support. It uses only the already configured
+signed HTTPS source, not a URL supplied by a command. Up to 16 exact products are
+requested for the bound store, website, customer and currency. A request has a
+six-second deadline and 16 KiB response limit; signatures, nonce/request binding,
+15-second price freshness and unchanged source credentials/installation are
+checked. Unsupported, stale or unavailable data is not replaced with a generic
+catalog price. These prices remain transient and never enter the catalog or
+outbox. Community only transports them; selection and sending remain Cloud
+responsibilities. This capability alone does not activate recommendation emails.
+Regression checks are included in `npm run test:relay` and `npm run test:source-pull`.
+
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.

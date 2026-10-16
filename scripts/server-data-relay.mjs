@@ -4,6 +4,7 @@ import { constants } from "node:fs";
 import { resolve } from "node:path";
 import { LocalDataStore, initializeLocalData } from "./local-data-store.mjs";
 import { readLocalCatalog } from "./local-catalog-reader.mjs";
+import { readCustomerPrices } from "./customer-price-reader.mjs";
 import { EmailArchive } from "./email-archive.mjs";
 import { permittedCloud } from "./deployment-environment.mjs";
 
@@ -84,15 +85,15 @@ async function smallJson(response, limit) {
 // Shared across callers (workspace, scheduled loop, manual retry). A second
 // caller must never consume another poll/reply or acknowledge its outbox batch.
 const activeRelays = globalThis.__ncActiveRelays ||= new Set();
-export async function relayOnce(options, fetchImpl = fetch) {
+export async function relayOnce(options, fetchImpl = fetch, sourceTransport = undefined) {
   const scope = resolve(options.directory);
   if (activeRelays.has(scope)) return false;
   activeRelays.add(scope);
-  try { return await performRelayOnce(options, fetchImpl); }
+  try { return await performRelayOnce(options, fetchImpl, sourceTransport); }
   finally { activeRelays.delete(scope); }
 }
 
-async function performRelayOnce(options, fetchImpl) {
+async function performRelayOnce(options, fetchImpl, sourceTransport) {
   try {
     if (!permitted(options)) return false;
     const credential = await load(options);
@@ -129,7 +130,7 @@ async function performRelayOnce(options, fetchImpl) {
     const item = await smallJson(response, 128 * 1024);
     if (!item || Object.keys(item).length !== 1 || !Array.isArray(item.commands) || item.commands.length > 1) return false;
     for (const command of item.commands) {
-      if (!command || Object.keys(command).sort().join(",") !== "operation,record,request_id" || !["read", "read_catalog", "archive_email", "confirm_email", "read_email"].includes(command.operation) || !/^[a-f0-9]{32}$/.test(command.request_id)) return false;
+      if (!command || Object.keys(command).sort().join(",") !== "operation,record,request_id" || !["read", "read_catalog", "read_customer_prices", "archive_email", "confirm_email", "read_email"].includes(command.operation) || !/^[a-f0-9]{32}$/.test(command.request_id)) return false;
       let result, store;
       try {
         if (["archive_email", "confirm_email", "read_email"].includes(command.operation)) {
@@ -153,7 +154,9 @@ async function performRelayOnce(options, fetchImpl) {
         store = new LocalDataStore(options.directory, Date.now, options.environment);
         if (store.config.shopId !== credential.shop_id) throw new Error("relay_store_mismatch");
         store.bindInstallation(credential.installation_id);
-        result = command.operation === "read_catalog"
+        result = command.operation === "read_customer_prices"
+          ? { status: "ok", result: await readCustomerPrices(store, command.record, sourceTransport) }
+          : command.operation === "read_catalog"
           ? { status: "ok", page: readLocalCatalog(store, command.record) }
           : { status: "ok", record: store.read(command.record) };
         }
