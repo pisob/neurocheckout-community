@@ -36,6 +36,17 @@ private addresses, redirects and unverified responses remain blocked. A source
 outage pauses dependent actions and is retried automatically without resetting
 the installation or its credentials.
 
+With matching Cloud support, the outgoing relay can read a complete local
+product catalog in bounded pages rather than relying on a small sample. This
+transport does not select products or make marketing decisions in Community.
+The vault must be freshly synchronized; signed continuation tokens expire after
+two minutes, are bound to the store and installation, and become invalid when
+the catalog changes. Cart and customer records are not included in these pages.
+Products remain encrypted at rest. This client capability alone does not enable
+independent recommendation emails. Regression tests include a synthetic catalog
+of 2,045 products, altered/expired cursors, source outages and store isolation
+(`npm run test:local-data` and `npm run test:relay`).
+
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.

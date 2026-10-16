@@ -112,6 +112,36 @@ test("outgoing polling reads locally, replies only to Cloud and survives restart
   assert.equal(await relayOnce(options, mock), true);
 });
 
+test("catalog pages use the authenticated vault and report snapshot changes explicitly", async t => {
+  const options = fixture(t), auth = credential();
+  await saveRelayCredential(options, auth);
+  const store = new LocalDataStore(options.directory);
+  const put = (id, revision = 1) => store.put({ kind: "product", sourceId: String(id), revision,
+    operation: "upsert", observedAt: new Date().toISOString(), payload: { name: "Private catalog item" } });
+  for (let id = 1; id <= 33; id++) put(id);
+  let cursor = "", result;
+  const mock = async (url, init) => {
+    if (url.endsWith("/api/health")) return Response.json({ service: "neurocheckout-community" });
+    assert.equal(init.headers.Authorization, `Bearer ${auth.token}`);
+    if (url.endsWith("/signals")) return Response.json({ accepted_ids: JSON.parse(init.body).signals.map(s => s.id) });
+    if (url.endsWith("/poll")) return Response.json({ commands: [{ request_id: "b".repeat(32), operation: "read_catalog", record: { cursor } }] });
+    assert.equal(url, `${options.cloudUrl}/api/v1/public/community-relay/reply`);
+    result = JSON.parse(init.body).result;
+    return Response.json({ accepted: true });
+  };
+  try {
+    assert.equal(await relayOnce(options, mock), true);
+    assert.equal(result.status, "ok"); assert.equal(result.page.records.length, 32);
+    assert.equal(result.page.installationId, auth.installation_id); assert.equal(result.page.shopId, auth.shop_id);
+    cursor = result.page.nextCursor;
+    assert.equal(await relayOnce(options, mock), true);
+    assert.equal(result.page.records.length, 1); assert.equal(result.page.nextCursor, "");
+    put(1, 2);
+    assert.equal(await relayOnce(options, mock), true);
+    assert.deepEqual(result, { status: "catalog_changed" });
+  } finally { store.close(); }
+});
+
 test("no callback URLs, writes or account substitution are accepted", async t => {
   const options = fixture(t), auth = credential(); await saveRelayCredential(options, auth);
   const before = readFileSync(resolve(options.directory, "data-relay.enc"));
