@@ -219,7 +219,14 @@ const cloud = createServer(async (request, response) => {
   if (request.method === "GET" && request.url.startsWith("/api/v1/member/analytics/recent-emails?")) {
     const query=new URL(request.url,cloudOrigin).searchParams;
     if(query.get('shop_uuid')!=='33333333-3333-4333-8333-333333333333')return json(response,403,{detail:'forbidden'});
-    return json(response,200,{shop:{shop_uuid:query.get('shop_uuid'),shop_id:failureMode==='archive-shop'?'other-shop':'synthetic-shop'},limit:10,count:1,items:[{delivery_id:'community-edge-1',sent_at:new Date().toISOString(),status:'sent',customer:{}}]});
+    return json(response,200,{shop:{shop_uuid:query.get('shop_uuid'),shop_id:failureMode==='archive-shop'?'other-shop':'synthetic-shop'},limit:10,count:2,history_state:'complete',items:[
+      {delivery_id:'community-edge-1',sent_at:new Date().toISOString(),status:'sent',customer:{}},
+      {delivery_id:'community-marketing-1',sent_at:new Date().toISOString(),status:'clicked',customer:{},
+        shop_id:'synthetic-shop',installation_id:failureMode==='history-installation'?'22222222-2222-4222-8222-222222222222':'11111111-1111-4111-8111-111111111111',
+        agent_name:'customer_preference_proactive',content_location:'community_local',
+        community_copy_signature:(failureMode==='history-signature'?'c':'b').repeat(64),
+        copy_diagnostic:{source:'db',variant_id:42,language:'en'},conversion_tracking_available:false}
+    ]});
   }
 
   if (request.method === 'GET' && request.url.startsWith('/api/v1/member/email-approvals?')) {
@@ -431,13 +438,24 @@ try {
   const emailPath='/api/cloud/recent-emails?shop_uuid=33333333-3333-4333-8333-333333333333';
   const emails=await communityFetch(emailPath);assert.equal(emails.status,200);
   assert.match(emails.headers.get('cache-control'),/no-store/);
-  const copies=await emails.json();assert.equal(copies.items.length,1);
+  const copies=await emails.json();assert.equal(copies.items.length,2);
   assert.equal(copies.items[0].body_html,'<p>PRIVATE ARCHIVED ORIGINAL</p>');
   assert.equal(copies.items[0].preview_available,true);
+  assert.equal(copies.items[1].preview_available,true);
+  assert.equal(copies.items[1].body_html,'<p>PRIVATE RECOMMENDATION ORIGINAL</p>');
+  assert.equal(copies.items[1].status,'clicked');
+  assert.equal(copies.items[1].copy_diagnostic.variant_id,42);
   assert.equal(JSON.stringify(copies).includes('community-edge-2'),false);
   assert.equal((await communityFetch('/api/cloud/recent-emails?shop_uuid=44444444-4444-4444-8444-444444444444')).status,403);
   failureMode='archive-shop';
   assert.equal(JSON.stringify(await (await communityFetch(emailPath)).json()).includes('PRIVATE ARCHIVED ORIGINAL'),false);
+  for(const mode of ['history-installation','history-signature']) {
+    failureMode=mode;
+    const mismatch=await (await communityFetch(emailPath)).json();
+    assert.equal(mismatch.items[0].preview_available,true);
+    assert.equal(mismatch.items[1].preview_available,false);
+    assert.equal(JSON.stringify(mismatch).includes('PRIVATE RECOMMENDATION ORIGINAL'),false);
+  }
   failureMode='';
 
   const journeyAudit = await communityFetch("/api/cloud/journey-audit?shop_uuid=33333333-3333-4333-8333-333333333333&days=30&limit=10&session_page=1&session_filter=cart");

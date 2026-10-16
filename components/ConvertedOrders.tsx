@@ -38,6 +38,7 @@ type RecentEmailPayload = {
   count: number;
   total: number | null;
   has_more: boolean;
+  history_state: "complete" | "partial";
   status_counts: Record<string, number | null>;
   items: RecentEmail[];
   detail?: string;
@@ -66,6 +67,7 @@ function normalizeConvertedPayload(value: unknown): ConvertedPayload | null {
 
 function normalizeRecentEmailPayload(value: unknown): RecentEmailPayload | null {
   if (!isRecord(value) || !isRecord(value.shop) || !Array.isArray(value.items)) return null;
+  const partial = value.history_state !== undefined && value.history_state !== "complete";
   const items = value.items
     .filter(isRecord)
     .map((item) => ({
@@ -77,9 +79,10 @@ function normalizeRecentEmailPayload(value: unknown): RecentEmailPayload | null 
     limit: typeof value.limit === "number" ? value.limit : 10,
     offset: typeof value.offset === "number" ? value.offset : 0,
     count: typeof value.count === "number" ? value.count : items.length,
-    total: typeof value.total === "number" && Number.isSafeInteger(value.total) && value.total >= 0 ? value.total : null,
+    total: !partial && typeof value.total === "number" && Number.isSafeInteger(value.total) && value.total >= 0 ? value.total : null,
     has_more: value.has_more === true,
-    status_counts: isRecord(value.status_counts)
+    history_state: partial ? "partial" : "complete",
+    status_counts: !partial && isRecord(value.status_counts)
       ? Object.fromEntries(Object.entries(value.status_counts).map(([key, count]) => [key, typeof count === "number" && Number.isSafeInteger(count) && count >= 0 ? count : null]))
       : {},
     items,
@@ -308,8 +311,9 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
           </details>
 
           {emailError ? <div className="email-activity-error" role="alert"><p>{emailError}</p><button className="button ghost" disabled={emailLoading} onClick={() => void loadRecentEmails()}>{ui("Retry loading emails", "Recharger les emails")}</button><a className="button ghost" href="#sync-health">{ui("Check synchronization", "Vérifier la synchronisation")}</a></div> : null}
+          {!emailLoading && !emailError && currentEmailPayload?.history_state === "partial" ? <div className="email-activity-error" role="alert"><p>{ui("Recommendation email history is temporarily unavailable. Available records remain visible, but totals cannot be confirmed. Refresh to retry; do not resend emails to restore history.", "L’historique des emails de recommandation est temporairement indisponible. Les preuves disponibles restent visibles, mais les totaux ne peuvent pas être confirmés. Actualisez pour réessayer ; ne renvoyez pas les emails pour restaurer l’historique.")}</p><button className="button ghost" onClick={() => void loadRecentEmails()}>{ui("Retry loading emails", "Recharger les emails")}</button></div> : null}
           {emailLoading ? <div className="email-activity-state"><span className="loader" /><p>{ui("Loading sent emails…", "Chargement des emails envoyés…")}</p></div> : null}
-          {!emailLoading && !emailError && emailPayload?.items.length === 0 ? (
+          {!emailLoading && !emailError && currentEmailPayload?.history_state !== "partial" && emailPayload?.items.length === 0 ? (
             <div className="email-activity-state"><p>{emailFilter === "all"
               ? ui("No customer email has been sent for this store yet.", "Aucun email client n’a encore été envoyé pour cette boutique.")
               : ui("No email matches this status in the recent history.", "Aucun email ne correspond à ce statut dans l’historique récent.")}</p></div>
@@ -319,7 +323,7 @@ export default function ConvertedOrders({ language, recentEmailsEnabled }: { lan
               <SentEmailPreview key={currentEmailContext} items={emailPayload.items.slice(0,10)} language={language} currency={emailPayload.shop.currency_code} />
               <nav className="email-pagination" aria-label={ui("Email history pages", "Pages de l’historique email")}>
                 <button className="button ghost" type="button" disabled={emailOffset === 0} onClick={() => setEmailOffset(Math.max(0, emailOffset - 10))}>{ui("Previous", "Précédent")}</button>
-                <span>{ui("Page", "Page")} {emailPage} / {emailPages}</span>
+                <span>{ui("Page", "Page")} {emailPage} / {currentEmailPayload?.total == null ? "—" : emailPages}</span>
                 <button className="button ghost" type="button" disabled={!emailPayload.has_more} onClick={() => setEmailOffset(emailOffset + 10)}>{ui("Next", "Suivant")}</button>
               </nav>
             </>

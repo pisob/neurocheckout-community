@@ -333,6 +333,21 @@ client-side compatibility also preserves the original template variant and
 language during retries; an already archived copy is never overwritten by newly
 generated content. It does not itself activate campaigns or email delivery.
 
+The candidate also displays independently accepted recommendation deliveries in
+**Orders & emails**, with their Cloud-recorded agent, DB variant, language and
+open/click status. A local original is shown only when its store, installation,
+signature, agent, variant and language all match that delivery. An uncertain send
+is not an accepted delivery, and an open/click is not a conversion. Order attribution
+for this candidate recommendation path remains unavailable and is labeled as such.
+Recommendation product links are not labeled as cart-recovery links.
+
+If Cloud reports a partial history, other available evidence remains visible but
+totals become unknown (a dash), with an English/French warning and retry action.
+No false empty-history message is shown. Retrying only reads history; it does not
+resend emails or reconstruct missing originals. Older Cloud versions remain
+compatible. Checks: `test:email-history`, `test:email-archive`, `test:journeys`,
+`smoke:integration` and `smoke:workspace`, using synthetic records only.
+
 Older messages without a saved copy display **Preview unavailable**. An absent
 opening, click or conversion record is not inferred from viewing the preview.
 This feature does not add tracking to delivery paths that do not support it.

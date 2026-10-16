@@ -64,17 +64,22 @@ try {
  const history = statuses.map((status, index) => ({ ...items[0], delivery_id: `community-edge-${100+index}`,
    subject: `Message ${status}`, status, body_html: `<p>Content ${status}</p>`, tracking_available: true,
    attributed_orders: status === 'converted' ? [{ order_id: 'fixture-order-42', cart_id: 'fixture-cart-9', order_total: 12.34 }] : [] }));
+ Object.assign(history[3], {delivery_id:'community-marketing-41',agent_name:'customer_preference_proactive',
+   conversion_tracking_available:false,
+   body_html:'<p>Content clicked</p><a href="https://tracking.invalid/product">Découvrez votre prochaine commande</a>'});
  let releaseSlow, startedSlow;
  const slowStarted = new Promise(resolve => { startedSlow = resolve; });
  const slowGate = new Promise(resolve => { releaseSlow = resolve; });
  let slowOnce = true;
+ let partialHistory=false, emptyHistory=false;
  await page.route('**/api/cloud/recent-emails?*', async route => {
    const query = new URL(route.request().url()).searchParams;
    const status = query.get('status');
    if (status === 'sent' && slowOnce) { slowOnce = false; startedSlow(); await slowGate; }
-   const filtered = status === 'all' ? history : history.filter(item => item.status === status);
+   const filtered = emptyHistory ? [] : status === 'all' ? history : history.filter(item => item.status === status);
    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ shop, items: filtered,
      count: filtered.length, total: filtered.length, limit: 10, offset: 0, has_more: false,
+     history_state:partialHistory?'partial':'complete',
      status_counts: Object.fromEntries(statuses.map(status => [status, 1])) }) });
  });
  await page.setViewportSize({width:1440,height:1100});
@@ -96,6 +101,33 @@ try {
  await tab('All').click();
  await page.getByRole('button', {name:/Message clicked/}).click();
  await page.frameLocator('.sent-email-inspector iframe').getByText('Content clicked', {exact:true}).waitFor();
+ await page.getByText('Order attribution is not yet available for this recommendation delivery path.',{exact:false}).waitFor();
+ await page.locator('.sent-email-inspector dl').getByText('Product advisor',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('link',{name:'Open original cart link'}).count(),0);
+ partialHistory=true;
+ await page.locator('.analytics-toolbar').getByRole('button',{name:'Refresh',exact:true}).click();
+ await page.getByRole('alert').getByText('Recommendation email history is temporarily unavailable.',{exact:false}).waitFor();
+ assert.equal(await page.locator('.email-status-filters button span').filter({hasText:'—'}).count(),7);
+ await page.getByRole('button',{name:/Message clicked/}).click();
+ await page.frameLocator('.sent-email-inspector iframe').getByText('Content clicked',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'FR',exact:true}).click();
+ await page.getByRole('alert').getByText('L’historique des emails de recommandation est temporairement indisponible.',{exact:false}).waitFor();
+ await page.getByRole('button',{name:/Message clicked/}).click();
+ await page.getByText('L’attribution des commandes n’est pas encore disponible pour ce circuit de recommandation.',{exact:false}).waitFor();
+ emptyHistory=true;
+ const emptyResponse=page.waitForResponse(response=>response.url().includes('/api/cloud/recent-emails?'));
+ await page.getByRole('button',{name:'Recharger les emails',exact:true}).click();
+ await emptyResponse;
+ await page.locator('.email-activity .loader').waitFor({state:'detached'});
+ await page.getByRole('alert').getByText('L’historique des emails de recommandation est temporairement indisponible.',{exact:false}).waitFor();
+ await page.waitForFunction(()=>!document.querySelector('.sent-email-inspector'));
+ assert.equal(await page.getByText('Aucun email client n’a encore été envoyé pour cette boutique.',{exact:true}).count(),0);
+ assert.equal(await page.locator('.email-status-filters button span').filter({hasText:'—'}).count(),7);
+ partialHistory=false;emptyHistory=false;
+ await page.getByRole('button',{name:'EN',exact:true}).click();
+ await page.getByRole('button',{name:/Message clicked/}).waitFor();
+ await page.locator('.email-activity').getByRole('alert').waitFor({state:'detached'});
+ assert.equal(await page.locator('.email-activity').getByRole('alert').count(),0);
  await page.locator('nav').getByRole('button',{name:/Usage$/}).click();
  await page.getByText('last 24 hours',{exact:false}).first().waitFor();
  assert.equal(await page.locator('.usage-number strong').innerText(),'0');
@@ -118,5 +150,6 @@ try {
  assert.deepEqual(errors, []);
  console.log('Rolling quota, French labels and unavailable-not-zero browser states passed.');
  console.log('Exclusive status tabs, delayed response rejection and preview identity passed.');
+ console.log('Recommendation agent/variant, unavailable attribution, partial history and recovery passed in English/French.');
  console.log('Desktop/mobile, original preview, missing-copy state, modal keyboard and zero external requests passed.');
 }finally{await browser?.close();server.kill('SIGTERM');if(server.exitCode===null)await once(server,'exit');}
