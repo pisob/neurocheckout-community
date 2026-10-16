@@ -2,7 +2,8 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { LocalDataStore } from './local-data-store.mjs';
 
 const DAY = 86400000;
-const idPattern = /^community-edge-[1-9][0-9]{0,15}$/;
+const idPattern = /^community-(?:edge|marketing)-[1-9][0-9]{0,15}$/;
+const validId = value => typeof value === 'string' && idPattern.test(value);
 export class EmailArchive {
   constructor(directory, clock = Date.now, environment = undefined) {
     this.store = new LocalDataStore(directory, Date.now, environment); this.clock = clock;
@@ -30,7 +31,7 @@ export class EmailArchive {
     this.db.exec('DELETE FROM email_archive_conversions WHERE id NOT IN (SELECT id FROM email_archive)');
   }
   markConverted(id, convertedAt) {
-    if (!idPattern.test(id) || typeof convertedAt !== 'string' || !Number.isFinite(Date.parse(convertedAt)) || Date.parse(convertedAt) > this.clock()+60000) throw Error('email_archive_invalid');
+    if (!validId(id) || typeof convertedAt !== 'string' || !Number.isFinite(Date.parse(convertedAt)) || Date.parse(convertedAt) > this.clock()+60000) throw Error('email_archive_invalid');
     this.db.prepare(`INSERT INTO email_archive_conversions(id,converted_at)
       SELECT id,? FROM email_archive WHERE id=?
       ON CONFLICT(id) DO UPDATE SET converted_at=MIN(converted_at,excluded.converted_at)`)
@@ -38,7 +39,9 @@ export class EmailArchive {
   }
   prepare(value) {
     const keys = ['delivery_id','recipient_email','subject','body_html','body_text','agent_name','copy_signature'];
-    if (!value || Object.keys(value).sort().join() !== keys.sort().join() || !idPattern.test(value.delivery_id)) throw Error('email_archive_invalid');
+    if (!value || Object.keys(value).sort().join() !== keys.sort().join() || !validId(value.delivery_id)) throw Error('email_archive_invalid');
+    if (value.delivery_id.startsWith('community-marketing-') &&
+        !['customer_preference_proactive','intelligent_email_marketing'].includes(value.agent_name)) throw Error('email_archive_invalid');
     if (typeof value.copy_signature !== 'string' || !/^[a-f0-9]{64}$/.test(value.copy_signature)) throw Error('email_archive_invalid');
     for (const [name, max] of [['recipient_email',320],['subject',998],['body_html',65536],['body_text',16384],['agent_name',100]]) {
       if (typeof value[name] !== 'string' || Buffer.byteLength(value[name]) > max) throw Error('email_archive_invalid');
@@ -62,14 +65,15 @@ export class EmailArchive {
     });
   }
   confirm(id, sentAt) {
-    if (!idPattern.test(id) || typeof sentAt !== 'string' || !Number.isFinite(Date.parse(sentAt)) || Date.parse(sentAt) > this.clock()+60000) throw Error('email_archive_invalid');
+    if (!validId(id) || typeof sentAt !== 'string' || !Number.isFinite(Date.parse(sentAt)) || Date.parse(sentAt) > this.clock()+60000) throw Error('email_archive_invalid');
     this.store.transaction(() => {
-      this.db.prepare('UPDATE email_archive SET sent_at=COALESCE(sent_at,?) WHERE id=?').run(Date.parse(sentAt),id);
+      const changed = this.db.prepare('UPDATE email_archive SET sent_at=COALESCE(sent_at,?) WHERE id=?').run(Date.parse(sentAt),id);
+      if (changed.changes !== 1) throw Error('email_archive_unavailable');
       this.clean();
     });
   }
   get(id) {
-    if (!idPattern.test(id)) return null;
+    if (!validId(id)) return null;
     const row = this.db.prepare('SELECT * FROM email_archive WHERE id=? AND COALESCE(sent_at,created_at)>=?').get(id,this.clock()-30*DAY);
     if (!row) return null;
     const bytes=Buffer.from(row.ciphertext), decipher=createDecipheriv('aes-256-gcm',Buffer.from(this.store.config.encryptionKey,'hex'),bytes.subarray(0,12));

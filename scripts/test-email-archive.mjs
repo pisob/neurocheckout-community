@@ -54,3 +54,36 @@ test('size limits and authenticated ciphertext reject unsafe data',t=>{
  assert.throws(()=>archive.prepare({...copy(1),shop_id:'other'}),/invalid/);
  archive.prepare(copy(1));archive.db.prepare('UPDATE email_archive SET id=?').run('community-edge-2');assert.throws(()=>archive.get('community-edge-2'));archive.close();
 });
+test('recommendation copies remain distinct from carts, encrypted and immutable after restart and backup',t=>{
+ const dir=setup(t);let archive=new EmailArchive(dir);
+ const marketing={...copy(1),delivery_id:'community-marketing-1',agent_name:'customer_preference_proactive'};
+ archive.prepare(copy(1));archive.prepare(marketing);
+ assert.deepEqual(archive.prepare({...marketing,subject:'regenerated'}).copy,marketing);
+ assert.throws(()=>archive.prepare({...marketing,agent_name:'intelligent_email_marketing'}),/conflict/);
+ assert.throws(()=>archive.prepare({...marketing,delivery_id:'community-marketing-2',agent_name:'abandoned_cart'}),/invalid/);
+ const second={...marketing,delivery_id:'community-marketing-2',agent_name:'intelligent_email_marketing'};
+ archive.prepare(second);archive.confirm(marketing.delivery_id,new Date().toISOString());
+ archive.markConverted(marketing.delivery_id,new Date().toISOString());
+ const backup=join(dir,'backup');archive.store.backup(backup);archive.close();
+ for(const file of readdirSync(dir).filter(f=>f.startsWith('local-data.sqlite'))) {
+  const bytes=readFileSync(join(dir,file));assert(!bytes.includes(Buffer.from('PRIVATE ORIGINAL')));assert(!bytes.includes(Buffer.from('private@example.invalid')));
+ }
+ archive=new EmailArchive(backup);
+ assert.deepEqual(archive.get('community-edge-1'),copy(1));assert.deepEqual(archive.get(marketing.delivery_id),marketing);
+ assert.deepEqual(archive.get(second.delivery_id),second);
+ // An attacker cannot relabel a cart ciphertext as a marketing original.
+ archive.db.prepare('UPDATE email_archive SET ciphertext=(SELECT ciphertext FROM email_archive WHERE id=?) WHERE id=?').run('community-edge-1',marketing.delivery_id);
+ assert.throws(()=>archive.get(marketing.delivery_id));archive.close();
+});
+test('invalid ids and missing originals never produce a false confirmation',t=>{
+ const dir=setup(t),archive=new EmailArchive(dir),sentAt=new Date().toISOString();
+ for(const id of [null,1,['community-edge-1'],'community-marketing-0','community-marketing-01','community-marketing-12345678901234567']) {
+  assert.throws(()=>archive.prepare({...copy(1),delivery_id:id}),/invalid/);
+  assert.throws(()=>archive.confirm(id,sentAt),/invalid/);
+  assert.throws(()=>archive.markConverted(id,sentAt),/invalid/);
+  assert.equal(archive.get(id),null);
+ }
+ assert.throws(()=>archive.confirm('community-marketing-1',sentAt),/unavailable/);
+ archive.prepare(copy(1));archive.confirm('community-edge-1',sentAt);archive.confirm('community-edge-1',sentAt);
+ archive.close();
+});

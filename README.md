@@ -288,6 +288,14 @@ limited to the latest 50, plus up to 50 copies identified as converted when
 viewing their delivery history, and expire after 30 days. Unconfirmed preparations are bounded to
 100 and expire after 24 hours. Include your private Community state in backups.
 
+With matching Cloud support, **Email approvals** can display the exact encrypted
+original for an independent product-recommendation email as well as a cart email.
+Only a matching store, installation and copy signature can supply that preview.
+Approving sends the signature, not editable email content. A recommendation copy
+cannot be substituted with a cart copy that happens to have the same numeric ID.
+Missing originals remain unavailable and cannot be confirmed as archived. This
+client-side compatibility does not itself activate campaigns or email delivery.
+
 Older messages without a saved copy display **Preview unavailable**. An absent
 opening, click or conversion record is not inferred from viewing the preview.
 This feature does not add tracking to delivery paths that do not support it.

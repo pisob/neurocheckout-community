@@ -15,6 +15,16 @@ test('only exact local signed original is displayed, without changing status', (
   assert.equal(result.body_html, copy.body_html);
   assert.equal(result.recipient_email, copy.recipient_email);
 });
+test('recommendations require their own exact copy, never a cart with the same numeric id', () => {
+  const marketing={...item,delivery_id:'community-marketing-41'};
+  const original={...copy,delivery_id:marketing.delivery_id};
+  assert.equal(enrichEmailApprovals([marketing],archive)[0].preview_available,false);
+  assert.equal(enrichEmailApprovals([marketing],{...archive,get:()=>original})[0].preview_available,true);
+  for(const changed of [{shopId:'other'},{installationId:'other'},{get:()=>({...original,copy_signature:'b'.repeat(64)})}]) {
+    const result=enrichEmailApprovals([marketing],{...archive,get:()=>original,...changed})[0];
+    assert.equal(result.preview_available,false);assert.equal(result.subject,'');
+  }
+});
 for (const [name, changed] of Object.entries({
   'another shop': { shopId: 'other' }, 'another installation': { installationId: 'other' },
   'missing original': { get: () => null }, 'changed signature': { get: () => ({ ...copy, copy_signature: 'b'.repeat(64) }) },

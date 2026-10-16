@@ -36,6 +36,7 @@ initializeLocalData(stateDirectory, "synthetic-shop");
 const localKeys = loadLocalDataConfig(stateDirectory);
 const emailArchive=new EmailArchive(stateDirectory);
 for(const id of [1,2])emailArchive.prepare({delivery_id:`community-edge-${id}`,recipient_email:'email-copy@example.invalid',subject:'Archived original',body_html:'<p>PRIVATE ARCHIVED ORIGINAL</p>',body_text:'PRIVATE ARCHIVED ORIGINAL',agent_name:'abandoned_cart',copy_signature:'a'.repeat(64)});
+emailArchive.prepare({delivery_id:'community-marketing-1',recipient_email:'email-copy@example.invalid',subject:'Recommendation original',body_html:'<p>PRIVATE RECOMMENDATION ORIGINAL</p>',body_text:'PRIVATE RECOMMENDATION ORIGINAL',agent_name:'customer_preference_proactive',copy_signature:'b'.repeat(64)});
 emailArchive.close();
 const observed = {
   tokenExchange: false,
@@ -219,6 +220,17 @@ const cloud = createServer(async (request, response) => {
     const query=new URL(request.url,cloudOrigin).searchParams;
     if(query.get('shop_uuid')!=='33333333-3333-4333-8333-333333333333')return json(response,403,{detail:'forbidden'});
     return json(response,200,{shop:{shop_uuid:query.get('shop_uuid'),shop_id:failureMode==='archive-shop'?'other-shop':'synthetic-shop'},limit:10,count:1,items:[{delivery_id:'community-edge-1',sent_at:new Date().toISOString(),status:'sent',customer:{}}]});
+  }
+
+  if (request.method === 'GET' && request.url.startsWith('/api/v1/member/email-approvals?')) {
+    return json(response,200,{total:1,items:[{id:'55555555-5555-4555-8555-555555555555',
+      shop_uuid:'33333333-3333-4333-8333-333333333333',shop_id:'synthetic-shop',
+      installation_id:failureMode==='approval-installation'?'22222222-2222-4222-8222-222222222222':'11111111-1111-4111-8111-111111111111',
+      delivery_id:'community-marketing-1',content_location:'community_local',community_copy_signature:'b'.repeat(64),status:'pending'}]});
+  }
+  if (request.method === 'POST' && request.url.startsWith('/api/v1/member/email-approvals/55555555-5555-4555-8555-555555555555/approve?')) {
+    assert.deepEqual(JSON.parse(await requestBody(request)),{copy_signature:'b'.repeat(64)});
+    return json(response,200,{ok:true,delivery:{queued:true}});
   }
 
   if (request.method === "GET" && request.url.startsWith("/api/v1/member/analytics/journey-audit?")) {
@@ -433,6 +445,20 @@ try {
   assert.equal((await journeyAudit.json()).event_summary.cart_snapshots, 1);
 
   const mutationHeaders = { Origin: communityOrigin, "Content-Type": "application/json" };
+  const approvalsPath='/api/cloud/email-approvals?shop_uuid=33333333-3333-4333-8333-333333333333';
+  const approvalsResponse=await communityFetch(approvalsPath);
+  assert.equal(approvalsResponse.status,200);assert.match(approvalsResponse.headers.get('cache-control'),/no-store/);
+  const approval=(await approvalsResponse.json()).items[0];
+  assert.equal(approval.preview_available,true);assert.equal(approval.subject,'Recommendation original');
+  assert.equal(approval.body_html,'<p>PRIVATE RECOMMENDATION ORIGINAL</p>');
+  failureMode='approval-installation';
+  const mismatched=(await (await communityFetch(approvalsPath)).json()).items[0];
+  assert.equal(mismatched.preview_available,false);assert.equal(mismatched.subject,'');
+  failureMode='';
+  const approvalPath='/api/cloud/email-approvals/55555555-5555-4555-8555-555555555555/approve?shop_uuid=33333333-3333-4333-8333-333333333333';
+  const approve=await communityFetch(approvalPath,{method:'POST',headers:mutationHeaders,body:JSON.stringify({copy_signature:approval.community_copy_signature})});
+  assert.equal(approve.status,200);assert.deepEqual((await approve.json()).delivery,{queued:true});
+  assert.equal((await communityFetch(approvalPath,{method:'POST',headers:{Origin:'https://foreign.invalid'},body:JSON.stringify({copy_signature:'b'.repeat(64)})})).status,403);
   const funding = await communityFetch("/api/cloud/community-funding");
   assert.equal(funding.status, 200);
   assert.match(funding.headers.get("cache-control"), /no-store/);
