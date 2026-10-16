@@ -59,6 +59,18 @@ outbox. Community only transports them; selection and sending remain Cloud
 responsibilities. This capability alone does not activate recommendation emails.
 Regression checks are included in `npm run test:relay` and `npm run test:source-pull`.
 
+With matching services, the candidate also relays an on-demand native Magento
+account order history. It uses the same configured signed source, current
+installation and six-second deadline, with a 64 KiB response limit. The exact
+store, website and account must match. Complete history is distinguished from
+unavailable or partial data; payment/refund amounts and unknown values remain
+native facts. More than 128 orders, 512 lines or the payload budget is refused,
+not silently truncated. The result stays in memory, never in the catalog or
+outbox. Community does not infer purchases, change consent or authorize emails.
+Malformed, stale, replayed or foreign results and source/credential changes are
+covered by `npm run test:relay`. This capability is not a completed recommendation
+sender and does not by itself activate campaigns.
+
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
