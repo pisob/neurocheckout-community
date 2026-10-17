@@ -54,3 +54,76 @@ test('size limits and authenticated ciphertext reject unsafe data',t=>{
  assert.throws(()=>archive.prepare({...copy(1),shop_id:'other'}),/invalid/);
  archive.prepare(copy(1));archive.db.prepare('UPDATE email_archive SET id=?').run('community-edge-2');assert.throws(()=>archive.get('community-edge-2'));archive.close();
 });
+test('recommendation copies remain distinct from carts, encrypted and immutable after restart and backup',t=>{
+ const dir=setup(t);let archive=new EmailArchive(dir);
+ const marketing={...copy(1),delivery_id:'community-marketing-1',agent_name:'customer_preference_proactive',variant_id:42,language:'en'};
+ archive.prepare(copy(1));archive.prepare(marketing);
+ assert.deepEqual(archive.prepare({...marketing,subject:'regenerated',variant_id:43,language:'fr'}).copy,marketing);
+ for(const change of [{variant_id:null},{variant_id:true},{variant_id:0},{variant_id:'42'},{variant_id:9007199254740992},{language:null},{language:'invalid-language'}]) {
+  assert.throws(()=>archive.prepare({...marketing,...change}),/invalid/);
+ }
+ for(const key of ['variant_id','language']) {
+  const missing={...marketing};delete missing[key];assert.throws(()=>archive.prepare(missing),/invalid/);
+ }
+ assert.throws(()=>archive.prepare({...marketing,agent_name:'intelligent_email_marketing'}),/conflict/);
+ assert.throws(()=>archive.prepare({...marketing,delivery_id:'community-marketing-2',agent_name:'abandoned_cart'}),/invalid/);
+ const second={...marketing,delivery_id:'community-marketing-2',agent_name:'intelligent_email_marketing'};
+ archive.prepare(second);archive.confirm(marketing.delivery_id,new Date().toISOString());
+ archive.markConverted(marketing.delivery_id,new Date().toISOString());
+ const backup=join(dir,'backup');archive.store.backup(backup);archive.close();
+ for(const file of readdirSync(dir).filter(f=>f.startsWith('local-data.sqlite'))) {
+  const bytes=readFileSync(join(dir,file));assert(!bytes.includes(Buffer.from('PRIVATE ORIGINAL')));assert(!bytes.includes(Buffer.from('private@example.invalid')));
+ }
+ archive=new EmailArchive(backup);
+ assert.deepEqual(archive.get('community-edge-1'),copy(1));assert.deepEqual(archive.get(marketing.delivery_id),marketing);
+ assert.deepEqual(archive.get(second.delivery_id),second);
+ // An attacker cannot relabel a cart ciphertext as a marketing original.
+ archive.db.prepare('UPDATE email_archive SET ciphertext=(SELECT ciphertext FROM email_archive WHERE id=?) WHERE id=?').run('community-edge-1',marketing.delivery_id);
+ assert.throws(()=>archive.get(marketing.delivery_id));archive.close();
+});
+test('invalid ids and missing originals never produce a false confirmation',t=>{
+ const dir=setup(t),archive=new EmailArchive(dir),sentAt=new Date().toISOString();
+ for(const id of [null,1,['community-edge-1'],'community-marketing-0','community-marketing-01','community-marketing-12345678901234567']) {
+  assert.throws(()=>archive.prepare({...copy(1),delivery_id:id}),/invalid/);
+  assert.throws(()=>archive.confirm(id,sentAt),/invalid/);
+  assert.throws(()=>archive.markConverted(id,sentAt),/invalid/);
+  assert.equal(archive.get(id),null);
+ }
+ assert.throws(()=>archive.confirm('community-marketing-1',sentAt),/unavailable/);
+ archive.prepare(copy(1));archive.confirm('community-edge-1',sentAt);archive.confirm('community-edge-1',sentAt);
+ archive.close();
+});
+
+const recommendation = () => ({...copy(1),delivery_id:'community-marketing-1',agent_name:'customer_preference_proactive',variant_id:42,language:'en',
+ recommendation_context:{schema:1,playbook_code:'customer_preference_proactive',currency:'EUR',products:[
+  {product_id:'123',attribute_id:'2',category_path:'PRIVATE CATEGORY',brand_name:'PRIVATE BRAND',price_band:'mid'}]}});
+test('recommendation facts stay encrypted and immutable through restart and backup',t=>{
+ const dir=setup(t);let archive=new EmailArchive(dir);const original=recommendation();
+ archive.prepare(original);
+ const changed=structuredClone(original);changed.recommendation_context.products[0].product_id='999';changed.copy_signature='b'.repeat(64);
+ assert.deepEqual(archive.prepare(changed).copy,original);
+ archive.confirm(original.delivery_id,new Date().toISOString());
+ const backup=join(dir,'backup');archive.store.backup(backup);archive.close();
+ for(const file of readdirSync(dir).filter(f=>f.startsWith('local-data.sqlite'))) {
+  const bytes=readFileSync(join(dir,file));
+  for(const privateText of ['PRIVATE CATEGORY','PRIVATE BRAND','recommendation_context']) assert(!bytes.includes(Buffer.from(privateText)));
+ }
+ archive=new EmailArchive(backup);assert.deepEqual(archive.get(original.delivery_id),original);archive.close();
+});
+test('legacy recommendation originals remain unchanged when retried with new facts',t=>{
+ const dir=setup(t),archive=new EmailArchive(dir),legacy=recommendation();delete legacy.recommendation_context;
+ archive.prepare(legacy);assert.deepEqual(archive.prepare(recommendation()).copy,legacy);archive.close();
+});
+test('invalid private recommendation facts fail before persistence',t=>{
+ const dir=setup(t),archive=new EmailArchive(dir);
+ const invalid=[v=>v.recommendation_context=null,v=>v.recommendation_context.schema=true,
+  v=>v.recommendation_context.currency='eur',v=>v.recommendation_context.playbook_code='win_back_at_risk',
+  v=>v.recommendation_context.products=[],v=>v.recommendation_context.products.push({...v.recommendation_context.products[0],attribute_id:'3'}),
+  v=>v.recommendation_context.products[0].product_id='01',v=>v.recommendation_context.products[0].attribute_id=0,
+  v=>v.recommendation_context.products[0].product_id='1\n',v=>v.recommendation_context.currency='EUR\n',
+  v=>v.recommendation_context.products[0].price_band='unknown',v=>v.recommendation_context.products[0].category_path='é'.repeat(121),
+  v=>v.recommendation_context.products[0].brand_name='bad\nlabel',v=>v.recommendation_context.products[0].customer_email='private@example.invalid',
+  v=>v.delivery_id='community-edge-1'];
+ for(const mutate of invalid){const value=recommendation();mutate(value);assert.throws(()=>archive.prepare(value),/invalid/);}
+ assert.equal(archive.db.prepare('SELECT count(*) n FROM email_archive').get().n,0);archive.close();
+});

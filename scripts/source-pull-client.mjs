@@ -54,15 +54,18 @@ export function sourceResponseSignature(secret, nonce, body) {
   return mac(secret, ["nc-source-response-v1", nonce, createHash("sha256").update(body).digest("hex")].join("\n"));
 }
 
-export async function postSourcePage(endpoint, body, headers, { resolveTarget = publicSourceTarget, httpsRequest = request } = {}) {
+export async function postSourcePage(endpoint, body, headers, { resolveTarget = publicSourceTarget, httpsRequest = request, signal = AbortSignal.timeout(10_000), maxBytes = SOURCE_PAGE_BYTES } = {}) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > SOURCE_PAGE_BYTES) throw new Error('source_unavailable');
+  signal.throwIfAborted();
   const { url, address, addresses = [{ address, family: isIP(address) }] } = await resolveTarget(endpoint);
+  signal.throwIfAborted();
   if (!addresses.length || !addresses.every(publicAddress)) throw new Error('source_unavailable');
   return new Promise((resolve, reject) => {
     const req = httpsRequest({
       hostname: url.hostname, servername: url.hostname, port: 443, path: url.pathname,
       method: "POST", agent: false, family: 0, autoSelectFamily: true,
       autoSelectFamilyAttemptTimeout: 250,
-      rejectUnauthorized: true, signal: AbortSignal.timeout(10_000),
+      rejectUnauthorized: true, signal,
       // Race TCP connections only, not signed POSTs. DNS is not consulted again;
       // every possible address was vetted and TLS still verifies the store host.
       lookup: (_hostname, options, callback) => options.all
@@ -78,11 +81,11 @@ export async function postSourcePage(endpoint, body, headers, { resolveTarget = 
       if ([401, 403].includes(res.statusCode)) { abort('source_auth_rejected'); return; }
       if (res.statusCode !== 200 || (res.headers["content-encoding"] || "identity") !== "identity" ||
           (res.headers["content-type"] || "").split(";")[0] !== "application/json" ||
-          Number(res.headers["content-length"] || 0) > SOURCE_PAGE_BYTES) { abort(); return; }
+          Number(res.headers["content-length"] || 0) > maxBytes) { abort(); return; }
       let size = 0; const chunks = [];
       res.on("data", chunk => {
         size += chunk.length;
-        if (size > SOURCE_PAGE_BYTES) { abort(); return; }
+        if (size > maxBytes) { abort(); return; }
         chunks.push(chunk);
       });
       res.on("error", () => reject(new Error("source_unavailable")));

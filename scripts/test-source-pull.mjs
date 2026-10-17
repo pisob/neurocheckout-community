@@ -8,7 +8,7 @@ import { randomBytes } from "node:crypto";
 import { readSourceDiagnostic } from './source-diagnostic.mjs';
 import { LocalDataStore, initializeLocalData } from "./local-data-store.mjs";
 import { handleLocalData, signLocalRequest } from "./local-data-handler.mjs";
-import { SourceSynchronizer, connectorEndpoint } from "./local-source-sync.mjs";
+import { SourceSynchronizer, connectorEndpoint, SOURCE_PAGE_BYTES } from "./local-source-sync.mjs";
 import { pullSourceOnce, pauseSourceReads, postSourcePage, publicSourceTarget, sourceResponseSignature, sourceRequestSignature, sourceRetryDelay } from "./source-pull-client.mjs";
 
 const source = { endpoint: "https://store.example.invalid/module/neurocheckoutconnector/communitydata", secret: "ab".repeat(32) };
@@ -244,6 +244,29 @@ test("HTTPS transport pins DNS while preserving hostname verification and a tota
   let resolved;
   fixture.options.lookup("ignored.example.invalid", {}, (error, address, family) => { assert.equal(error, null); resolved = { address, family }; });
   assert.deepEqual(resolved, { address: "93.184.216.34", family: 4 });
+});
+
+test('recipient-price transport enforces its smaller bound and cancellation across DNS', async () => {
+  for (const options of [{headers:{'content-length':'16385'}},{chunks:[Buffer.alloc(16385)]}]) {
+    const fixture=httpFixture(options);
+    await assert.rejects(postSourcePage(source.endpoint,'{}',{}, {...fixture,maxBytes:16384}),/source_unavailable/);
+    assert.equal(fixture.destroyed,true);
+  }
+  const controller=new AbortController(), fixture=httpFixture();
+  await postSourcePage(source.endpoint,'{}',{}, {...fixture,signal:controller.signal,maxBytes:16384});
+  assert.equal(fixture.options.signal,controller.signal);
+  const aborted=new AbortController(); aborted.abort();
+  await assert.rejects(postSourcePage(source.endpoint,'{}',{}, {
+    signal:aborted.signal, resolveTarget:()=>assert.fail('no DNS after cancellation')
+  }));
+  const duringDns=new AbortController();
+  await assert.rejects(postSourcePage(source.endpoint,'{}',{}, {
+    signal:duringDns.signal,
+    resolveTarget:async()=>{duringDns.abort();return fixture.resolveTarget();},
+    httpsRequest:()=>assert.fail('no HTTPS after cancellation')
+  }));
+  for (const maxBytes of [0,NaN,Infinity,SOURCE_PAGE_BYTES+1])
+    await assert.rejects(postSourcePage(source.endpoint,'{}',{}, {maxBytes}),/source_unavailable/);
 });
 
 test('HTTP authentication refusal remains distinct from network failure without exposing response bodies', async () => {

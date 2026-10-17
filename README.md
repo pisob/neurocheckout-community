@@ -36,10 +36,85 @@ private addresses, redirects and unverified responses remain blocked. A source
 outage pauses dependent actions and is retried automatically without resetting
 the installation or its credentials.
 
+With matching Cloud support, the outgoing relay can read a complete local
+product catalog in bounded pages rather than relying on a small sample. This
+transport does not select products or make marketing decisions in Community.
+The vault must be freshly synchronized; signed continuation tokens expire after
+two minutes, are bound to the store and installation, and become invalid when
+the catalog changes. Cart and customer records are not included in these pages.
+Products remain encrypted at rest. This client capability alone does not enable
+independent recommendation emails. Regression tests include a synthetic catalog
+of 2,045 products, altered/expired cursors, source outages and store isolation
+(`npm run test:local-data` and `npm run test:relay`).
+
+The candidate can also relay a recipient-specific Magento price read on demand,
+with matching connector and Cloud support. It uses only the already configured
+signed HTTPS source, not a URL supplied by a command. Up to 16 exact products are
+requested for the bound store, website, customer and currency. A request has a
+six-second deadline and 16 KiB response limit; signatures, nonce/request binding,
+15-second price freshness and unchanged source credentials/installation are
+checked. Unsupported, stale or unavailable data is not replaced with a generic
+catalog price. These prices remain transient and never enter the catalog or
+outbox. Community only transports them; selection and sending remain Cloud
+responsibilities. This capability alone does not activate recommendation emails.
+Regression checks are included in `npm run test:relay` and `npm run test:source-pull`.
+
+The same candidate transport supports recipient-specific WooCommerce prices,
+with a separate exact site/account contract. The configured endpoint must match
+the requested platform. Native tax display amounts, precision and context binding
+stay intact; stale, incomplete, foreign or altered replies are refused. Prices
+remain in memory, not in the catalog or outbox. Woo and Magento cannot substitute
+for each other's contracts. `npm run test:relay` covers these boundaries; matching
+connector/Cloud candidates and final sending-policy checks are still required.
+This capability alone does not activate a recommendation campaign.
+
+PrestaShop now has its own recipient-price contract through that same transient
+transport. It preserves native tax display, currency precision and the exact
+default combination. The configured source must match PrestaShop; foreign,
+stale, incomplete or altered offers are unavailable, with no catalog-price
+fallback. The same 16-product, 16 KiB and six-second request bounds apply.
+Prices and account identity remain in memory. Tests in `npm run test:relay`
+cover scope, replay, freshness, rounding and source/installation changes.
+Matching connector and Cloud candidates are required; this transport does not
+enable campaigns or authorize sending.
+
+With matching services, the candidate also relays an on-demand native Magento
+account order history. It uses the same configured signed source, current
+installation and six-second deadline, with a 64 KiB response limit. The exact
+store, website and account must match. Complete history is distinguished from
+unavailable or partial data; payment/refund amounts and unknown values remain
+native facts. More than 128 orders, 512 lines or the payload budget is refused,
+not silently truncated. The result stays in memory, never in the catalog or
+outbox. Community does not infer purchases, change consent or authorize emails.
+Malformed, stale, replayed or foreign results and source/credential changes are
+covered by `npm run test:relay`. This capability is not a completed recommendation
+sender and does not by itself activate campaigns.
+
+The same candidate transport now supports native WooCommerce account history,
+with a separate strict site/account contract and posts/HPOS facts. It preserves
+paid-date unknowns, refund amounts and original/refund line links without
+reclassifying an order as paid. It refuses more than 128 orders, 128 refunds,
+512 lines or 64,000 bytes; partial data never becomes a successful empty history.
+WooCommerce commands cannot address a Magento source or vice versa. History stays
+in memory and current source/installation bindings are checked before and after
+the read. Tests are included in `npm run test:relay`; matching connector and Cloud
+candidates are required. This does not activate marketing or change consent.
+
+The same transient history read now supports PrestaShop with a separate exact
+shop/account contract. It preserves native orders, credit notes and unique
+shared-payment relationships without classifying credits as bank refunds or
+allocating one payment to several orders. Local timestamps and the current
+runtime timezone remain native facts, not asserted historic UTC. Limits are
+128 orders/payments/credit notes, 512 combined lines and 64,000 bytes. Platform
+mix-ups, altered responses, foreign relations, replay and binding changes fail
+closed; no history enters the catalog/outbox. `npm run test:relay` covers this
+contract. Matching connector and Cloud candidates are required; this remains
+a preparation component, not a complete independent-email sender.
+
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
-Version **0.1.0-preview.41** supports store synchronization. It remains a
+Version **0.1.0-preview.42** supports store synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
 
@@ -91,10 +166,10 @@ assistant.
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.41`:
+and note the latest tag. The example below uses `v0.1.0-preview.42`:
 
 ```bash
-git clone --branch v0.1.0-preview.41 --depth 1 \
+git clone --branch v0.1.0-preview.42 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -110,7 +185,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.41
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.42
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -287,6 +362,40 @@ archive blocks the send rather than losing the original content. Sent copies are
 limited to the latest 50, plus up to 50 copies identified as converted when
 viewing their delivery history, and expire after 30 days. Unconfirmed preparations are bounded to
 100 and expire after 24 hours. Include your private Community state in backups.
+
+With matching Cloud support, **Email approvals** can display the exact encrypted
+original for an independent product-recommendation email as well as a cart email.
+Only a matching store, installation and copy signature can supply that preview.
+Approving sends the signature, not editable email content. A recommendation copy
+cannot be substituted with a cart copy that happens to have the same numeric ID.
+New recommendation originals can include a signed list of the products selected
+for that email. This information stays encrypted with the immutable original,
+including through restart and backup. It lets matching Cloud support avoid
+repeated recommendations; Community does not make marketing decisions from it.
+Older originals remain unchanged. A missing or older copy without these facts
+cannot establish a complete product history and may pause a new preparation.
+Existing retention limits still apply. This capability does not activate
+recommendation campaigns. Covered by `npm run test:email-archive`.
+
+Missing originals remain unavailable and cannot be confirmed as archived. This
+client-side compatibility also preserves the original template variant and
+language during retries; an already archived copy is never overwritten by newly
+generated content. It does not itself activate campaigns or email delivery.
+
+The candidate also displays independently accepted recommendation deliveries in
+**Orders & emails**, with their Cloud-recorded agent, DB variant, language and
+open/click status. A local original is shown only when its store, installation,
+signature, agent, variant and language all match that delivery. An uncertain send
+is not an accepted delivery, and an open/click is not a conversion. Order attribution
+for this candidate recommendation path remains unavailable and is labeled as such.
+Recommendation product links are not labeled as cart-recovery links.
+
+If Cloud reports a partial history, other available evidence remains visible but
+totals become unknown (a dash), with an English/French warning and retry action.
+No false empty-history message is shown. Retrying only reads history; it does not
+resend emails or reconstruct missing originals. Older Cloud versions remain
+compatible. Checks: `test:email-history`, `test:email-archive`, `test:journeys`,
+`smoke:integration` and `smoke:workspace`, using synthetic records only.
 
 Older messages without a saved copy display **Preview unavailable**. An absent
 opening, click or conversion record is not inferred from viewing the preview.

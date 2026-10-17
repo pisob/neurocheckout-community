@@ -8,7 +8,7 @@ export function enrichEmailApprovals(items: RecordValue[], archive?: ApprovalArc
     const unavailable = { ...item, subject: "", recipient_email: "", body_html: null, body_text: null,
       preview_available: false, preview_state: "unavailable" };
     if (!archive || item.shop_id !== archive.shopId || item.installation_id !== archive.installationId ||
-        typeof item.delivery_id !== "string" || !/^community-edge-[1-9][0-9]{0,15}$/.test(item.delivery_id) ||
+        typeof item.delivery_id !== "string" || !/^community-(?:edge|marketing)-[1-9][0-9]{0,15}$/.test(item.delivery_id) ||
         typeof item.community_copy_signature !== "string" || !/^[a-f0-9]{64}$/.test(item.community_copy_signature)) return unavailable;
     try {
       const copy = archive.get(item.delivery_id);

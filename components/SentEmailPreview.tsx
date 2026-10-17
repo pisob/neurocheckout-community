@@ -10,6 +10,7 @@ export type SentEmail = {
   agent_name?: string | null; status?: string | null; body_html?: string; body_text?: string;
   opened_at?: string | null; clicked_at?: string | null; converted_at?: string | null;
   tracking_available?: boolean; preview_available?: boolean;
+  conversion_tracking_available?: boolean;
   preview_asset_base_url?: string;
   copy_diagnostic?: { source?: string; language?: string | null; variant_id?: number | null };
   preview_state?: "available" | "unavailable" | "read_error";
@@ -32,7 +33,8 @@ export default function SentEmailPreview({ items, language, currency }: { items:
     dialog.current?.close();
     if (!selected) { setPrepared(null); return; }
     const html = selected.body_html && selected.preview_available ? selected.body_html : "";
-    setPrepared({ email: selected, html: html ? sentEmailPreview(html, selected.preview_asset_base_url) : "", link: html ? sentEmailRecoveryLink(html) : null });
+    const marketing = selected.delivery_id?.startsWith("community-marketing-");
+    setPrepared({ email: selected, html: html ? sentEmailPreview(html, selected.preview_asset_base_url) : "", link: html && !marketing ? sentEmailRecoveryLink(html) : null });
   }, [selected]);
   // Never pair a previous message's HTML or cart URL with the new selection.
   const documentHtml = prepared?.email === selected ? prepared.html : "";
@@ -70,6 +72,7 @@ export default function SentEmailPreview({ items, language, currency }: { items:
         {typeof order.order_total === "number" && Number.isFinite(order.order_total) ? ` · ${currency && /^[A-Z]{3}$/.test(currency) ? new Intl.NumberFormat(fr ? "fr-FR" : "en-US", { style: "currency", currency }).format(order.order_total) : order.order_total}` : ""}
       </li>)}</ul><p className="sent-preview-note">{ui("Matched by recorded attribution. Order totals must not be added across emails.", "Lien établi par l’attribution enregistrée. Les montants des commandes ne doivent pas être additionnés entre emails.")}</p></div> : <p className="sent-preview-note">{ui("A conversion is recorded for this email, but no exact order reference is available in the current evidence window. Do not infer an association from the recipient or date alone.", "Une conversion est enregistrée pour cet email, mais aucune référence de commande exacte n’est disponible dans la période de preuves consultée. Ne déduisez pas de lien à partir du destinataire ou de la date seuls.")}</p> : null}
       {selected.tracking_available === false ? <p className="sent-preview-note">{ui("Open, click and conversion tracking is not available for this delivery path.", "Le suivi des ouvertures, clics et conversions n’est pas disponible pour ce circuit d’envoi.")}</p> : null}
+      {selected.conversion_tracking_available === false ? <p className="sent-preview-note">{ui("Order attribution is not yet available for this recommendation delivery path. An open or click does not establish a conversion.", "L’attribution des commandes n’est pas encore disponible pour ce circuit de recommandation. Une ouverture ou un clic ne prouve pas une conversion.")}</p> : null}
       <p className="sent-preview-note">{ui("Product images are displayed. Tracking pixels and links are disabled in this preview.", "Les images des produits sont affichées. Les pixels de suivi et les liens sont désactivés dans cet aperçu.")}</p>
       {recoveryLink ? <p className="sent-preview-note"><a className="button secondary-blue" href={recoveryLink.href} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{ui("Open original cart link", "Ouvrir le lien original du panier")}</a><br />{ui("Opens the sent email’s cart link in a new tab. This action may count as an email click.", "Ouvre le lien du mail envoyé dans un nouvel onglet. Cette action peut être comptabilisée comme un clic sur l’email.")}</p> : null}
       {preview()}
