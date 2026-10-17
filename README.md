@@ -68,6 +68,16 @@ for each other's contracts. `npm run test:relay` covers these boundaries; matchi
 connector/Cloud candidates and final sending-policy checks are still required.
 This capability alone does not activate a recommendation campaign.
 
+PrestaShop now has its own recipient-price contract through that same transient
+transport. It preserves native tax display, currency precision and the exact
+default combination. The configured source must match PrestaShop; foreign,
+stale, incomplete or altered offers are unavailable, with no catalog-price
+fallback. The same 16-product, 16 KiB and six-second request bounds apply.
+Prices and account identity remain in memory. Tests in `npm run test:relay`
+cover scope, replay, freshness, rounding and source/installation changes.
+Matching connector and Cloud candidates are required; this transport does not
+enable campaigns or authorize sending.
+
 With matching services, the candidate also relays an on-demand native Magento
 account order history. It uses the same configured signed source, current
 installation and six-second deadline, with a 64 KiB response limit. The exact

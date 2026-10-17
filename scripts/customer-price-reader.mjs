@@ -3,6 +3,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { SourceSynchronizer, connectorEndpoint } from './local-source-sync.mjs';
 import { postSourcePage, sourceRequestSignature, sourceResponseSignature } from './source-pull-client.mjs';
 import { validateWooCustomerPriceRequest, validateWooCustomerPrices } from './woo-customer-prices.mjs';
+import { validatePrestaCustomerPriceRequest, validatePrestaCustomerPrices } from './presta-customer-prices.mjs';
 
 const exact = (v, keys) => v && typeof v === 'object' && !Array.isArray(v)
   && Object.keys(v).sort().join(',') === [...keys].sort().join(',');
@@ -12,6 +13,7 @@ const fail = () => { throw new Error('customer_prices_unavailable'); };
 const money = v => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1e9;
 
 export function validateCustomerPriceRequest(input) {
+  if (input && Object.hasOwn(input, 'nativeShopId')) return validatePrestaCustomerPriceRequest(input);
   if (input && Object.hasOwn(input, 'blogId')) return validateWooCustomerPriceRequest(input);
   if (!exact(input, ['storeId','websiteId','customerId','customerEmail','productIds','currency'])
       || !['storeId','websiteId','customerId'].every(k => id(input[k])) || !email(input.customerEmail)
@@ -23,6 +25,7 @@ export function validateCustomerPriceRequest(input) {
 
 export function validateCustomerPrices(prices, input, now = Date.now()) {
   validateCustomerPriceRequest(input);
+  if (Object.hasOwn(input, 'nativeShopId')) return validatePrestaCustomerPrices(prices, input, now);
   if (Object.hasOwn(input, 'blogId')) return validateWooCustomerPrices(prices, input, now);
   if (!exact(prices, ['schema','store_id','website_id','customer_id','customer_email','customer_group_id',
         'customer_tax_class_id','currency','quantity','read_at','offers'])
@@ -60,7 +63,9 @@ export async function readCustomerPrices(store, request, transport = sourceTrans
     if (!installationId) fail();
     const sync = new SourceSynchronizer(store), config = sync.configuration();
     const path = connectorEndpoint(config.endpoint).pathname;
-    if (!(Object.hasOwn(input, 'blogId') ? /\/wp-json\/neurocheckout\/v1\/communitydata$/ : /\/neurocheckout\/community\/pull$/).test(path)) fail();
+    const route = Object.hasOwn(input, 'nativeShopId') ? /\/module\/neurocheckoutconnector\/communitydata$/
+      : Object.hasOwn(input, 'blogId') ? /\/wp-json\/neurocheckout\/v1\/communitydata$/ : /\/neurocheckout\/community\/pull$/;
+    if (!route.test(path)) fail();
     const body = JSON.stringify({ schema: 1, shopId: store.config.shopId, operation: 'customer_prices', ...input });
     if (Buffer.byteLength(body) > 2048) fail();
     const nonce = randomBytes(16).toString('hex'), timestamp = String(Date.now());
