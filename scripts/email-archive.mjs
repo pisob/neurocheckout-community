@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { LocalDataStore } from './local-data-store.mjs';
+import { validateRecommendationContext } from './recommendation-context.mjs';
 
 const DAY = 86400000;
 const idPattern = /^community-(?:edge|marketing)-[1-9][0-9]{0,15}$/;
@@ -41,6 +42,10 @@ export class EmailArchive {
     const keys = ['delivery_id','recipient_email','subject','body_html','body_text','agent_name','copy_signature'];
     const marketing = typeof value?.delivery_id === 'string' && value.delivery_id.startsWith('community-marketing-');
     if (marketing) keys.push('variant_id','language');
+    if (marketing && Object.hasOwn(value, 'recommendation_context')) {
+      keys.push('recommendation_context');
+      validateRecommendationContext(value.recommendation_context, value.agent_name);
+    }
     if (!value || Object.keys(value).sort().join() !== keys.sort().join() || !validId(value.delivery_id)) throw Error('email_archive_invalid');
     if (marketing && (!['customer_preference_proactive','intelligent_email_marketing'].includes(value.agent_name) ||
         !Number.isSafeInteger(value.variant_id) || value.variant_id < 1 || typeof value.language !== 'string' ||

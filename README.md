@@ -368,6 +368,15 @@ original for an independent product-recommendation email as well as a cart email
 Only a matching store, installation and copy signature can supply that preview.
 Approving sends the signature, not editable email content. A recommendation copy
 cannot be substituted with a cart copy that happens to have the same numeric ID.
+New recommendation originals can include a signed list of the products selected
+for that email. This information stays encrypted with the immutable original,
+including through restart and backup. It lets matching Cloud support avoid
+repeated recommendations; Community does not make marketing decisions from it.
+Older originals remain unchanged. A missing or older copy without these facts
+cannot establish a complete product history and may pause a new preparation.
+Existing retention limits still apply. This capability does not activate
+recommendation campaigns. Covered by `npm run test:email-archive`.
+
 Missing originals remain unavailable and cannot be confirmed as archived. This
 client-side compatibility also preserves the original template variant and
 language during retries; an already archived copy is never overwritten by newly
