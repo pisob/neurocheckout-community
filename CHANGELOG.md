@@ -1,3 +1,19 @@
+# NeuroCheckout Community v0.1.0-preview.42
+
+## Recommendation data and original email history
+
+- Read the complete encrypted local catalog through bounded, consistent pages.
+- Relay native account history and recipient-specific prices for PrestaShop, WooCommerce and Magento with matching connectors and Cloud support.
+- Preserve signed product facts inside encrypted email originals, including backup and restart, so Cloud can avoid repeated recommendations.
+- Keep exact original previews and approvals bound to their store, installation and delivery. Missing originals remain unavailable; retries never rewrite them.
+- Preserve existing vaults, consent choices, cart synchronization and delivery history.
+
+Independent recommendation campaigns remain incomplete and are not activated by
+this release. Audience/profile completion, scheduling, final sending checks and
+conversion attribution remain in progress. This is a signed preview, not stable
+certification. Back up the installation and update the root launcher as described
+in docs/INSTALLATION.md. Store connectors and Cloud are updated separately.
+
 # Changelog
 
 All notable changes to NeuroCheckout Community are documented in this file.

@@ -114,7 +114,7 @@ a preparation component, not a complete independent-email sender.
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
-Version **0.1.0-preview.41** supports store synchronization. It remains a
+Version **0.1.0-preview.42** supports store synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
 
@@ -166,10 +166,10 @@ assistant.
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.41`:
+and note the latest tag. The example below uses `v0.1.0-preview.42`:
 
 ```bash
-git clone --branch v0.1.0-preview.41 --depth 1 \
+git clone --branch v0.1.0-preview.42 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -185,7 +185,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.41
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.42
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
