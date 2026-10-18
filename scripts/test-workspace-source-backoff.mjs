@@ -24,6 +24,7 @@ test('tunnel backoff preserves heartbeats, sibling stores and immediate explicit
       },
     },
     '@/package.json': {version: '0.0.0-test'},
+    '@/scripts/local-order-history.mjs': {startOrderHistoryLoop: () => {}},
   };
   const context = {exports: {}, Date: {now: () => now}, process: {env: {NC_DEPLOYMENT_ENV: 'staging', NC_LOCAL_DATA_PILOT_ENABLED: 'true', NC_CONNECTOR_PULL_ENABLED: 'true'}},
     require: name => {assert.ok(modules[name], 'Unexpected dependency: ' + name); return modules[name];},

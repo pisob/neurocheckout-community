@@ -1,5 +1,30 @@
 # NeuroCheckout Community
 
+## Scheduled local order history
+
+The signed `customer_history_index` operation discovers registered native accounts
+with orders, including accounts whose checkout cart no longer exists. It pages
+eight accounts at a time within the configured native store; a fixed account-ID
+ceiling prevents new arrivals from changing a running pass. Community retrieves
+each account through the existing authenticated history reader and stores the
+result in its encrypted local vault. The first complete source synchronization
+starts the initial pass; subsequent passes are due seven days after completion.
+Failed accounts retain their cursor and retry; a partial pass is never reported
+as complete. Installing this connector does not enable email campaigns.
+
+The existing history contract covers registered accounts only (not guest orders),
+with a maximum of 128 orders, 512 lines and 64 KiB per account. Overflow fails
+explicitly, without truncation. Orders retain their native payment/refund facts.
+
+
+The local cache uses the existing vault key and is included in vault backups.
+The diagnostic endpoint reports `order_history.completeAt`, `nextDueAt`,
+`accounts` and a sanitized error code. Snapshots expire after 30 days without
+successful refresh; capacity is 10,000 accounts / 128 MiB. Weekly cache timestamps
+are never renewed on access and never substitute for current consent, active-cart,
+price or stock checks. No new Cloud order projection is created.
+
+
 ## Source-read continuity (preview.44)
 
 A source refresh keeps the last complete local snapshot readable while the
@@ -159,7 +184,7 @@ a preparation component, not a complete independent-email sender.
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
-Version **0.1.0-preview.44** supports store synchronization. It remains a
+Version **0.1.0-preview.45** supports store synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
 
@@ -211,10 +236,10 @@ assistant.
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.44`:
+and note the latest tag. The example below uses `v0.1.0-preview.45`:
 
 ```bash
-git clone --branch v0.1.0-preview.44 --depth 1 \
+git clone --branch v0.1.0-preview.45 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -230,7 +255,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.44
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.45
 find "${verification_home}" -depth -delete
 unset verification_home
 ```

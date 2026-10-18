@@ -11,6 +11,7 @@ import { requestSourcePullRun } from "@/lib/server-source-pull";
 import { automaticSourceStatus } from "@/scripts/automatic-source-setup.mjs";
 import { EmailArchive } from "@/scripts/email-archive.mjs";
 import { LocalDataStore } from "@/scripts/local-data-store.mjs";
+import { LocalOrderHistory } from "@/scripts/local-order-history.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
       configured: source.configured,
       ready: source.ready,
       shop_id: store.config.shopId,
+      order_history: new LocalOrderHistory(store).status(),
       source: {
         diagnostic: source.diagnostic || null,
         last_success_at: source.lastSuccessAt || null,
