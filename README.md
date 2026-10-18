@@ -1,5 +1,17 @@
 # NeuroCheckout Community
 
+## Source-read continuity (preview.44)
+
+A source refresh keeps the last complete local snapshot readable while the
+request is in flight, within its existing 60-second freshness limit. Claiming a
+refresh does not renew that limit. Partial pages, failed pulls, expired leases,
+source changes and startup recovery still block reads until synchronization
+completes. Native signed price, history and cart checks retain their separate
+identity, signature and 15-second freshness requirements.
+
+This prevents routine refresh requests from interrupting valid native reads.
+It does not change product selection or activate recommendation campaigns.
+
 ## Native recommendation contracts (preview.43)
 
 Relay native history v1/v2 without rewriting the signed facts. History v2 carries
@@ -147,7 +159,7 @@ a preparation component, not a complete independent-email sender.
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
-Version **0.1.0-preview.43** supports store synchronization. It remains a
+Version **0.1.0-preview.44** supports store synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
 
@@ -199,10 +211,10 @@ assistant.
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.43`:
+and note the latest tag. The example below uses `v0.1.0-preview.44`:
 
 ```bash
-git clone --branch v0.1.0-preview.43 --depth 1 \
+git clone --branch v0.1.0-preview.44 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -218,7 +230,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.43
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.44
 find "${verification_home}" -depth -delete
 unset verification_home
 ```

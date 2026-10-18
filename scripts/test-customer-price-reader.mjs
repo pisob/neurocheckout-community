@@ -49,6 +49,14 @@ test('signed prices remain recipient-specific, transient and outside catalog/out
   for(const name of readdirSync(directory).filter(n=>n.startsWith('local-data.sqlite')))
     assert.equal(readFileSync(resolve(directory,name)).includes(Buffer.from('private@example.test')),false);
 });
+test('a pending refresh does not invalidate fresh signed native prices', async t=>{
+  const {store,sync}=fixture(t);let lease;
+  const result=await readCustomerPrices(store,input(),transport(v=>v,()=>{lease=sync.claim();}));
+  assert.equal(result.prices.offers[0].display_price,12);
+  assert.equal(store.signals().length,0);
+  sync.failed(lease);
+  await assert.rejects(readCustomerPrices(store,input(),()=>assert.fail('no network after failed sync')),/customer_prices_unavailable/);
+});
 test('strict bounded request rejects caller URLs, foreign inputs and noncanonical identifiers', async t => {
   const {store}=fixture(t);
   for(const patch of [{url:'https://external.invalid'},{storeId:2},{websiteId:'0'},{customerId:true},{customerEmail:'bad'},

@@ -190,9 +190,11 @@ export class LocalDataStore {
 
   requireSourceFresh() {
     if (!this.db.prepare("SELECT 1 FROM meta WHERE name='source_pull_bound'").get()) return;
-    const state = this.db.prepare("SELECT ready,last_complete_at FROM source_sync WHERE id=1").get();
-    const age = this.clock() - (state?.last_complete_at || 0);
-    if (!state?.ready || age < -5000 || age > 60_000) fail("local_data_source_unavailable");
+    const state = this.db.prepare("SELECT ready,last_complete_at,lease_token,lease_until FROM source_sync WHERE id=1").get();
+    const now = this.clock();
+    const age = now - (state?.last_complete_at || 0);
+    if (!state?.ready || age < -5000 || age > 60_000
+        || (state.lease_token && state.lease_until <= now)) fail("local_data_source_unavailable");
   }
 
   read(input) {

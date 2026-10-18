@@ -70,7 +70,12 @@ export class SourceSynchronizer {
       const state = this.db.prepare("SELECT * FROM source_sync WHERE id=1").get();
       if (state.lease_until > this.store.clock()) throw new Error("source_sync_busy");
       const token = randomBytes(16).toString("hex");
-      this.db.prepare("UPDATE source_sync SET ready=0,lease_token=?,lease_until=? WHERE id=1").run(token, this.store.clock() + 30_000);
+      // Fetching a page has not changed the last complete local snapshot. Keep
+      // that snapshot readable under its original freshness deadline. Applying
+      // an incomplete page or failing the pull still closes reads immediately.
+      // An abandoned lease is a known interruption, never a fresh snapshot.
+      this.db.prepare("UPDATE source_sync SET ready=CASE WHEN lease_token IS NULL THEN ready ELSE 0 END,lease_token=?,lease_until=? WHERE id=1")
+        .run(token, this.store.clock() + 30_000);
       return { token, cursor: state.cursor, streamId: state.stream_id };
     });
   }

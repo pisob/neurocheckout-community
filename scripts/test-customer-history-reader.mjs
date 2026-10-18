@@ -69,6 +69,14 @@ test('native order facts are authenticated, transient and preserve unknown payme
     assert.equal(readFileSync(resolve(directory,name)).includes(Buffer.from('private@example.test')),false);
   const empty=history();empty.orders=[];empty.order_count=0;assert.deepEqual(validateCustomerHistory(empty,input()).orders,[]);
 });
+test('a pending refresh preserves signed history but a failed pull closes reads',async t=>{
+  const {store,sync}=fixture(t);let lease;
+  const value=await readCustomerHistory(store,input(),transport(p=>p,()=>{lease=sync.claim();}));
+  assert.equal(value.history.orders[0].total_paid,null);
+  assert.equal(store.signals().length,0);
+  sync.failed(lease);
+  await assert.rejects(readCustomerHistory(store,input(),()=>assert.fail('no network after failed sync')),/customer_history_unavailable/);
+});
 test('requests cannot carry foreign types, callbacks or caller-selected time windows',async t=>{
   const {store}=fixture(t);
   for(const patch of [{storeId:1},{websiteId:true},{customerId:'01'},{customerEmail:'bad'},{url:'https://other.invalid'},{since:'2020'}]) {
