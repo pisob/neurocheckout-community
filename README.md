@@ -1,5 +1,28 @@
 # NeuroCheckout Community
 
+## Native account-cart reads (candidate, 2026-10-18)
+
+The authenticated relay supports `read_customer_carts` for matching candidate
+Cloud and PrestaShop/WooCommerce/Magento connectors. It reads signed native facts
+for the exact registered account and shop/store view: completeness, consent,
+read time and whether a persisted nonempty cart exists. Facts stay in memory;
+the reader does not store them in the vault, catalog or outbox, and does not
+modify a cart or consent. Cloud owns the preparation and sending decisions.
+
+Source reads use the configured HTTPS endpoint and secret, fresh nonces and
+request-bound signatures, a six-second deadline, a 4 KiB response limit and
+15-second fact freshness. A changed source/key/installation, stale synchronization,
+wrong platform/scope, replay, incomplete reply or unavailable connector blocks
+the read. Commands cannot supply an endpoint. Published preview.42 and connector
+releases do not include this candidate operation; no new release is claimed here.
+
+Coverage is persisted account carts; anonymous carts and uncommitted browser
+changes remain outside this contract. It does not enable independent campaigns
+or provide final coordination with checkout before email sending. `npm run
+test:relay` includes 33 new three-platform cases (71 relay tests total), covering
+signed transport, actual relay dispatch, refusal boundaries and no persistence.
+Live installed-store HTTP and real recommendation delivery remain separate gates.
+
 Connector-key creation and rotation require review of the currently published
 Cloud DPA. The displayed version, language and content fingerprint are submitted
 with explicit consent. A changed or unavailable document blocks the operation;
