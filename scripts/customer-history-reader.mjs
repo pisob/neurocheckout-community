@@ -4,6 +4,7 @@ import {SourceSynchronizer,connectorEndpoint} from './local-source-sync.mjs';
 import {postSourcePage,sourceRequestSignature,sourceResponseSignature} from './source-pull-client.mjs';
 import {validateWooCustomerHistoryRequest,validateWooCustomerHistory} from './woo-customer-history.mjs';
 import {validatePrestaCustomerHistoryRequest,validatePrestaCustomerHistory} from './presta-customer-history.mjs';
+import {legacyHistoryFacts} from './native-history-v2.mjs';
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join(',')===[...keys].sort().join(',');
 const id=v=>typeof v==='string'&&/^[1-9][0-9]{0,9}$/.test(v);
 const decimal=v=>typeof v==='string'&&/^\d{1,10}(?:\.\d{1,4})?$/.test(v);
@@ -23,6 +24,7 @@ export function validateCustomerHistory(h,input,now=Date.now()) {
   validateCustomerHistoryRequest(input);
   if(Object.hasOwn(input,'nativeShopId'))return validatePrestaCustomerHistory(h,input,now);
   if(Object.hasOwn(input,'blogId'))return validateWooCustomerHistory(h,input,now);
+  const native=h;h=legacyHistoryFacts(h,'magento-customer-history-v1');
   if(!exact(h,['schema','store_id','website_id','customer_id','customer_email','customer_group_id',
       'customer_created_at','read_at','complete','order_count','orders','marketing_consent'])
       ||h.schema!=='magento-customer-history-v1'||h.complete!==true
@@ -51,8 +53,8 @@ export function validateCustomerHistory(h,input,now=Date.now()) {
     for(const item of items.values())if(item.parent_item_id!==null&&(!items.has(item.parent_item_id)
       ||item.parent_item_id===item.item_id||items.get(item.parent_item_id).parent_item_id!==null))fail();
   }
-  if(Buffer.byteLength(JSON.stringify(h))>64000)fail();
-  return h;
+  if(Buffer.byteLength(JSON.stringify(native))>64000)fail();
+  return native;
 }
 const sourceTransport=(endpoint,body,headers)=>postSourcePage(endpoint,body,headers,{signal:AbortSignal.timeout(6000),maxBytes:65536});
 export async function readCustomerHistory(store,request,transport=sourceTransport) {

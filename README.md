@@ -1,5 +1,15 @@
 # NeuroCheckout Community
 
+## Native recommendation contracts (preview.43)
+
+Relay native history v1/v2 without rewriting the signed facts. History v2 carries
+nullable native discounts so Cloud can qualify promotion affinity; unknown stays
+unknown. Native account carts, recipient prices, consent and order histories use
+the same bounded signed source transport. No new private snapshot or consent
+change is introduced. Cloud now has a dedicated campaign/approval/send worker;
+installing this dashboard does not itself enable campaigns. Live acceptance and
+Cloud activation remain separate from local fixture validation.
+
 ## Native account-cart reads (candidate, 2026-10-18)
 
 The authenticated relay supports `read_customer_carts` for matching candidate
@@ -13,8 +23,8 @@ Source reads use the configured HTTPS endpoint and secret, fresh nonces and
 request-bound signatures, a six-second deadline, a 4 KiB response limit and
 15-second fact freshness. A changed source/key/installation, stale synchronization,
 wrong platform/scope, replay, incomplete reply or unavailable connector blocks
-the read. Commands cannot supply an endpoint. Published preview.42 and connector
-releases do not include this candidate operation; no new release is claimed here.
+the read. Commands cannot supply an endpoint. Preview.43 includes this operation; use matching PrestaShop 4.6.11,
+WooCommerce 1.0.13 and Magento 1.0.10 connectors with the coordinated Cloud upgrade.
 
 Coverage is persisted account carts; anonymous carts and uncommitted browser
 changes remain outside this contract. It does not enable independent campaigns
@@ -137,7 +147,7 @@ a preparation component, not a complete independent-email sender.
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
-Version **0.1.0-preview.42** supports store synchronization. It remains a
+Version **0.1.0-preview.43** supports store synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
 
@@ -189,10 +199,10 @@ assistant.
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.42`:
+and note the latest tag. The example below uses `v0.1.0-preview.43`:
 
 ```bash
-git clone --branch v0.1.0-preview.42 --depth 1 \
+git clone --branch v0.1.0-preview.43 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -208,7 +218,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.42
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.43
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
