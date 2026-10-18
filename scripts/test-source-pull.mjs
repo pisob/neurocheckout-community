@@ -80,6 +80,52 @@ test("leases prevent concurrent pollers and reject late replies after restart", 
   assert.equal(store.signals().length, 1);
 });
 
+test('an unchanged complete snapshot remains readable while a signed refresh is in flight', async t => {
+  const {directory,store,sync}=fixture(t);
+  sync.apply(page(),sync.claim());
+  const previous=store.db.prepare('SELECT * FROM source_sync WHERE id=1').get();
+  const beforeSignals=store.signals();
+  const result=await pullSourceOnce({directory,enabled:true,environment:'staging'},async (_url,body,headers)=>{
+    // pullSourceOnce uses a second SQLite connection, as the live worker does.
+    const pending=store.db.prepare('SELECT * FROM source_sync WHERE id=1').get();
+    assert.equal(pending.ready,1);
+    assert.equal(pending.last_complete_at,previous.last_complete_at);
+    assert.equal(store.read({kind:'cart',reference:store.reference('cart','private-cart-id'),minimumRevision:1}).payload.status,'abandoned');
+    assert.throws(()=>sync.claim(),/busy/);
+    const request=JSON.parse(body);
+    const raw=Buffer.from(JSON.stringify(page({cursor:request.cursor,nextCursor:request.cursor,records:[]})));
+    return {body:raw,signature:sourceResponseSignature(source.secret,headers['X-NC-Source-Nonce'],raw)};
+  });
+  assert.equal(result.ok,true);
+  assert.deepEqual(store.signals(),beforeSignals);
+  store.requireSourceFresh();
+});
+
+test('a partial incremental page closes a previously complete snapshot until completion', t=>{
+  const {store,sync}=fixture(t);sync.apply(page(),sync.claim());
+  const query={kind:'cart',reference:store.reference('cart','private-cart-id'),minimumRevision:1};
+  const lease=sync.claim();store.requireSourceFresh();
+  sync.apply(page({cursor:cursor1,nextCursor:cursor2,complete:false,records:[record({revision:2,payload:{...payload,status:'converted'}})]}),lease);
+  assert.throws(()=>store.read(query),/source_unavailable/);
+  sync.apply(page({cursor:cursor2,nextCursor:cursor2,records:[]}),sync.claim());
+  assert.equal(store.read(query).payload.status,'converted');
+});
+
+test('an in-flight refresh never renews age and an abandoned lease cannot reopen reads', t=>{
+  let clock=Date.now();const {store,sync}=fixture(t,()=>clock);
+  sync.apply(page(),sync.claim());
+  clock+=45_000;sync.claim();store.requireSourceFresh();
+  clock+=16_000;assert.throws(()=>store.requireSourceFresh(),/source_unavailable/);
+  clock+=15_000;const recovery=sync.claim();
+  assert.equal(store.db.prepare('SELECT ready FROM source_sync').get().ready,0);
+  assert.throws(()=>store.requireSourceFresh(),/source_unavailable/);
+  sync.apply(page({cursor:cursor1,nextCursor:cursor1,records:[],generatedAt:new Date(clock).toISOString()}),recovery);
+  const expired=sync.claim();clock+=31_000;
+  assert.throws(()=>store.requireSourceFresh(),/source_unavailable/);
+  const next=sync.claim();assert.throws(()=>store.requireSourceFresh(),/source_unavailable/);
+  sync.failed(expired);assert.equal(store.db.prepare('SELECT lease_token FROM source_sync').get().lease_token,next.token);
+});
+
 test("shop, stream, cursor, shape and freshness substitution cannot advance the cursor", t => {
   const { store, sync } = fixture(t);
   sync.apply(page(), sync.claim());

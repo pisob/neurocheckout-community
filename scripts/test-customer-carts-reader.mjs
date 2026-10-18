@@ -45,6 +45,14 @@ for(const platform of ['prestashop','woocommerce','magento']) {
     for(const name of readdirSync(directory).filter(n=>n.startsWith('local-data.sqlite')))
       assert.equal(readFileSync(resolve(directory,name)).includes(Buffer.from(input().customerEmail)),false);
   });
+  test(platform+': pending synchronization preserves active-cart proof but failure closes reads',async t=>{
+    const {store,sync}=fixture(t);let lease;
+    const value=await readCustomerCarts(store,input(),transport(p=>{p.carts.has_active_cart=true;return p;},()=>{lease=sync.claim();}));
+    assert.equal(value.carts.has_active_cart,true);
+    assert.equal(store.signals().length,0);
+    sync.failed(lease);
+    await assert.rejects(readCustomerCarts(store,input(),()=>assert.fail('no network after failed sync')),/customer_carts_unavailable/);
+  });
   test(platform+': callbacks, mixed scopes and malformed accounts fail before source read',async t=>{
     const {store}=fixture(t);
     for(const patch of [{customerId:7},{customerId:'0'},{customerEmail:'bad'},{callback:'https://other.invalid'},

@@ -1,3 +1,22 @@
+# NeuroCheckout Community v0.1.0-preview.44
+
+## Preserve fresh reads during source refresh
+
+- Keep the last complete local snapshot readable while a source request is in
+  flight, under its original 60-second freshness limit.
+- Continue blocking incomplete, failed, stale or abandoned synchronization.
+  Applying a partial page closes reads atomically with the data changes.
+- Preserve signed native price, history and account-cart checks, including
+  freshness, store/customer binding, credentials and installation identity.
+- Cover concurrent SQLite connections, expired leases, partial updates and
+  native reads interrupted by a refresh across all three platforms.
+
+No vault migration or new connector release is required. Existing configuration,
+keys, consent and email originals are preserved. Updating this signed preview
+does not enable campaigns or change recommendation eligibility. Live delivery
+acceptance remains separate. Back up the installation and restart the root
+launcher following `docs/INSTALLATION.md`.
+
 # NeuroCheckout Community v0.1.0-preview.43
 
 ## Coordinated native recommendation contracts
