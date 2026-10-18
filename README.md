@@ -1,5 +1,38 @@
 # NeuroCheckout Community
 
+## Native recommendation contracts (preview.43)
+
+Relay native history v1/v2 without rewriting the signed facts. History v2 carries
+nullable native discounts so Cloud can qualify promotion affinity; unknown stays
+unknown. Native account carts, recipient prices, consent and order histories use
+the same bounded signed source transport. No new private snapshot or consent
+change is introduced. Cloud now has a dedicated campaign/approval/send worker;
+installing this dashboard does not itself enable campaigns. Live acceptance and
+Cloud activation remain separate from local fixture validation.
+
+## Native account-cart reads (candidate, 2026-10-18)
+
+The authenticated relay supports `read_customer_carts` for matching candidate
+Cloud and PrestaShop/WooCommerce/Magento connectors. It reads signed native facts
+for the exact registered account and shop/store view: completeness, consent,
+read time and whether a persisted nonempty cart exists. Facts stay in memory;
+the reader does not store them in the vault, catalog or outbox, and does not
+modify a cart or consent. Cloud owns the preparation and sending decisions.
+
+Source reads use the configured HTTPS endpoint and secret, fresh nonces and
+request-bound signatures, a six-second deadline, a 4 KiB response limit and
+15-second fact freshness. A changed source/key/installation, stale synchronization,
+wrong platform/scope, replay, incomplete reply or unavailable connector blocks
+the read. Commands cannot supply an endpoint. Preview.43 includes this operation; use matching PrestaShop 4.6.11,
+WooCommerce 1.0.13 and Magento 1.0.10 connectors with the coordinated Cloud upgrade.
+
+Coverage is persisted account carts; anonymous carts and uncommitted browser
+changes remain outside this contract. It does not enable independent campaigns
+or provide final coordination with checkout before email sending. `npm run
+test:relay` includes 33 new three-platform cases (71 relay tests total), covering
+signed transport, actual relay dispatch, refusal boundaries and no persistence.
+Live installed-store HTTP and real recommendation delivery remain separate gates.
+
 Connector-key creation and rotation require review of the currently published
 Cloud DPA. The displayed version, language and content fingerprint are submitted
 with explicit consent. A changed or unavailable document blocks the operation;
@@ -114,7 +147,7 @@ a preparation component, not a complete independent-email sender.
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
-Version **0.1.0-preview.42** supports store synchronization. It remains a
+Version **0.1.0-preview.43** supports store synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
 
@@ -166,10 +199,10 @@ assistant.
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.42`:
+and note the latest tag. The example below uses `v0.1.0-preview.43`:
 
 ```bash
-git clone --branch v0.1.0-preview.42 --depth 1 \
+git clone --branch v0.1.0-preview.43 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -185,7 +218,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.42
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.43
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -372,8 +405,16 @@ New recommendation originals can include a signed list of the products selected
 for that email. This information stays encrypted with the immutable original,
 including through restart and backup. It lets matching Cloud support avoid
 repeated recommendations; Community does not make marketing decisions from it.
+The candidate also accepts schema-2 contexts with an opaque fingerprint for each
+offer. Matching Cloud support can compare the original price, native variant,
+name, link, currency and display precision when resuming an approved copy.
+Community only validates, encrypts and transports this signed context. It does
+not calculate prices or decide whether an email can be sent. Install the matching
+Community support before Cloud starts preparing schema-2 originals.
 Older originals remain unchanged. A missing or older copy without these facts
 cannot establish a complete product history and may pause a new preparation.
+Schema-1 contexts remain readable for history, but lack the offer fingerprint
+needed for price revalidation; retries never upgrade or regenerate those copies.
 Existing retention limits still apply. This capability does not activate
 recommendation campaigns. Covered by `npm run test:email-archive`.
 

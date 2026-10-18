@@ -114,6 +114,36 @@ test('legacy recommendation originals remain unchanged when retried with new fac
  const dir=setup(t),archive=new EmailArchive(dir),legacy=recommendation();delete legacy.recommendation_context;
  archive.prepare(legacy);assert.deepEqual(archive.prepare(recommendation()).copy,legacy);archive.close();
 });
+test('schema two offer fingerprints remain encrypted and immutable after backup',t=>{
+ const dir=setup(t);let archive=new EmailArchive(dir);const original=recommendation();
+ original.recommendation_context.schema=2;
+ original.recommendation_context.products[0].offer_digest='abcdef0123456789'.repeat(4);
+ archive.prepare(original);
+ const changed=structuredClone(original);changed.recommendation_context.products[0].offer_digest='b'.repeat(64);
+ assert.deepEqual(archive.prepare(changed).copy,original);
+ const backup=join(dir,'backup');archive.store.backup(backup);archive.close();
+ for(const file of readdirSync(dir).filter(f=>f.startsWith('local-data.sqlite'))) {
+  const bytes=readFileSync(join(dir,file));
+  assert(!bytes.includes(Buffer.from(original.recommendation_context.products[0].offer_digest)));
+ }
+ archive=new EmailArchive(backup);assert.deepEqual(archive.get(original.delivery_id),original);archive.close();
+});
+test('schema one originals are never upgraded by a retry with offer fingerprints',t=>{
+ const dir=setup(t),archive=new EmailArchive(dir),original=recommendation(),changed=structuredClone(original);
+ changed.recommendation_context.schema=2;changed.recommendation_context.products[0].offer_digest='a'.repeat(64);
+ archive.prepare(original);assert.deepEqual(archive.prepare(changed).copy,original);archive.close();
+});
+test('schema two requires exact offer fingerprints and schema one rejects them',t=>{
+ const dir=setup(t),archive=new EmailArchive(dir);
+ for(const digest of [undefined,null,true,12,'a'.repeat(63),'A'.repeat(64),'g'.repeat(64),'a'.repeat(64)+'\n']) {
+  const value=recommendation();value.recommendation_context.schema=2;
+  if(digest!==undefined)value.recommendation_context.products[0].offer_digest=digest;
+  assert.throws(()=>archive.prepare(value),/invalid/);
+ }
+ const old=recommendation();old.recommendation_context.products[0].offer_digest='a'.repeat(64);
+ assert.throws(()=>archive.prepare(old),/invalid/);
+ assert.equal(archive.db.prepare('SELECT count(*) n FROM email_archive').get().n,0);archive.close();
+});
 test('invalid private recommendation facts fail before persistence',t=>{
  const dir=setup(t),archive=new EmailArchive(dir);
  const invalid=[v=>v.recommendation_context=null,v=>v.recommendation_context.schema=true,

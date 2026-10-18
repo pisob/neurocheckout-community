@@ -1,4 +1,5 @@
 // Native PrestaShop facts. Credits are not bank refunds; shared payments are not allocated.
+import {legacyHistoryFacts} from './native-history-v2.mjs';
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join(',')===[...keys].sort().join(',');
 const id=(v,zero=false)=>typeof v==='string'&&(zero?/^(?:0|[1-9][0-9]{0,9})$/:/^[1-9][0-9]{0,9}$/).test(v);
 const email=v=>typeof v==='string'&&v.length<=254&&/^[^@\s<>\x00-\x1f\x7f]+@[^@\s<>\x00-\x1f\x7f]+\.[^@\s<>\x00-\x1f\x7f]+$/.test(v);
@@ -13,6 +14,7 @@ export function validatePrestaCustomerHistoryRequest(v) {
   return v;
 }
 export function validatePrestaCustomerHistory(h,input,now=Date.now()) {
+  const native=h;h=legacyHistoryFacts(h,'prestashop-customer-history-v1');
   validatePrestaCustomerHistoryRequest(input);
   if(!exact(h,['schema','native_shop_id','customer_id','customer_email','customer_created_at','native_timezone',
       'read_at','complete','order_count','orders','payments','marketing_consent'])||h.schema!=='prestashop-customer-history-v1'
@@ -61,5 +63,5 @@ export function validatePrestaCustomerHistory(h,input,now=Date.now()) {
     for(const v of p.order_ids){unique(v,seen);if(!orders.has(v))fail();}
     for(const v of p.invoice_order_ids){unique(v,invoices);if(!seen.has(v))fail();}
   }
-  if(Buffer.byteLength(JSON.stringify(h))>64000)fail();return h;
+  if(Buffer.byteLength(JSON.stringify(native))>64000)fail();return native;
 }

@@ -1,4 +1,5 @@
 // Native WooCommerce facts. These validators never classify purchases or consent.
+import {legacyHistoryFacts} from './native-history-v2.mjs';
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)
   &&Object.keys(v).sort().join(',')===[...keys].sort().join(',');
 const id=(v,zero=false)=>typeof v==='string'&&(zero?/^(?:0|[1-9][0-9]{0,9})$/:/^[1-9][0-9]{0,9}$/).test(v);
@@ -17,6 +18,7 @@ export function validateWooCustomerHistoryRequest(v) {
 }
 
 export function validateWooCustomerHistory(h,input,now=Date.now()) {
+  const native=h;h=legacyHistoryFacts(h,'woocommerce-customer-history-v1');
   validateWooCustomerHistoryRequest(input);
   if(!exact(h,['schema','blog_id','customer_id','customer_email','customer_created_at','read_at','complete',
       'order_storage','order_count','orders','marketing_consent'])||h.schema!=='woocommerce-customer-history-v1'
@@ -60,6 +62,6 @@ export function validateWooCustomerHistory(h,input,now=Date.now()) {
       unique(refund.refund_id,ids);items(refund.items,true,original);
     }
   }
-  if(Buffer.byteLength(JSON.stringify(h))>64000)fail();
-  return h;
+  if(Buffer.byteLength(JSON.stringify(native))>64000)fail();
+  return native;
 }

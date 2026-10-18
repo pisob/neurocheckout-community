@@ -10,6 +10,28 @@ import {sourceRequestSignature,sourceResponseSignature} from './source-pull-clie
 import {readCustomerHistory,validateCustomerHistory,validateCustomerHistoryRequest} from './customer-history-reader.mjs';
 import {saveRelayCredential,relayOnce} from './server-data-relay.mjs';
 
+for(const [platform,makeHistory,makeInput] of [
+  ['magento',()=>history(),()=>input()],['woocommerce',()=>wooHistory(),()=>wooInput()],
+  ['prestashop',()=>prestaHistory(),()=>prestaInput()],
+]) {
+  test(`${platform} v2 discounts preserve native precision and every v1 boundary`,()=>{
+    for(const value of [null,'0','1.12345678']) {
+      const h=makeHistory();h.schema=h.schema.replace(/-v1$/,'-v2');h.orders[0].discount_total=value;
+      const before=structuredClone(h);
+      assert.equal(validateCustomerHistory(h,makeInput()),h);
+      assert.deepEqual(h,before);
+    }
+    for(const value of [true,0,-1,'-1','1e2','NaN',[],{}]) {
+      const h=makeHistory();h.schema=h.schema.replace(/-v1$/,'-v2');h.orders[0].discount_total=value;
+      assert.throws(()=>validateCustomerHistory(h,makeInput()),/customer_history_unavailable/);
+    }
+    const h=makeHistory();h.schema=h.schema.replace(/-v1$/,'-v2');
+    assert.throws(()=>validateCustomerHistory(h,makeInput()),/customer_history_unavailable/);
+    h.orders[0].discount_total='0';h.orders[0].private_extra='not allowed';
+    assert.throws(()=>validateCustomerHistory(h,makeInput()),/customer_history_unavailable/);
+  });
+}
+
 const installation='11111111-1111-4111-8111-111111111111';
 const source={endpoint:'https://shop.example.invalid/neurocheckout/community/pull',secret:'ab'.repeat(32)};
 const input=()=>({storeId:'1',websiteId:'2',customerId:'7',customerEmail:'private@example.test'});

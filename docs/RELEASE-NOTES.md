@@ -1,3 +1,20 @@
+# NeuroCheckout Community v0.1.0-preview.43
+
+## Coordinated native recommendation contracts
+
+- Relay current account-cart presence for PrestaShop, WooCommerce and Magento.
+- Accept signed native history v2 with nullable discounts while retaining v1
+  compatibility and strict completeness, identity, size and freshness checks.
+- Preserve approved email originals and schema-2 offer evidence in the encrypted
+  local vault; existing consent, synchronization and archives are preserved.
+- Requires coordinated Cloud migrations 239–243 and connectors PrestaShop 4.6.11,
+  WooCommerce 1.0.13, Magento 1.0.10. The Cloud campaign worker has an explicit
+  activation flag; updating this dashboard does not turn campaigns on.
+
+This is a signed preview, not stable certification. Back up the installation and
+follow `docs/INSTALLATION.md`. Native installed-store and email acceptance are
+tracked separately from synthetic fixture tests.
+
 # NeuroCheckout Community v0.1.0-preview.42
 
 ## Recommendation data and original email history
