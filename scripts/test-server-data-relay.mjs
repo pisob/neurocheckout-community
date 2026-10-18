@@ -51,11 +51,13 @@ test("online relay reports a stale connector separately and resumes without leak
   } finally { store.close(); }
 });
 
-for(const marketing of [false,true]) test(`authenticated relay archives large ${marketing?'marketing':'cart'} copies and confirms only metadata`, async t => {
+for(const marketing of [false,true,2]) test(`authenticated relay archives large ${marketing===2?'schema-two marketing':marketing?'marketing':'cart'} copies and confirms only metadata`, async t => {
   const options=fixture(t), auth=credential();await saveRelayCredential(options,auth);
   let operation="archive_email";
   const copy={delivery_id:"community-edge-1",recipient_email:"private@example.invalid",subject:"Original",body_html:"<p>"+"x".repeat(5000)+"</p>",body_text:"Original",agent_name:"abandoned_cart",copy_signature:"a".repeat(64)};
   if(marketing)Object.assign(copy,{delivery_id:'community-marketing-1',agent_name:'customer_preference_proactive',variant_id:42,language:'en'});
+  if(marketing===2)copy.recommendation_context={schema:2,playbook_code:'customer_preference_proactive',currency:'EUR',
+    products:[{product_id:'1',attribute_id:'0',category_path:null,brand_name:null,price_band:'entry',offer_digest:'b'.repeat(64)}]};
   const mock=async (url,init)=>{
     if(url.endsWith("/api/health"))return Response.json({service:"neurocheckout-community"});
     assert.equal(init.headers.Authorization,`Bearer ${auth.token}`);

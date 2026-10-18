@@ -395,8 +395,16 @@ New recommendation originals can include a signed list of the products selected
 for that email. This information stays encrypted with the immutable original,
 including through restart and backup. It lets matching Cloud support avoid
 repeated recommendations; Community does not make marketing decisions from it.
+The candidate also accepts schema-2 contexts with an opaque fingerprint for each
+offer. Matching Cloud support can compare the original price, native variant,
+name, link, currency and display precision when resuming an approved copy.
+Community only validates, encrypts and transports this signed context. It does
+not calculate prices or decide whether an email can be sent. Install the matching
+Community support before Cloud starts preparing schema-2 originals.
 Older originals remain unchanged. A missing or older copy without these facts
 cannot establish a complete product history and may pause a new preparation.
+Schema-1 contexts remain readable for history, but lack the offer fingerprint
+needed for price revalidation; retries never upgrade or regenerate those copies.
 Existing retention limits still apply. This capability does not activate
 recommendation campaigns. Covered by `npm run test:email-archive`.
 
