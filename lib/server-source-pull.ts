@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { sourceRetryDelay } from "@/scripts/source-pull-client.mjs";
+import { startOrderHistoryLoop } from "@/scripts/local-order-history.mjs";
 
 type SourceRuntime = {
   started: boolean;
@@ -57,6 +58,7 @@ export async function startSourcePull() {
     runtime.timer.unref();
   };
   runtime.tick = tick;
+  startOrderHistoryLoop(options);
   runtime.timer = setTimeout(() => void tick(), 1000);
   runtime.timer.unref();
 }

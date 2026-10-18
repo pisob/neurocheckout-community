@@ -5,6 +5,7 @@ import { relayOnce } from "@/scripts/server-data-relay.mjs";
 import { heartbeatOnce } from "@/scripts/server-availability.mjs";
 import { pullSourceOnce, pauseSourceReads, sourceRetryDelay } from "@/scripts/source-pull-client.mjs";
 import { version } from "@/package.json";
+import { startOrderHistoryLoop } from "@/scripts/local-order-history.mjs";
 
 const runtime = globalThis as typeof globalThis & { communityWorkspaceRequests?: Map<string, () => void> };
 runtime.communityWorkspaceRequests ||= new Map();
@@ -81,6 +82,7 @@ export function startWorkspaceWorkers() {
           }
         });
         void relay(); void source();
+        if (process.env.NC_CONNECTOR_PULL_ENABLED === "true") startOrderHistoryLoop(options, active);
       }
     } catch { /* Workspace may not be configured yet. */ }
     setTimeout(scan, 10_000).unref();

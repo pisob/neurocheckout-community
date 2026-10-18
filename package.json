@@ -1,6 +1,6 @@
 {
   "name": "neurocheckout-community",
-  "version": "0.1.0-preview.44",
+  "version": "0.1.0-preview.45",
   "private": true,
   "engines": {
     "node": ">=22.13.0",
@@ -32,7 +32,7 @@
     "test:relay": "node --test scripts/test-server-data-relay.mjs scripts/test-production-environment.mjs scripts/test-customer-price-reader.mjs scripts/test-presta-customer-prices.mjs scripts/test-customer-history-reader.mjs scripts/test-customer-carts-reader.mjs",
     "test:email-archive": "node --test scripts/test-email-archive.mjs",
     "test:email-history": "node scripts/test-email-history-archive.mjs",
-    "test:source-pull": "node --test scripts/test-source-pull.mjs",
+    "test:source-pull": "node --test scripts/test-source-pull.mjs scripts/test-local-order-history.mjs",
     "test:auto-source": "node --test scripts/test-automatic-source-setup.mjs",
     "test:workspace": "node --test scripts/test-workspace-store.mjs scripts/test-workspace-request.mjs scripts/test-workspace-source-backoff.mjs",
     "test:workspace-ui": "node scripts/test-workspace-ui.mjs",
