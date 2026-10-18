@@ -1,3 +1,15 @@
+# Community preview.46
+
+Completed initial and weekly local order-history imports now send the configured
+internal success notification. The receipt shows the original completion time,
+next weekly due time and number of imported account histories. Existing complete
+preview.45 imports are reported without rerunning them. Partial or failed imports
+never report success; duplicate heartbeats and reconnects do not resend a receipt.
+
+Order and customer data remain encrypted locally. This update does not activate
+customer email campaigns or change prior legacy Cloud import records. Cloud
+migration 244 and the matching API must be deployed before this version.
+
 # NeuroCheckout Community v0.1.0-preview.44
 
 ## Preserve fresh reads during source refresh

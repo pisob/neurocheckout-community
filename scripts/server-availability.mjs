@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { mkdir, writeFile, readFile, rename, unlink, lstat } from "node:fs/promises";
 import { resolve } from "node:path";
+import { orderHistoryCompletion } from "./local-order-history.mjs";
 
 // Shared across server bundles. Never cache a successful authorization: each
 // caller must still prove local health and obtain a fresh Cloud response.
@@ -77,9 +78,11 @@ export async function heartbeatOnce(options, fetchImpl = fetch) {
       redirect: "error", cache: "no-store", signal: AbortSignal.timeout(3000),
     });
     if (!health.ok || (await health.json()).service !== "neurocheckout-community") return false;
+    const completion = orderHistoryCompletion(options);
     const response = await fetchImpl(`${options.cloudUrl}/api/v1/public/oauth/heartbeat`, {
       method: "POST", redirect: "error", cache: "no-store", signal: AbortSignal.timeout(5000),
-      headers: { Authorization: `Bearer ${credential.token}`, "X-NeuroCheckout-Community-Version": options.version },
+      headers: { Authorization: `Bearer ${credential.token}`, "X-NeuroCheckout-Community-Version": options.version,
+        ...(completion ? {"X-NeuroCheckout-Order-History": JSON.stringify(completion)} : {}) },
     });
     await response.body?.cancel();
     if (!response.ok) pauseAttempt(state, response.status);

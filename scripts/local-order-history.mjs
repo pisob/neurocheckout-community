@@ -84,6 +84,30 @@ export class LocalOrderHistory {
     const count=this.db.prepare('SELECT count(*) n FROM order_history_accounts').get().n;
     return {completeAt:row?.last_complete||null,nextDueAt:row?.next_due||null,error:row?.error||null,accounts:count};
   }
+  completionReport() {
+    // Report only a committed whole pass for the current source/installation.
+    // In particular, an old last_complete beside a new partial pass is not a
+    // fresh success. Only counts/timestamps leave the vault, never its orders.
+    const row=this.db.prepare('SELECT * FROM order_history_sync WHERE id=1').get();
+    const now=this.store.clock();
+    if(!row||row.binding!==this.binding()||row.error||row.lease||!row.last_complete
+        ||row.last_complete>now||now-row.last_complete>=HISTORY_INTERVAL_MS
+        ||row.next_due!==row.last_complete+HISTORY_INTERVAL_MS
+        ||this.open('state',row.ciphertext)!==null)return null;
+    return {schema:1,installation_id:historyBinding(this.store).installationId,
+      completed_at_ms:row.last_complete,next_due_at_ms:row.next_due,
+      accounts:this.db.prepare('SELECT count(*) n FROM order_history_accounts').get().n};
+  }
+}
+
+export function orderHistoryCompletion(options) {
+  let store;
+  try {
+    const environment=options.environment??process.env.NC_DEPLOYMENT_ENV;
+    if(!['staging','production'].includes(environment))return null;
+    store=new LocalDataStore(options.directory,Date.now,environment);
+    return new LocalOrderHistory(store).completionReport();
+  } catch {return null;} finally {store?.close();}
 }
 
 export async function refreshOrderHistory(store,{readIndex=readHistoryIndex,readHistory=readCustomerHistory}={}) {

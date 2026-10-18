@@ -6,7 +6,8 @@ import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {LocalDataStore,initializeLocalData} from './local-data-store.mjs';
 import {SourceSynchronizer} from './local-source-sync.mjs';
-import {LocalOrderHistory,refreshOrderHistory,HISTORY_INTERVAL_MS} from './local-order-history.mjs';
+import {LocalOrderHistory,refreshOrderHistory,HISTORY_INTERVAL_MS,orderHistoryCompletion} from './local-order-history.mjs';
+import {heartbeatOnce,saveAvailabilityCredential} from './server-availability.mjs';
 import {readHistoryIndex,validateHistoryIndex} from './customer-history-index.mjs';
 import {sourceResponseSignature} from './source-pull-client.mjs';
 
@@ -36,6 +37,40 @@ function readers(f,count=10) {
       history:{complete:true,read_at:new Date(f.now).toISOString(),order_count:1,orders:[{private_fact:'historical-line-without-cart'}]}};},
   };
 }
+
+test('completion telemetry contains only committed metadata, survives restart and rejects partial/failed/foreign cycles',async t=>{
+  const f=fixture(t),deps=readers(f,2);
+  let cache=new LocalOrderHistory(f.store);
+  assert.equal(cache.completionReport(),null);
+  await refreshOrderHistory(f.store,deps);
+  assert.equal(cache.completionReport(),null);
+  f.advance(1000);await refreshOrderHistory(f.store,deps);
+  const report=cache.completionReport();
+  assert.deepEqual(report,{schema:1,installation_id:installationId,completed_at_ms:f.now,next_due_at_ms:f.now+HISTORY_INTERVAL_MS,accounts:2});
+  cache=new LocalOrderHistory(f.reopen());assert.deepEqual(cache.completionReport(),report);
+  f.advance(HISTORY_INTERVAL_MS);await refreshOrderHistory(f.store,deps);
+  assert.equal(cache.completionReport(),null);
+  f.advance(1000);await refreshOrderHistory(f.store,deps);
+  assert.equal(cache.completionReport().completed_at_ms,f.now);
+  new SourceSynchronizer(f.store).configure({...source,secret:'cd'.repeat(32)});
+  assert.equal(cache.completionReport(),null);
+});
+
+test('real heartbeat transmits only completed metadata, with no customer/order payload',async t=>{
+  const f=fixture(t),options={directory:f.directory,environment:'staging',secret:'ab'.repeat(32),
+    cloudUrl:'https://cloud.invalid',clientId:'test',port:'3400',version:'test'};
+  await saveAvailabilityCredential({...options,token:'nc_live_'+'a'.repeat(43)});
+  const calls=[],fetchImpl=async(url,init)=>{calls.push([url,init]);return Response.json(url.endsWith('/api/health')?{service:'neurocheckout-community'}:{ok:true});};
+  await refreshOrderHistory(f.store,readers(f,1));
+  assert.ok(orderHistoryCompletion(options));
+  assert.equal(await heartbeatOnce(options,fetchImpl),true);
+  const header=calls.at(-1)[1].headers['X-NeuroCheckout-Order-History'];
+  assert.equal(JSON.parse(header).accounts,1);
+  assert.doesNotMatch(header,/customerEmail|orders|private_fact|private-/);
+  f.store.db.exec("UPDATE order_history_sync SET error='history_refresh_unavailable'");
+  assert.equal(await heartbeatOnce(options,fetchImpl),true);
+  assert.equal(calls.at(-1)[1].headers['X-NeuroCheckout-Order-History'],undefined);
+});
 
 test('initial pass resumes after restart, stores encrypted accounts and runs again only when the week is due',async t=>{
   const f=fixture(t),deps=readers(f);
