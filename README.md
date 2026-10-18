@@ -1,5 +1,21 @@
 # NeuroCheckout Community
 
+## Local history completion notifications (preview.46)
+
+A completed initial or weekly local history pass now reports its original finish
+time, next due time and account count through the authenticated server heartbeat.
+Cloud sends the configured internal `succeeded` notification once per completed
+week. Orders and customer identities remain encrypted locally. Partial passes,
+failures and changed sources cannot report success; the heartbeat is still only
+a liveness signal and never authorizes a marketing send. Existing preview.45
+completed passes are reported without rerunning their imports.
+
+Cloud migration 244 and the matching notification handler must be deployed first.
+Receipts survive restarts; interrupted or uncertain SMTP attempts are retained
+for investigation and are not automatically resent. SMTP acceptance does not
+prove inbox delivery. Historical legacy Cloud import notifications are retained
+and are separate from these local completion receipts.
+
 ## Scheduled local order history
 
 The signed `customer_history_index` operation discovers registered native accounts
@@ -184,7 +200,7 @@ a preparation component, not a complete independent-email sender.
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
-Version **0.1.0-preview.45** supports store synchronization. It remains a
+Version **0.1.0-preview.46** supports store synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
 
@@ -236,10 +252,10 @@ assistant.
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.45`:
+and note the latest tag. The example below uses `v0.1.0-preview.46`:
 
 ```bash
-git clone --branch v0.1.0-preview.45 --depth 1 \
+git clone --branch v0.1.0-preview.46 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -255,7 +271,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.45
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.46
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
