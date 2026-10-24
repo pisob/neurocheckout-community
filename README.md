@@ -2,7 +2,7 @@
 
 ## Current supported release set
 
-The current candidate is **0.1.0-preview.47**, with PrestaShop **4.6.12**,
+The current candidate is **0.1.0-preview.48**, with PrestaShop **4.6.12**,
 WooCommerce **1.0.15** and Magento **1.0.11** connectors. Use the signed downloads
 and verification instructions in [RELEASES.md](RELEASES.md). Community and store
 connectors are updated separately; the matching Cloud services must admit the
@@ -12,12 +12,13 @@ Community remains a prerelease until the [stable acceptance criteria](docs/STABL
 are satisfied. Order history covers registered accounts, not guest orders, and
 fails explicitly if an account exceeds the documented history bounds below.
 
-## Security maintenance (preview.47)
+## Security maintenance (preview.48)
 
 Next.js is pinned to 16.4.3 to resolve the production dependency advisories
 reported by the October 24 audit. Source, archive and tag verification remain
 required. This maintenance candidate does not complete stable acceptance or
-activate campaigns.
+activate campaigns. Dashboard views use native hash history so browser Back and
+Forward cannot race an asynchronous framework navigation.
 
 ## Local history completion notifications (preview.46)
 
@@ -219,7 +220,7 @@ a preparation component, not a complete independent-email sender.
 ## 1. Create your Cloud account before installing Community
 
 Follow these instructions to connect Community to `https://www.neurocheckout.com`.
-Version **0.1.0-preview.47** supports store synchronization. It remains a
+Version **0.1.0-preview.48** supports store synchronization. It remains a
 prerelease: back up your installation before updating and verify the connection
 and synchronization of each store before enabling customer email automation.
 
@@ -271,10 +272,10 @@ assistant.
 ## 3. Download and verify an official preview
 
 Open the [official releases](https://github.com/pisob/neurocheckout-community/releases)
-and note the latest tag. The example below uses `v0.1.0-preview.47`:
+and note the latest tag. The example below uses `v0.1.0-preview.48`:
 
 ```bash
-git clone --branch v0.1.0-preview.47 --depth 1 \
+git clone --branch v0.1.0-preview.48 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -290,7 +291,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.47
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.48
 find "${verification_home}" -depth -delete
 unset verification_home
 ```

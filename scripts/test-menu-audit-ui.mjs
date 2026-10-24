@@ -82,6 +82,13 @@ try {
     await expect(p.locator('nav button.active')).toContainText('Orders & emails');
     await expect(p).toHaveURL(/#converted-orders$/);
     await p.goBack();
+    await expect(p).toHaveURL(/#sync-health$/);
+    await p.locator('.sync-health-view').waitFor();
+    await p.goForward();
+    await expect(p).toHaveURL(/#converted-orders$/);
+    await expect(p.locator('nav button.active')).toContainText('Orders & emails');
+    await p.goBack();
+    await expect(p).toHaveURL(/#sync-health$/);
     await p.locator('.sync-health-view').waitFor();
     await p.evaluate(() => { location.hash = 'constructor'; });
     await p.waitForFunction(() => document.querySelector('nav button.active')?.textContent?.includes('Overview'));

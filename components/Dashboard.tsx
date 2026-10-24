@@ -451,7 +451,9 @@ export default function Dashboard() {
 
   const selectView = (view: DashboardView) => {
     setActiveView(view);
-    if (window.location.hash !== `#${view}`) window.history.pushState(null, "", `${window.location.pathname}${window.location.search}#${view}`);
+    // Views share one document. Native hash navigation keeps their history in
+    // sync without scheduling an App Router restore that can race browser Back.
+    if (window.location.hash !== `#${view}`) window.location.hash = view;
   };
 
   const logout = async () => {
