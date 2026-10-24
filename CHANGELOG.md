@@ -1,4 +1,4 @@
-# Unreleased
+# NeuroCheckout Community v0.1.0-preview.49
 
 - Start the navigation menu and installation checklist collapsed, with explicit
   plus/minus controls in English and French. Keep compact desktop shortcuts and

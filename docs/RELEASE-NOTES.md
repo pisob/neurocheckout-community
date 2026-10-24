@@ -1,3 +1,14 @@
+# NeuroCheckout Community v0.1.0-preview.49
+
+- Start the navigation menu and installation steps collapsed to keep the overview compact.
+- Expand or collapse both sections with explicit plus/minus controls in English and French.
+- Keep numbered navigation shortcuts on desktop and accessible menu controls on mobile and keyboard.
+- Simplify the README around signed installation, setup and daily use.
+
+This is a signed preview. Existing keys, encrypted data, consent and email settings
+are preserved. From preview.48, use the dashboard Update button when you choose
+to install; publishing this release does not install it on your computer.
+
 # Community preview.46
 
 Completed initial and weekly local order-history imports now send the configured
