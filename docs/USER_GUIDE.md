@@ -3,6 +3,11 @@
 After installation and connection, open **Overview** and follow the configuration
 checklist. Installing Community alone does not configure your store's automations.
 
+The menu and installation steps start collapsed. Use **Menu +** to show the
+navigation labels and **Show steps +** to open the checklist; the **−** buttons
+collapse them again. Desktop keeps numbered navigation shortcuts when collapsed.
+Reloading the page starts both sections collapsed again.
+
 1. **Account:** check that your existing Cloud account is connected.
 2. **Store:** open Configuration and check the store assigned to this installation.
 3. **Connector:** install the official module in your PrestaShop, WooCommerce or
@@ -78,6 +83,11 @@ delivery, open, click or conversion event.
 
 Après l’installation et la connexion, ouvrez **Vue d’ensemble** et suivez la
 checklist : compte, boutique, connecteur, emails, puis synchronisation.
+
+Le menu et les étapes d’installation sont repliés par défaut. Cliquez sur
+**Menu +** pour ouvrir le menu et sur **Déplier +** pour afficher les étapes.
+Les boutons **−** permettent de les replier. Sur ordinateur, les raccourcis
+numérotés restent accessibles. Une actualisation replie les deux sections.
 
 - Le module officiel doit être installé et configuré dans PrestaShop,
   WooCommerce ou Magento. Créer sa clé ne suffit pas.

@@ -77,7 +77,7 @@ try {
     await p.goto(origin + '/#converted-orders');
     await p.getByRole('link', { name: 'Check synchronization', exact: true }).click();
     await p.locator('.sync-health-view').waitFor();
-    assert.match(await p.locator('nav button.active').innerText(), /Sync health/);
+    assert.equal(await p.locator('nav button.active').getAttribute('aria-label'), 'Sync health');
     await p.getByRole('button', { name: /Orders & emails/ }).click();
     await expect(p.locator('nav button.active')).toContainText('Orders & emails');
     await expect(p).toHaveURL(/#converted-orders$/);
@@ -264,6 +264,7 @@ try {
   }, async p => {
     await p.goto(origin);
     const checklist = p.locator('.setup-checklist');
+    await checklist.getByRole('button', { name: 'Show installation steps', exact: true }).click();
     await p.waitForFunction(() => document.querySelector('.setup-checklist')?.getAttribute('aria-busy') === 'false');
     await expect(checklist.locator('li > div > span').filter({ hasText: /^Done$/ })).toHaveCount(4);
     freshSource = false;

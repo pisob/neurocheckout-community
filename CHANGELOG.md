@@ -1,3 +1,9 @@
+# Unreleased
+
+- Start the navigation menu and installation checklist collapsed, with explicit
+  plus/minus controls in English and French. Keep compact desktop shortcuts and
+  keyboard-accessible controls; expand the menu on smaller screens as needed.
+
 # Documentation update — 2026-10-24
 
 - Simplify the README around installation, store setup and everyday use.

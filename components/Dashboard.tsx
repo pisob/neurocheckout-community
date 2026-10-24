@@ -244,6 +244,7 @@ export default function Dashboard() {
   const [syncDelayed, setSyncDelayed] = useState(false);
   const [lastSuccessfulSyncAt, setLastSuccessfulSyncAt] = useState<Date | null>(null);
   const [activeView, setActiveView] = useState<DashboardView>("overview");
+  const [menuExpanded, setMenuExpanded] = useState(false);
   const [billingNotice, setBillingNotice] = useState<string | null>(null);
   const capabilitiesRequest = useRef(0);
   const [observationTime, setObservationTime] = useState(Date.now());
@@ -519,7 +520,7 @@ export default function Dashboard() {
   ) : null;
 
   return (
-    <main className="shell">
+    <main className={`shell${menuExpanded ? "" : " sidebar-collapsed"}`}>
       <aside className="sidebar">
         <div className="brand">
           <img
@@ -532,16 +533,26 @@ export default function Dashboard() {
           <div><strong>NeuroCheckout</strong><small>Community</small></div>
         </div>
 
-        <nav aria-label={ui("Main navigation", "Navigation principale")}>
+        <button className="menu-toggle button ghost" type="button"
+          aria-expanded={menuExpanded} aria-controls="main-navigation"
+          aria-label={menuExpanded ? ui("Collapse menu", "Replier le menu") : ui("Expand menu", "Déplier le menu")}
+          onClick={() => setMenuExpanded(value => !value)}>
+          <span>Menu</span><span className="disclosure-sign" aria-hidden="true">{menuExpanded ? "−" : "+"}</span>
+        </button>
+
+        <nav id="main-navigation" aria-label={ui("Main navigation", "Navigation principale")}>
           {navigationViews.map((view, index) => (
             <button
               className={`nav-link${activeView === view ? " active" : ""}`}
               key={view}
               type="button"
+              aria-label={VIEW_COPY[language][view].label}
+              aria-current={activeView === view ? "page" : undefined}
+              title={VIEW_COPY[language][view].label}
               onClick={() => selectView(view)}
             >
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              {VIEW_COPY[language][view].label}
+              <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+              <span className="nav-label">{VIEW_COPY[language][view].label}</span>
             </button>
           ))}
         </nav>
