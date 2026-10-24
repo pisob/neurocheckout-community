@@ -1,3 +1,11 @@
+# Documentation update — 2026-10-24
+
+- Simplify the README around installation, store setup and everyday use.
+- Keep public integration details in `docs/DEVELOPMENT.md` and release notes
+  focused on user-visible changes and compatibility.
+- Preserve signed-installation verification, prerelease status and known limits.
+  This documentation update does not change the application or activate campaigns.
+
 # NeuroCheckout Community v0.1.0-preview.44
 
 ## Preserve fresh reads during source refresh
@@ -26,9 +34,9 @@ launcher following `docs/INSTALLATION.md`.
   compatibility and strict completeness, identity, size and freshness checks.
 - Preserve approved email originals and schema-2 offer evidence in the encrypted
   local vault; existing consent, synchronization and archives are preserved.
-- Requires coordinated Cloud migrations 239–243 and connectors PrestaShop 4.6.11,
-  WooCommerce 1.0.13, Magento 1.0.10. The Cloud campaign worker has an explicit
-  activation flag; updating this dashboard does not turn campaigns on.
+- Requires compatible NeuroCheckout Cloud services and connectors PrestaShop
+  4.6.11, WooCommerce 1.0.13 and Magento 1.0.10. Updating this dashboard does not
+  turn campaigns on.
 
 This is a signed preview, not stable certification. Back up the installation and
 follow `docs/INSTALLATION.md`. Native installed-store and email acceptance are

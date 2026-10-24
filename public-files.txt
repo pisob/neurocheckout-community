@@ -46,6 +46,7 @@ TRADEMARKS.md
 compose.yaml
 deploy/neurocheckout-community.service
 docs/INSTALLATION.md
+docs/DEVELOPMENT.md
 docs/COMMUNITY-FUNDING.md
 app/api/auth/callback/route.ts
 app/api/auth/logout/route.ts
