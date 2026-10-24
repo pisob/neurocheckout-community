@@ -7,8 +7,8 @@ preview.45 imports are reported without rerunning them. Partial or failed import
 never report success; duplicate heartbeats and reconnects do not resend a receipt.
 
 Order and customer data remain encrypted locally. This update does not activate
-customer email campaigns or change prior legacy Cloud import records. Cloud
-migration 244 and the matching API must be deployed before this version.
+customer email campaigns or change prior legacy Cloud import records.
+Completion notifications require compatible NeuroCheckout Cloud services.
 
 # NeuroCheckout Community v0.1.0-preview.44
 
@@ -38,9 +38,9 @@ launcher following `docs/INSTALLATION.md`.
   compatibility and strict completeness, identity, size and freshness checks.
 - Preserve approved email originals and schema-2 offer evidence in the encrypted
   local vault; existing consent, synchronization and archives are preserved.
-- Requires coordinated Cloud migrations 239–243 and connectors PrestaShop 4.6.11,
-  WooCommerce 1.0.13, Magento 1.0.10. The Cloud campaign worker has an explicit
-  activation flag; updating this dashboard does not turn campaigns on.
+- Requires compatible NeuroCheckout Cloud services and connectors PrestaShop
+  4.6.11, WooCommerce 1.0.13 and Magento 1.0.10. Updating this dashboard does not
+  turn campaigns on.
 
 This is a signed preview, not stable certification. Back up the installation and
 follow `docs/INSTALLATION.md`. Native installed-store and email acceptance are
@@ -98,8 +98,8 @@ a preview pending full merchant acceptance.
 - Sanitize previews, including images, without following recovery links or loading tracking pixels.
 - Preserve existing keys, synchronization, encrypted data and delivery history.
 
-Requires the coordinated Cloud local-approval deployment and activation. Older
-clients remain blocked from automatic sending when their store uses manual approval.
+Requires compatible NeuroCheckout Cloud services with manual approvals enabled
+for the store. Older clients cannot bypass a store's manual-approval policy.
 An approval expires after 18 hours or when the cart revision/authorization changes.
 Approval itself consumes no email quota. Cloud rechecks the cart, suppression,
 quota and delivery fence before sending; unknown SMTP outcomes are not retried automatically.

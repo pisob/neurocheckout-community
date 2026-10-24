@@ -12,6 +12,19 @@ Thank you for helping improve NeuroCheckout Community.
 
 By contributing, you agree that your contribution is licensed under Apache-2.0. Security reports must follow `SECURITY.md` and must not be filed publicly.
 
+## Documentation audiences
+
+- Keep the README focused on installation, everyday use, supported versions and
+  user-visible limitations. Do not prepend an engineering journal to it.
+- Put public client/connector contracts and validation guidance in
+  [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Release notes describe changes and
+  compatibility requirements that matter to users.
+- Keep Cloud migration identifiers, deployment order, operational activation
+  instructions and private acceptance evidence in the private Cloud repository.
+  Moving those details to another file here would still publish them.
+- Preserve installation commands, signature verification and honest prerelease
+  status when simplifying documentation. Check links and version references.
+
 Contributions are proposed through forks and pull requests. A fork, branch,
 commit or CI artifact is never an official NeuroCheckout release. Only a
 maintainer-reviewed commit merged into the canonical repository and published
