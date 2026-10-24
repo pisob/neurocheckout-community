@@ -79,6 +79,8 @@ try {
     await p.locator('.sync-health-view').waitFor();
     assert.match(await p.locator('nav button.active').innerText(), /Sync health/);
     await p.getByRole('button', { name: /Orders & emails/ }).click();
+    await expect(p.locator('nav button.active')).toContainText('Orders & emails');
+    await expect(p).toHaveURL(/#converted-orders$/);
     await p.goBack();
     await p.locator('.sync-health-view').waitFor();
     await p.evaluate(() => { location.hash = 'constructor'; });
