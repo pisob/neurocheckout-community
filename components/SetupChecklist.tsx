@@ -16,6 +16,7 @@ export default function SetupChecklist({ capabilities, language }: { capabilitie
   const [busy, setBusy] = useState(true);
   const [failed, setFailed] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]);
@@ -69,8 +70,15 @@ export default function SetupChecklist({ capabilities, language }: { capabilitie
   ];
   return <section className="setup-checklist" aria-labelledby="setup-heading" aria-busy={busy}>
     <header><div><p className="eyebrow">{ui("Getting started", "Premiers pas")}</p><h2 id="setup-heading">{ui("Finish your configuration", "Terminez votre configuration")}</h2></div>
-      <button className="button ghost" disabled={busy} onClick={() => setRefresh(value => value + 1)}>{ui("Check again", "Vérifier à nouveau")}</button></header>
+      <button className="button ghost setup-toggle" type="button" aria-expanded={expanded} aria-controls="setup-steps"
+        aria-label={expanded ? ui("Hide installation steps", "Replier les étapes d’installation") : ui("Show installation steps", "Déplier les étapes d’installation")}
+        onClick={() => setExpanded(value => !value)}>
+        <span>{expanded ? ui("Hide steps", "Replier") : ui("Show steps", "Déplier")}</span>
+        <span className="disclosure-sign" aria-hidden="true">{expanded ? "−" : "+"}</span>
+      </button></header>
+    <div id="setup-steps" hidden={!expanded}>
     <p>{ui("Installation is only the first step. Complete these checks before using your store’s automations.", "L’installation est la première étape. Effectuez ces vérifications avant d’utiliser les automatisations de votre boutique.")}</p>
+    <button className="button ghost" type="button" disabled={busy} onClick={() => setRefresh(value => value + 1)}>{ui("Check again", "Vérifier à nouveau")}</button>
     {failed ? <p role="alert">{ui("Some checks are unavailable. Retry or open Configuration; no completed step has been assumed.", "Certaines vérifications sont indisponibles. Réessayez ou ouvrez Configuration ; aucune étape n’a été supposée terminée.")}</p> : null}
     <ol>{steps.map((step, index) => <li key={step.title}>
       <div><strong>{step.title}</strong><span>{busy && index > 0 ? ui("Checking…", "Vérification…") : step.done ? ui("Done", "Terminé") : ui("To check", "À vérifier")}</span></div>
@@ -81,5 +89,6 @@ export default function SetupChecklist({ capabilities, language }: { capabilitie
         if (id) try { localStorage.setItem(`nc-setup-email-reviewed:${id}`, value ? "yes" : "no"); } catch { /* No secret or operational state is stored. */ }
       }} />{ui("I reviewed these settings (this browser only)", "J’ai vérifié ces réglages (ce navigateur uniquement)")}</label> : null}
     </li>)}</ol>
+    </div>
   </section>;
 }

@@ -73,6 +73,7 @@ try {
   await expect(page.getByRole('img', { name: 'Partner creative' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: /View offer/ })).toBeVisible();
   failImage = false; await page.reload();
+  await page.getByRole('button', { name: 'Expand menu', exact: true }).click();
   await page.getByRole('button', { name: /Plan & data/ }).click();
   await expect(page.getByRole('heading', { name: 'Support NeuroCheckout Community' })).toBeVisible();
   await page.getByRole('button', { name: 'Support Community', exact: true }).click();
@@ -109,6 +110,7 @@ try {
 
   available = true; await page.reload();
   await expect(page.getByRole('heading', { name: 'E-commerce hosting' })).toBeVisible();
+  await page.getByRole('button', { name: 'Expand menu', exact: true }).click();
   await page.getByRole('button', { name: /Plan & data/ }).click(); wrongStripe = true;
   await page.getByRole('button', { name: 'Support Community', exact: true }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Support payments' })).toBeVisible();
