@@ -1,5 +1,17 @@
 # NeuroCheckout Community
 
+## Current supported release set
+
+The published Community package is **0.1.0-preview.46**, with PrestaShop **4.6.12**,
+WooCommerce **1.0.15** and Magento **1.0.11** connectors. Use the signed downloads
+and verification instructions in [RELEASES.md](RELEASES.md). Community and store
+connectors are updated separately; the matching Cloud services must admit the
+exact Community version. Updating these packages does not activate campaigns.
+
+Community remains a prerelease until the [stable acceptance criteria](docs/STABLE-RELEASE.md)
+are satisfied. Order history covers registered accounts, not guest orders, and
+fails explicitly if an account exceeds the documented history bounds below.
+
 ## Local history completion notifications (preview.46)
 
 A completed initial or weekly local history pass now reports its original finish
