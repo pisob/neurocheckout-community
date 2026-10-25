@@ -128,6 +128,7 @@ try {
  await page.getByRole('button',{name:/Message clicked/}).waitFor();
  await page.locator('.email-activity').getByRole('alert').waitFor({state:'detached'});
  assert.equal(await page.locator('.email-activity').getByRole('alert').count(),0);
+ await page.getByRole('button',{name:'Expand menu',exact:true}).click();
  await page.locator('nav').getByRole('button',{name:/Usage$/}).click();
  await page.getByText('last 24 hours',{exact:false}).first().waitFor();
  assert.equal(await page.locator('.usage-number strong').innerText(),'0');

@@ -45,13 +45,10 @@ nav { display: grid; gap: 5px; margin-top: 48px; }
 .disclosure-sign { flex: 0 0 auto; font-size: 22px; font-weight: 400; line-height: 1; }
 .menu-toggle:focus-visible, .setup-toggle:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 .sidebar nav { margin-top: 16px; overflow-y: auto; min-height: 0; }
-.sidebar-collapsed { grid-template-columns: 88px minmax(0, 1fr); }
-.sidebar-collapsed .sidebar { padding-inline: 12px; }
-.sidebar-collapsed .brand { justify-content: center; padding: 0; }
-.sidebar-collapsed .brand > div, .sidebar-collapsed .nav-label, .sidebar-collapsed .boundary-note > div { display: none; }
-.sidebar-collapsed .menu-toggle { padding-inline: 6px; }
-.sidebar-collapsed .nav-link { display: flex; justify-content: center; }
-.sidebar-collapsed .boundary-note { justify-content: center; padding-inline: 0; }
+.menu-disclosure { display: grid; grid-template-rows: 0fr; min-height: 0; overflow: hidden; visibility: hidden; transition: grid-template-rows .2s ease, visibility 0s linear .2s; }
+.menu-disclosure.is-open { grid-template-rows: 1fr; visibility: visible; transition-delay: 0s; }
+.menu-disclosure-content { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
 .boundary-note { display: flex; gap: 10px; margin-top: auto; border-top: 1px solid var(--line); padding: 20px 8px 0; }
 .boundary-note strong { font-size: 11px; }
 .boundary-note p { margin: 5px 0 0; color: #7894aa; font-size: 10px; line-height: 1.55; }
@@ -662,10 +659,6 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
   .sidebar nav { display: flex; gap: 3px; margin-top: 14px; overflow-x: auto; padding-bottom: 2px; }
   .sidebar .brand { padding-right: 90px; }
   .sidebar .menu-toggle { position: absolute; right: 18px; top: 15px; margin: 0; min-width: 70px; }
-  .sidebar-collapsed .sidebar { padding-inline: 18px; }
-  .sidebar-collapsed .brand { justify-content: flex-start; }
-  .sidebar-collapsed .brand > div { display: block; }
-  .sidebar-collapsed .sidebar nav { display: none; }
   .nav-link { display: block; width: auto; min-width: max-content; padding: 9px 12px; }
   .nav-link span, .nav-link::after { display: none; }
   .nav-link .nav-label { display: inline; }
@@ -853,6 +846,7 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .menu-disclosure { transition: none; }
   .community-network-flow-dot { display: none; }
 }
 

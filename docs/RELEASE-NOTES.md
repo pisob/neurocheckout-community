@@ -1,3 +1,12 @@
+# NeuroCheckout Community v0.1.0-preview.50
+
+- Fold the menu links upward under the Menu button instead of narrowing the sidebar.
+- Keep the desktop sidebar width and workspace position unchanged when toggling.
+- Start the menu collapsed, with accessible plus/minus controls and reduced-motion support.
+
+This is a signed preview. Install it using Update when ready. Existing configuration,
+encrypted data and installation-step controls are preserved.
+
 # NeuroCheckout Community v0.1.0-preview.49
 
 - Start the navigation menu and installation steps collapsed to keep the overview compact.

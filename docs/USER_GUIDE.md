@@ -4,8 +4,9 @@ After installation and connection, open **Overview** and follow the configuratio
 checklist. Installing Community alone does not configure your store's automations.
 
 The menu and installation steps start collapsed. Use **Menu +** to show the
-navigation labels and **Show steps +** to open the checklist; the **−** buttons
-collapse them again. Desktop keeps numbered navigation shortcuts when collapsed.
+navigation links and **Show steps +** to open the checklist; the **−** buttons
+collapse them again. Menu links fold upward beneath the button; the desktop sidebar
+keeps its width so the workspace does not move sideways.
 Reloading the page starts both sections collapsed again.
 
 1. **Account:** check that your existing Cloud account is connected.
