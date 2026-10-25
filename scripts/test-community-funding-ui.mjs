@@ -51,10 +51,13 @@ try {
   const supportButton = sidebar.getByRole('button', { name: 'Support Community', exact: true });
   await expect(page.getByRole('button', { name: 'Expand menu', exact: true })).toHaveAttribute('aria-expanded', 'false');
   await expect(supportButton).toBeVisible();
+  await expect(sidebar.locator('.sidebar-support-copy')).toHaveText('Community is free. Your contribution helps fund its development, maintenance and services. Thank you for your support!');
   mkdirSync('test-results/community-funding', { recursive: true });
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 700 });
     await expect(supportButton).toBeInViewport();
+    const copyBox = await sidebar.locator('.sidebar-support-copy').boundingBox();
+    assert.ok(copyBox.y + copyBox.height <= (await supportButton.boundingBox()).y, 'Support explanation stays above the button');
     await supportButton.focus();
     await expect(supportButton).toBeFocused();
     if (width > 780) assert.ok((await supportButton.boundingBox()).y > 350, 'Support stays at the bottom of the desktop sidebar');
@@ -64,6 +67,18 @@ try {
     await page.getByRole('button', { name: 'Collapse menu', exact: true }).click();
   }
   const beforeNavigation = fundingRequests;
+  for (const view of ['overview', 'agents', 'usage', 'features', 'configuration']) {
+    await page.evaluate(v => { location.hash = v; }, view);
+    await expect(page.locator('nav button.active')).toHaveAttribute('aria-label', { overview: 'Overview', agents: 'Agents', usage: 'Usage', features: 'Plan & data', configuration: 'Configuration' }[view]);
+    const banner = page.locator('.community-sponsor-banner');
+    await expect(banner).toHaveCount(1);
+    await expect(banner).toContainText('E-commerce hosting');
+    const topbar = await page.locator('.topbar').boundingBox();
+    const box = await banner.boundingBox();
+    assert.ok(box.y >= topbar.y + topbar.height - 1, 'The single campaign stays directly below the header');
+    assert.ok(box.y <= topbar.y + topbar.height + 1, 'No page content precedes the campaign');
+  }
+  assert.equal(fundingRequests, beforeNavigation, 'Page changes reuse the active campaign');
   await page.evaluate(() => { location.hash = 'agents'; });
   await expect(page.locator('.agents-view')).toBeVisible();
   await expect(supportButton).toBeVisible();
@@ -150,10 +165,12 @@ try {
   await page.getByRole('button', { name: 'FR', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Soutenez NeuroCheckout Community' })).toBeVisible();
   await expect(sidebar.getByRole('button', { name: 'Soutenir Community', exact: true })).toBeVisible();
+  await expect(sidebar.locator('.sidebar-support-copy')).toContainText('Community est gratuit.');
+  await expect(page.locator('.community-sponsor-banner')).toContainText('Hébergement e-commerce');
   mkdirSync('test-results/community-funding', { recursive: true });
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
-    await page.locator('.community-funding').scrollIntoViewIfNeeded();
+    await details.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `test-results/community-funding/support-${width}.png`, fullPage: true });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   }
@@ -161,7 +178,7 @@ try {
   await expect(page.locator('.community-funding')).toBeVisible();
   await expect(page.locator('.community-funding, .community-support-sidebar')).toHaveCount(0, { timeout: 4000 });
   assert.deepEqual(errors, []); assert.deepEqual(external, []);
-  console.log('PASS: persistent sidebar support, collapsed/expanded menu, shared verified payment flow, sponsor images, pause/reduced motion, failed-media text fallback, free only, upgrades/trials/outage/expiry, sandbox support, no third-party requests, EN/FR, desktop/mobile.');
+  console.log('PASS: explained sidebar support, one header campaign across pages, collapsed/expanded menu, shared verified payment flow, sponsor images, pause/reduced motion, failed-media text fallback, free only, upgrades/trials/outage/expiry, sandbox support, no third-party requests, EN/FR, desktop/mobile.');
 } finally {
   await browser?.close();
   if (server.exitCode === null) { const stopped = once(server, 'exit'); server.kill('SIGTERM'); await stopped; }

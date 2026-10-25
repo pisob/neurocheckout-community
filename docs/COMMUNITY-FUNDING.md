@@ -1,8 +1,10 @@
 # Sponsors and voluntary support
 
-Community can display one clearly labelled sponsored placement in Overview
-and a voluntary support section in Plan & data. A compact support button also
-stays at the bottom of the sidebar on every page, even when the menu is collapsed.
+Community can display one clearly labelled sponsored placement below the language
+and account header on every page, plus a voluntary support section in Plan & data.
+A compact support button also
+stays at the bottom of the sidebar on every page, even when the menu is collapsed,
+with an explanation of how contributions support the project above the button.
 Both support buttons share the same verified Stripe flow. These placements are
 controlled by the Cloud and are off until an administrator configures and enables them.
 

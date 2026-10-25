@@ -1,3 +1,9 @@
+# NeuroCheckout Community v0.1.0-preview.52
+
+- Explain voluntary support above the sidebar button in English and French.
+- Display the active sponsored campaign below the language and account header on
+  every page, with a compact image that preserves its proportions.
+
 # NeuroCheckout Community v0.1.0-preview.51
 
 - Add a Support Community button at the bottom of the sidebar, available on every
