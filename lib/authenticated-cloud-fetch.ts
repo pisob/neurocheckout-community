@@ -135,6 +135,10 @@ export async function authenticatedCloudFetch(
     }
 
     const response = NextResponse.json(payload, { status: cloudResponse.status });
+    const retryAfter = cloudResponse.headers.get("retry-after");
+    if (cloudResponse.status === 429 && retryAfter && /^\d{1,5}$/.test(retryAfter)) {
+      response.headers.set("Retry-After", String(Math.max(1, Math.min(86400, Number(retryAfter)))));
+    }
     if (refreshed) response.cookies.set(COMMUNITY_SESSION_COOKIE, sealSession(session), sessionCookieOptions());
     return response;
   } catch (error) {

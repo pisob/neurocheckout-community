@@ -149,6 +149,10 @@ const cloud = createServer(async (request, response) => {
   }
 
   if (request.method === "GET" && request.url === "/api/v1/member/capabilities") {
+    if (failureMode === "rate-limit") {
+      response.setHeader('Retry-After', '120');
+      return json(response, 429, {detail:'community_resource_budget_exceeded:installation_daily_reads'});
+    }
     if (failureMode === "transport") return request.socket.destroy();
     observed.capabilities = true;
     return json(response, 200, {
@@ -602,6 +606,13 @@ try {
   assert.equal(logout.status, 403);
   assert.equal(cookies.get("nc_community_session"), session);
 
+  failureMode = "rate-limit";
+  const limited = await communityFetch("/api/cloud/capabilities");
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get('retry-after'), '120');
+  assert.equal(cookies.get("nc_community_session"), session);
+  failureMode = "";
+  assert.equal((await communityFetch("/api/cloud/capabilities")).status, 200);
   failureMode = "transport";
   const unavailable = await communityFetch("/api/cloud/capabilities");
   assert.equal(unavailable.status, 503);

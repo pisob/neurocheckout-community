@@ -249,10 +249,13 @@ export default function Dashboard() {
   const [sponsorTarget, setSponsorTarget] = useState<HTMLDivElement | null>(null);
   const [billingNotice, setBillingNotice] = useState<string | null>(null);
   const capabilitiesRequest = useRef(0);
+  const capabilitiesRetryAt = useRef(0);
+  const [retryNotBefore, setRetryNotBefore] = useState(0);
   const [observationTime, setObservationTime] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setObservationTime(Date.now()), 15_000); return () => clearInterval(timer); }, []);
 
   const load = async (silent = false): Promise<boolean> => {
+    if (Date.now() < capabilitiesRetryAt.current) return false;
     const sequence = ++capabilitiesRequest.current;
     if (!silent) setStatus("loading");
     setError(null);
@@ -260,6 +263,14 @@ export default function Dashboard() {
       const response = await fetch("/api/cloud/capabilities", { cache: "no-store", signal: AbortSignal.timeout(12_000) });
       const payload = (await response.json().catch(() => ({}))) as Capabilities & { detail?: string };
       if (sequence !== capabilitiesRequest.current) return false;
+      if (response.status === 429) {
+        const seconds = Number(response.headers.get("retry-after") || 30);
+        capabilitiesRetryAt.current = Date.now() + Math.max(1, Math.min(86400, Number.isFinite(seconds) ? seconds : 30)) * 1000;
+        setRetryNotBefore(capabilitiesRetryAt.current);
+      } else {
+        capabilitiesRetryAt.current = 0;
+        setRetryNotBefore(0);
+      }
       if (response.status === 401) {
         setCapabilities(null);
         setStatus("disconnected");
@@ -386,7 +397,7 @@ export default function Dashboard() {
     if (status !== "error") return;
     // Retry transport failures, never loop on revoked or expired credentials.
     const retry = () => { if (document.visibilityState === "visible") void load(); };
-    const timer = window.setTimeout(retry, 30_000);
+    const timer = window.setTimeout(retry, Math.max(30_000, capabilitiesRetryAt.current - Date.now()));
     window.addEventListener("online", retry);
     document.addEventListener("visibilitychange", retry);
     return () => { window.clearTimeout(timer); window.removeEventListener("online", retry); document.removeEventListener("visibilitychange", retry); };
@@ -601,13 +612,13 @@ export default function Dashboard() {
 
         {status === "disconnected" || status === "error" ? (
           <section className="connect-panel view-enter">
-            <p className="eyebrow">{ui("Connection required", "Connexion requise")}</p>
-            <h2>{ui("Connect this instance to your Cloud account", "Reliez cette instance à votre compte Cloud")}</h2>
-            <p>{ui("Confirm permissions in NeuroCheckout Cloud. Community never collects or stores your password.", "Confirmez les permissions dans NeuroCheckout Cloud. Aucun mot de passe n’est saisi ni stocké dans Community.")}</p>
+            <p className="eyebrow">{status === "error" ? ui("Synchronization paused", "Synchronisation en pause") : ui("Connection required", "Connexion requise")}</p>
+            <h2>{status === "error" ? ui("Cloud response temporarily unavailable", "Réponse Cloud temporairement indisponible") : ui("Connect this instance to your Cloud account", "Reliez cette instance à votre compte Cloud")}</h2>
+            <p>{status === "error" ? ui("Your settings are preserved. Community will retry automatically.", "Vos réglages sont conservés. Community réessaiera automatiquement.") : ui("Confirm permissions in NeuroCheckout Cloud. Community never collects or stores your password.", "Confirmez les permissions dans NeuroCheckout Cloud. Aucun mot de passe n’est saisi ni stocké dans Community.")}</p>
             {error ? <p className="error">{error}</p> : null}
             <div className="actions">
-              <a className="button primary" href="/api/auth/start">{ui("Connect to Cloud", "Connecter au Cloud")}</a>
-              {status === "error" ? <button className="button ghost" type="button" onClick={() => void load()}>{ui("Try again", "Réessayer")}</button> : null}
+              {status === "disconnected" ? <a className="button primary" href="/api/auth/start">{ui("Connect to Cloud", "Connecter au Cloud")}</a> : null}
+              {status === "error" ? <button className="button ghost" type="button" disabled={retryNotBefore > observationTime} onClick={() => void load()}>{ui("Try again", "Réessayer")}</button> : null}
             </div>
           </section>
         ) : null}

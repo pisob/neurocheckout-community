@@ -115,6 +115,9 @@ jobs:
       - name: Test published DPA consent in English and French
         run: npm run test:connector-key-dpa-ui
 
+      - name: Test Cloud interruption and rate-limit recovery
+        run: npm run test:cloud-interruption-ui
+
       - name: Test synchronization diagnostics in the browser
         run: npm run test:diagnostics-ui && npm run test:reliability-ui
 
