@@ -7,6 +7,10 @@ const PUBLIC_ERROR_COPY: Record<string, LocalizedCopy> = {
     en: "Reconnect this installation to continue.",
     fr: "Reconnectez cette installation pour continuer.",
   },
+  community_rate_limited: {
+    en: "Request limit reached. Synchronization will retry after the waiting period. Your connection and settings are preserved.",
+    fr: "Limite de requêtes atteinte. La synchronisation reprendra après le délai d’attente. Votre connexion et vos réglages sont conservés.",
+  },
   community_scope_required: {
     en: "Reconnect this installation once to authorize this action.",
     fr: "Reconnectez cette installation une fois pour autoriser cette action.",
@@ -114,6 +118,10 @@ export function publicErrorMessage(
   language: UiLanguage,
 ): string {
   const code = typeof detail === "string" ? detail.trim().toLowerCase() : "";
+  if (/^community_resource_budget_exceeded:(?:account|installation)_(?:minute|daily_cost|daily_reads)$/.test(code)
+      || code === 'community_resource_budget_exceeded:mutations_minute') {
+    return PUBLIC_ERROR_COPY.community_rate_limited[language];
+  }
   return PUBLIC_ERROR_COPY[code]?.[language] || fallback[language];
 }
 

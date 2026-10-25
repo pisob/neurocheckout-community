@@ -441,7 +441,7 @@ export default function CloudConfiguration() {
           dpa_version: dpaDocument.version, dpa_acceptance_text: dpaDocument.acceptance_text,
           dpa_document_sha256: dpaDocument.document_sha256, dpa_locale: dpaDocument.locale }),
       });
-      const payload = (await readJson(response)) as { api_key?: string };
+      const payload = (await readJson(response)) as { api_key?: string; module_sync?: { manual_sync_required?: boolean } };
       if (!response.ok || !payload.api_key) {
         if ((payload as { detail?: string }).detail === "dpa_document_changed") {
           setDpaAccepted(false);
@@ -451,6 +451,11 @@ export default function CloudConfiguration() {
         throw new Error(detail(payload, ui("Connector key rejected", "Clé connecteur refusée"), language));
       }
       setConnectorKey(payload.api_key);
+      if (payload.module_sync?.manual_sync_required) {
+        setNotice(ui("Key rotated. Copy it into the store connector, save and run Test API, then retry synchronization. Automatic key transfer did not complete.", "Clé renouvelée. Copiez-la dans le connecteur de la boutique, enregistrez et lancez Test API, puis relancez la synchronisation. Le transfert automatique de la clé n’a pas abouti."));
+        await loadShops();
+        return;
+      }
       await activateLocalSync();
       setNotice(ui("Key created and encrypted local synchronization started. Copy the connector key now; it will not be displayed again.", "Clé créée et synchronisation locale chiffrée démarrée. Copiez maintenant la clé connecteur : elle ne sera plus affichée."));
       await loadShops();

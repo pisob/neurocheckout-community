@@ -1,3 +1,16 @@
+# NeuroCheckout Community v0.1.0-preview.55
+
+- Keep temporary Cloud failures separate from expired sign-in: configuration is
+  preserved and retries happen automatically without asking you to reconnect.
+- Respect the Cloud waiting period when the request limit is reached.
+- Explain when a rotated connector key must be copied into the store module,
+  instead of claiming synchronization succeeded before the transfer completed.
+
+Update manually with the dashboard Update button when ready. This release does
+not install itself, change your plan, reset local data or enable customer emails.
+The separate Cloud and WooCommerce fixes protect dashboard read availability and
+preserve encrypted source snapshots across connector key rotations.
+
 # NeuroCheckout Community v0.1.0-preview.54
 
 - Fix authorization for paid plan changes when connected to production Cloud.

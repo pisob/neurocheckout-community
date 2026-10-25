@@ -9,7 +9,7 @@ for (const language of ['en', 'fr']) {
   for (const unknown of ['sk_test_DO_NOT_DISPLAY', 'postgres://private', { stack: 'private' }, null]) {
     assert.equal(publicErrorMessage(unknown, { en: 'Retry', fr: 'Réessayer' }, language), language === 'fr' ? 'Réessayer' : 'Retry');
   }
-  for (const known of ['cloud_unavailable', 'community_scope_required', 'community_paid_upgrade_required', 'update_busy']) {
+  for (const known of ['cloud_unavailable', 'community_scope_required', 'community_paid_upgrade_required', 'update_busy', 'community_resource_budget_exceeded:installation_daily_reads', 'community_resource_budget_exceeded:account_daily_cost']) {
     const message = publicErrorMessage(known, { en: 'fallback', fr: 'fallback' }, language);
     assert.notEqual(message, 'fallback');
     assert(!message.includes(known));

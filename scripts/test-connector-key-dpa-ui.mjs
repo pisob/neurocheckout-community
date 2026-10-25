@@ -30,7 +30,7 @@ try {
       let body={},status=200;
       if(request.method()!=='GET')mutations.push(url.pathname);
       if(url.pathname.endsWith('/capabilities'))body=capabilities;
-      else if(url.pathname.endsWith('/shops'))body={items:[shop]};
+      else if(url.pathname.endsWith('/shops'))body={items:[{...shop,has_active_api_key:submissions>=2}]};
       else if(url.pathname.endsWith('/setup'))body={available:true,configured:true};
       else if(url.pathname.endsWith('/connector-key/dpa')) {
         if(unavailable){status=503;body={detail:'dpa_document_unavailable'};}
@@ -42,7 +42,7 @@ try {
         assert.equal(accepted.dpa_version,changed?'1.3':'1.2');
         assert.equal(accepted.dpa_document_sha256,(changed?'b':'a').repeat(64));
         if(!changed){changed=true;status=409;body={detail:'dpa_document_changed'};}
-        else body={api_key:'synthetic-fixture-not-a-real-key'};
+        else body={api_key:'synthetic-fixture-not-a-real-key',module_sync:{manual_sync_required:submissions>=3}};
       }
       await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
     });
@@ -62,6 +62,10 @@ try {
     await expect(panel.locator('.one-time-secret')).toContainText('synthetic-fixture-not-a-real-key');
     assert.equal(submissions,2);
     assert.deepEqual(mutations,['/api/cloud/connector-key','/api/cloud/connector-key','/api/local-data/setup']);
+    await panel.getByRole('button',{name:language==='fr'?'Faire une rotation':'Rotate key',exact:true}).click();
+    await expect(panel.getByText(language==='fr'?'Le transfert automatique de la clé n’a pas abouti.':'Automatic key transfer did not complete.',{exact:false})).toBeVisible();
+    await expect(panel.locator('.one-time-secret')).toContainText('synthetic-fixture-not-a-real-key');
+    assert.equal(mutations.filter(path=>path==='/api/local-data/setup').length,1,'failed key transfer must not claim/activate synchronization');
     assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
     console.log('PASS '+language+': unavailable blocks, published consent, stale document resets, renewed consent submits exact contract.');
     await context.close();

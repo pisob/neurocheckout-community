@@ -7,7 +7,7 @@ review email activity and approvals, and check synchronization.
 
 Official repository: https://github.com/pisob/neurocheckout-community
 
-**Current preview:** Community **0.1.0-preview.54**, with PrestaShop **4.6.12**,
+**Current preview:** Community **0.1.0-preview.55**, with PrestaShop **4.6.12**,
 WooCommerce **1.0.15** and Magento **1.0.11** connectors. Community remains a
 **prerelease**, including when connected to production. Use signed downloads,
 keep a private backup and verify each store before enabling customer emails.
@@ -16,6 +16,16 @@ Updating Community or a connector does not activate campaigns.
 [User guide — English / français](docs/USER_GUIDE.md) ·
 [Installation guide](docs/INSTALLATION.md) ·
 [Official releases](https://github.com/pisob/neurocheckout-community/releases)
+
+## Connection interruptions and connector rotation
+
+Temporary Cloud errors and request limits pause synchronization without presenting
+an expired login. The dashboard honors the server's waiting period and retries;
+an explicit authentication rejection still requires reconnection. Local data and
+settings are preserved. A key rotation that needs manual copying now explains how
+to update the store connector instead of claiming that synchronization succeeded.
+The matching Cloud and WooCommerce corrections preserve read availability and
+encrypted source state when connector credentials change.
 
 ## Requirements
 
@@ -65,7 +75,7 @@ Use exactly the same callback in Cloud and in the setup assistant.
 Install the current signed tag, rather than the development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.54 --depth 1 \
+git clone --branch v0.1.0-preview.55 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -79,7 +89,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.54
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.55
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
