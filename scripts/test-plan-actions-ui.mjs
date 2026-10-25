@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.NC_PLAYWRIGHT_MODULE || "@playwright/test");
 const origin = "http://127.0.0.1:13424";
 const server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", "13424"], {
-  stdio: "ignore", env: { ...process.env, NC_DEPLOYMENT_ENV: "test", NC_LOCAL_DATA_PILOT_ENABLED: "false", NC_CONNECTOR_PULL_ENABLED: "false", NC_COMMUNITY_AVAILABILITY_ENABLED: "false" },
+  stdio: "ignore", env: { ...process.env, NC_DEPLOYMENT_ENV: "test", NC_LOCAL_DATA_PILOT_ENABLED: "false", NC_CONNECTOR_PULL_ENABLED: "false", NC_COMMUNITY_AVAILABILITY_ENABLED: "false", NC_COMMUNITY_CLIENT_ID: "nc_billing_fixture", NC_COMMUNITY_REDIRECT_URI: origin + "/api/auth/callback", NC_CLOUD_AUTHORIZATION_URL: "https://www.neurocheckout.com/community/authorize" },
 });
 let browser;
 try {
@@ -15,8 +15,19 @@ try {
     try { if ((await fetch(origin)).ok) break; } catch {}
     await new Promise(resolve => setTimeout(resolve, 100));
   }
+  const start = await fetch(origin + "/api/auth/start?scope=admin%20analytics:write", { redirect: "manual" });
+  assert.equal(start.status, 307);
+  const authorization = new URL(start.headers.get("location"));
+  const scopes = authorization.searchParams.get("scope").split(" ");
+  assert(scopes.includes("billing:write"), "Production authorization must request billing access");
+  assert(!scopes.includes("analytics:write") && !scopes.includes("admin"), "Do not broaden unrelated scopes");
+  assert.equal(authorization.searchParams.get("code_challenge_method"), "S256");
+  assert(authorization.searchParams.get("state"));
+  console.log("PASS production OAuth billing scope and PKCE");
   browser = await chromium.launch();
-  for (const scenario of ["starter", "pro", "upgrade", "portal", "untrusted", "error"]) {
+  for (const scenario of ["starter", "pro", "upgrade", "portal", "untrusted", "error", "scope-preview", "scope-preview-fr", "scope-submit", "scope-portal"]) {
+    const portal = ["portal", "scope-portal"].includes(scenario);
+    const french = scenario.endsWith("-fr");
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
     const mutations = [];
@@ -32,12 +43,12 @@ try {
         body = {
           schema_version: "1.1",
           manifest: scenario === "untrusted" ? null : { version: "test", authority: "neurocheckout_cloud", deny_by_default: true, refresh_after_seconds: 60 },
-          plan: { code: ["portal", "upgrade"].includes(scenario) ? "starter" : "community", edition: "community" },
-          subscription: { status: scenario === "portal" ? "paid_active" : "free_active", active: true, can_manage_billing: scenario === "portal" },
+          plan: { code: portal || scenario === "upgrade" ? "starter" : "community", edition: "community" },
+          subscription: { status: portal ? "paid_active" : "free_active", active: true, can_manage_billing: portal },
           limits: { shops: 1, active_agents: 8, emails: { limit: 100, used: 0, remaining: 100 } },
           features: { member_dashboard: true }, agents: { available: [], coordination_enabled: true },
           dashboard: { update_required: false, update_recommended: false }, connectors: [],
-          upgrade: { available: scenario !== "portal", action: scenario === "upgrade" ? "upgrade" : "checkout", target_plans: scenario === "upgrade" ? ["pro"] : ["starter", "pro"] },
+          upgrade: { available: !portal, action: scenario === "upgrade" ? "upgrade" : "checkout", target_plans: scenario === "upgrade" ? ["pro"] : ["starter", "pro"] },
         };
       } else if (path.endsWith("/setup")) {
         body = { enabled: true, configured: true };
@@ -45,19 +56,22 @@ try {
         const query = new URL(request.url()).searchParams;
         body = { plan_code: query.get("plan_code"), billing_cycle: query.get("billing_cycle"), amount: 123.45, currency: "USD", tax_behavior: "exclusive", limits: { shops: 4, agents: 8, emails: 1000 } };
         if (scenario === "error") { status = 503; body = { detail: "private_exception_not_for_display" }; }
+        if (scenario.startsWith("scope-preview")) { status = 403; body = { detail: "community_scope_required" }; }
       } else if (path.includes("/subscription/") && request.method() === "POST") {
         mutations.push({ path, body: request.postDataJSON() });
         if (scenario === "error") { status = 503; body = { detail: "billing_unavailable" }; }
+        else if (scenario.startsWith("scope-")) { status = 403; body = { detail: "community_scope_required" }; }
         else body = { checkout_url: "https://billing.example.test/checkout", portal_url: "https://billing.example.test/portal" };
       }
       await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
     });
     await page.goto(origin + "/?connected=1#features");
     await page.getByRole("button", { name: "Refresh entitlements", exact: true }).waitFor();
+    if (french) await page.getByRole("button", { name: "FR", exact: true }).click();
     if (scenario === "pro") await page.locator(".subscription-controls select").first().selectOption("pro");
-    const button = scenario === "portal"
+    const button = portal
       ? page.getByRole("button", { name: "Change plan — Upgrade / Downgrade", exact: true })
-      : page.getByRole("button", { name: ["pro", "upgrade"].includes(scenario) ? "Upgrade to Pro" : "Upgrade to Starter", exact: true });
+      : page.getByRole("button", { name: french ? "Passer à Starter" : ["pro", "upgrade"].includes(scenario) ? "Upgrade to Pro" : "Upgrade to Starter", exact: true });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Mobile overflow");
     if (scenario === "untrusted") {
       assert(await button.isDisabled());
@@ -66,6 +80,29 @@ try {
       await button.click();
       await page.getByRole("dialog").waitFor();
       assert.equal(mutations.length, 0, "Opening the review must not change billing");
+      if (scenario.startsWith("scope-")) {
+        if (scenario.startsWith("scope-preview")) {
+          await page.getByRole("dialog").getByRole("link", { name: french ? "Reconnecter Community" : "Reconnect Community", exact: true }).waitFor();
+          assert.equal(await page.getByRole("button", { name: "Continue to secure billing", exact: true }).count(), 0);
+          await page.getByRole("button", { name: french ? "Plus tard" : "Not now", exact: true }).click();
+          assert.equal(mutations.length, 0, "Missing scope must be resolved before any billing mutation");
+        } else {
+          await page.getByText('Recurring base price : $123.45 / month', { exact: true }).waitFor();
+          await page.getByRole("button", { name: "Continue to secure billing", exact: true }).click();
+          await page.locator(".config-error[role=alert]").last().waitFor();
+          assert.deepEqual(mutations.map(x => x.path), [portal ? "/api/cloud/subscription/portal" : "/api/cloud/subscription/select-plan"]);
+        }
+        assert(await button.isDisabled());
+        const reconnect = page.getByRole("link", { name: french ? "Reconnecter Community" : "Reconnect Community", exact: true });
+        assert.equal(await reconnect.getAttribute("href"), "/api/auth/start");
+        await reconnect.click();
+        await page.waitForURL(origin + "/api/auth/start");
+        assert.equal(mutations.length, scenario.startsWith("scope-preview") ? 0 : 1);
+        assert.deepEqual(errors, []);
+        console.log("PASS browser reconnect:", scenario);
+        await context.close();
+        continue;
+      }
       await page.getByRole("button", { name: "Not now", exact: true }).click();
       assert.equal(mutations.length, 0, "Cancelling the review must not change billing");
       await button.click();

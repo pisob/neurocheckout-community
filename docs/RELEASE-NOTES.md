@@ -1,3 +1,14 @@
+# NeuroCheckout Community v0.1.0-preview.54
+
+- Fix authorization for paid plan changes when connected to production Cloud.
+- Offer a direct reconnect action when an older session lacks billing permission,
+  in English and French, before attempting a plan change.
+- Preserve the normal plan review and payment confirmation. Reconnecting alone
+  never changes the subscription or charges a payment.
+
+Update manually with the dashboard Update button, reconnect once when prompted,
+then return to Plan & data and choose your offer. Local data is preserved.
+
 # NeuroCheckout Community v0.1.0-preview.52
 
 ## 0.1.0-preview.53 — 2026-10-25

@@ -27,6 +27,9 @@ Reloading the page starts both sections collapsed again.
 Open **Plan & data**. Choose an available plan and billing period, or open
 **Change plan — Upgrade / Downgrade** for an existing subscription. Review the
 summary before continuing. Cancelling this review does not change billing.
+If prompted, select **Reconnect Community**, authorize access in Cloud, then
+return to **Plan & data** and choose your offer again. This is required once
+for older connections. Reconnecting alone does not change or charge a plan.
 
 Upgrading from the free Community plan does not include a new 30-day trial.
 The review shows the current configured base price and offer limits when they
@@ -96,6 +99,9 @@ numérotés restent accessibles. Une actualisation replie les deux sections.
   puis générez un aperçu. La case de vérification de la checklist est votre
   confirmation personnelle, conservée dans ce navigateur uniquement.
 - Dans **Offre et données**, vérifiez le récapitulatif avant de poursuivre.
+  Si demandé, cliquez sur **Reconnecter Community**, autorisez l’accès dans Cloud,
+  puis choisissez à nouveau votre offre. Cette reconnexion ne modifie pas
+  l’abonnement et ne déclenche aucun paiement.
   Community gratuite n’inclut pas de nouvel essai lors du passage au payant.
   Vérifiez le prix, les limites et la date d’effet dans Stripe avant confirmation.
 - Pour une mise à jour, attendez la vérification de la version démarrée.

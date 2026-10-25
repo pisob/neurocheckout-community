@@ -81,6 +81,12 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(billingNotice);
   const [error, setError] = useState<string | null>(null);
+  const [needsReconnect, setNeedsReconnect] = useState(false);
+  const reconnectMessage = ui(
+    "Reconnect Community to authorize plan changes, then choose your offer again. Reconnecting does not change your subscription.",
+    "Reconnectez Community pour autoriser les changements d’offre, puis choisissez à nouveau votre offre. La reconnexion ne modifie pas votre abonnement.",
+  );
+  const reconnectLabel = ui("Reconnect Community", "Reconnecter Community");
   const confirmation = useRef<HTMLDialogElement>(null);
   const confirmationTrigger = useRef<HTMLElement | null>(null);
   const [proposedAction, setProposedAction] = useState<"checkout" | "portal">("checkout");
@@ -105,6 +111,10 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
       try {
         const response = await fetch(`/api/cloud/subscription/preview?${new URLSearchParams({ plan_code: previewPlan, billing_cycle: billingCycle })}`, { cache: "no-store", signal: controller.signal });
         const data = await response.json();
+        if (!controller.signal.aborted && !response.ok && data.detail === "community_scope_required") {
+          setNeedsReconnect(true);
+          return;
+        }
         if (!response.ok || data.plan_code !== previewPlan || data.billing_cycle !== billingCycle || typeof data.amount !== "number" || !Number.isFinite(data.amount) || data.amount <= 0 || !/^[A-Z]{3}$/.test(data.currency) || !data.limits) return;
         if (!controller.signal.aborted) setPrice(data);
       } catch { /* Never show a cached or estimated price on failure. */ }
@@ -151,10 +161,8 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
 
   const billingError = (detail: string | undefined) => {
     if (detail === "community_scope_required") {
-      return ui(
-        "Reconnect this installation once to authorize secure billing actions.",
-        "Reconnectez cette installation une fois pour autoriser les actions de facturation sécurisées.",
-      );
+      setNeedsReconnect(true);
+      return reconnectMessage;
     }
     if (detail === "community_checkout_already_in_progress") {
       return ui(
@@ -328,6 +336,10 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
       ) : null}
       {notice ? <p className="config-notice" role="status">{notice}</p> : null}
       {error ? <p className="config-error" role="alert">{error}</p> : null}
+      {needsReconnect ? <div className="config-notice">
+        {!error ? <p role="alert">{reconnectMessage}</p> : null}
+        <a className="button primary" href="/api/auth/start">{reconnectLabel}</a>
+      </div> : null}
       {!authoritativeContract ? <p className="config-error" role="alert">{ui(
         "The Cloud entitlement contract is unavailable or outdated. Billing actions are disabled until the connection is refreshed.",
         "Le contrat de droits Cloud est indisponible ou obsolète. Les actions de facturation sont désactivées jusqu’à l’actualisation de la connexion.",
@@ -350,8 +362,8 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
           </select>
         </div>
         <div className="subscription-actions">
-          {capabilities.upgrade.available ? <button className="button primary" type="button" disabled={busy !== null || !authoritativeContract} onClick={() => review("checkout")}>{busy === "checkout" ? ui("Opening…", "Ouverture…") : upgradeLabel}</button> : null}
-          {capabilities.subscription.can_manage_billing ? <button className="button ghost" type="button" disabled={busy !== null || !authoritativeContract} onClick={() => review("portal")}>{busy === "portal" ? ui("Opening…", "Ouverture…") : ui("Change plan — Upgrade / Downgrade", "Changer d’offre — Upgrade / Downgrade")}</button> : null}
+          {capabilities.upgrade.available ? <button className="button primary" type="button" disabled={busy !== null || !authoritativeContract || needsReconnect} onClick={() => review("checkout")}>{busy === "checkout" ? ui("Opening…", "Ouverture…") : upgradeLabel}</button> : null}
+          {capabilities.subscription.can_manage_billing ? <button className="button ghost" type="button" disabled={busy !== null || !authoritativeContract || needsReconnect} onClick={() => review("portal")}>{busy === "portal" ? ui("Opening…", "Ouverture…") : ui("Change plan — Upgrade / Downgrade", "Changer d’offre — Upgrade / Downgrade")}</button> : null}
           <button className="button ghost" type="button" disabled={busy !== null} onClick={() => void refresh()}>{busy === "refresh" ? ui("Refreshing…", "Actualisation…") : ui("Refresh entitlements", "Actualiser les droits")}</button>
         </div>
       </div>
@@ -365,7 +377,7 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
         </> : <p>{ui("Choose the available plan or cancellation option in the billing portal. Opening the portal does not change your subscription.", "Choisissez l’offre disponible ou l’option de résiliation dans le portail de facturation. Ouvrir le portail ne modifie pas votre abonnement.")}</p>}
         {proposedAction === "portal" ? <label>{ui("Compare an offer", "Comparer une offre")}<select value={comparisonPlan} onChange={event => setComparisonPlan(event.target.value)}><option value="starter">Starter</option><option value="pro">Pro</option></select></label> : null}
         <div className="config-notice" role="status">
-          {priceLoading ? ui("Checking the current price…", "Vérification du tarif actuel…") : price ? <>
+          {needsReconnect ? <p role="alert">{reconnectMessage}</p> : priceLoading ? ui("Checking the current price…", "Vérification du tarif actuel…") : price ? <>
             <strong>{ui("Recurring base price", "Tarif de base récurrent")} : {new Intl.NumberFormat(language === "fr" ? "fr-FR" : "en-US", { style: "currency", currency: price.currency }).format(price.amount)} / {billingCycle === "annual" ? ui("year", "an") : ui("month", "mois")}</strong>
             <p>{price.tax_behavior === "inclusive" ? ui("Taxes included in the configured price.", "Taxes incluses dans le tarif configuré.") : ui("Applicable taxes are confirmed in Stripe.", "Les taxes applicables sont confirmées dans Stripe.")}</p>
             <p>{ui("New limits", "Nouvelles limites")} : {price.limits.shops ?? "∞"} {ui("stores", "boutiques")} · {price.limits.agents ?? "∞"} agents · {price.limits.emails ?? "∞"} {ui("emails per month", "emails par mois")}{price.limits.email_scope === "shop" ? ui(" per store", " par boutique") : ""}</p>
@@ -376,10 +388,10 @@ export default function PlanAndData({ capabilities, language, billingNotice, onR
         <p>{ui("If you downgrade, check the new store, agent and email limits before confirming. Your local data is preserved; available features may change. If the desired offer is missing, return here without cancelling your subscription.", "En cas de baisse d’offre, vérifiez les nouvelles limites de boutiques, d’agents et d’emails avant de confirmer. Vos données locales sont conservées ; les fonctionnalités disponibles peuvent changer. Si l’offre souhaitée est absente, revenez ici sans résilier votre abonnement.")}</p>
         <div className="actions">
           <button className="button ghost" autoFocus type="button" onClick={() => confirmation.current?.close()}>{ui("Not now", "Plus tard")}</button>
-          <button className="button primary" type="button" disabled={busy !== null || !authoritativeContract} onClick={() => {
+          {needsReconnect ? <a className="button primary" href="/api/auth/start">{reconnectLabel}</a> : <button className="button primary" type="button" disabled={busy !== null || !authoritativeContract || priceLoading} onClick={() => {
             confirmation.current?.close();
             void (proposedAction === "portal" ? openBillingPortal() : startSubscription());
-          }}>{ui("Continue to secure billing", "Continuer vers la facturation sécurisée")}</button>
+          }}>{ui("Continue to secure billing", "Continuer vers la facturation sécurisée")}</button>}
         </div>
       </dialog>
 
