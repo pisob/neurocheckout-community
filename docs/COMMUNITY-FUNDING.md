@@ -1,8 +1,10 @@
 # Sponsors and voluntary support
 
 Community can display one clearly labelled sponsored placement in Overview
-and a voluntary support section in Plan & data. Both are controlled by the Cloud
-and are off until an administrator configures and enables them.
+and a voluntary support section in Plan & data. A compact support button also
+stays at the bottom of the sidebar on every page, even when the menu is collapsed.
+Both support buttons share the same verified Stripe flow. These placements are
+controlled by the Cloud and are off until an administrator configures and enables them.
 
 Only accounts with a confirmed **free Community plan** are eligible. Starter,
 Pro, Enterprise and trial accounts see neither placement, even when they use the

@@ -245,6 +245,7 @@ export default function Dashboard() {
   const [lastSuccessfulSyncAt, setLastSuccessfulSyncAt] = useState<Date | null>(null);
   const [activeView, setActiveView] = useState<DashboardView>("overview");
   const [menuExpanded, setMenuExpanded] = useState(false);
+  const [fundingTarget, setFundingTarget] = useState<HTMLDivElement | null>(null);
   const [billingNotice, setBillingNotice] = useState<string | null>(null);
   const capabilitiesRequest = useRef(0);
   const [observationTime, setObservationTime] = useState(Date.now());
@@ -562,9 +563,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="boundary-note">
-          <span className="status-dot" />
-          <div><strong>{ui("Self-hosted interface", "Interface auto-hébergée")}</strong><p>{ui("Securely connected to NeuroCheckout services.", "Connectée de manière sécurisée aux services NeuroCheckout.")}</p></div>
+        <div className="sidebar-footer">
+          <div ref={setFundingTarget} />
+          <div className="boundary-note">
+            <span className="status-dot" />
+            <div><strong>{ui("Self-hosted interface", "Interface auto-hébergée")}</strong><p>{ui("Securely connected to NeuroCheckout services.", "Connectée de manière sécurisée aux services NeuroCheckout.")}</p></div>
+          </div>
         </div>
       </aside>
 
@@ -796,10 +800,11 @@ export default function Dashboard() {
             ) : null}
 
             {activeView === "configuration" ? <div className="view-enter"><CloudConfiguration /></div> : null}
-            {activeView === "overview" || activeView === "features" ? <CommunityFunding
+            <CommunityFunding
               capabilities={capabilities} fresh={!syncDelayed && status === "connected" && !!lastSuccessfulSyncAt && observationTime - lastSuccessfulSyncAt.getTime() < 120_000}
-              verifiedAt={lastSuccessfulSyncAt?.getTime() ?? null} language={language} view={activeView}
-            /> : null}
+              verifiedAt={lastSuccessfulSyncAt?.getTime() ?? null} language={language}
+              view={activeView === "overview" || activeView === "features" ? activeView : "other"} sidebarTarget={fundingTarget}
+            />
           </>
         ) : null}
       </section>
