@@ -6,9 +6,9 @@ import { fundingEligible, parseFunding, supportUrl, type Funding, type FundingCa
 import type { UiLanguage } from "@/lib/ui-language";
 import SponsorImage from "@/components/SponsorImage";
 
-type Props = { capabilities: FundingCapabilities | null; fresh: boolean; verifiedAt: number | null; language: UiLanguage; view: "overview" | "features" | "other"; sidebarTarget: HTMLElement | null };
+type Props = { capabilities: FundingCapabilities | null; fresh: boolean; verifiedAt: number | null; language: UiLanguage; view: "overview" | "features" | "other"; sidebarTarget: HTMLElement | null; sponsorTarget: HTMLElement | null };
 
-export default function CommunityFunding({ capabilities, fresh, verifiedAt, language, view, sidebarTarget }: Props) {
+export default function CommunityFunding({ capabilities, fresh, verifiedAt, language, view, sidebarTarget, sponsorTarget }: Props) {
   const allowed = fundingEligible(capabilities, fresh);
   const [funding, setFunding] = useState<Funding | null>(null);
   const [destination, setDestination] = useState<string | null>(null);
@@ -67,26 +67,28 @@ export default function CommunityFunding({ capabilities, fresh, verifiedAt, lang
     : <button className={className} type="button" onClick={() => void prepareSupport()} disabled={busy}>{busy ? ui("Checking…", "Vérification…") : ui("Support Community", "Soutenir Community")}</button>;
   const testNotice = support?.mode === "test" ? <p className="funding-note">{ui("Stripe test mode — no real payment.", "Mode test Stripe — aucun paiement réel.")}</p> : null;
   const paymentError = error ? <p role="alert">{ui("Support payments are temporarily unavailable. You can continue using Community normally.", "Le paiement de soutien est momentanément indisponible. Vous pouvez continuer à utiliser Community normalement.")}</p> : null;
+  const supportMessage = ui("Community is free. Your contribution helps fund its development, maintenance and services. Thank you for your support!", "Community est gratuit. Votre contribution nous aide à financer son développement, sa maintenance et les services nécessaires à son fonctionnement. Merci pour votre soutien !");
 
   return <>
     {sidebarTarget && support ? createPortal(<div className="community-support-sidebar">
+      <p className="sidebar-support-copy">{supportMessage}</p>
       {supportAction("button secondary-blue")}
       {testNotice}
       {paymentError}
     </div>, sidebarTarget) : null}
-    {view === "overview" && sponsor ? <aside className={`community-funding${sponsor.image ? " community-funding-with-media" : ""}`} aria-labelledby="community-sponsor-title">
+    {sponsorTarget && sponsor ? createPortal(<aside className={`community-funding community-sponsor-banner${sponsor.image ? " community-funding-with-media" : ""}`} aria-labelledby="community-sponsor-title">
       {sponsor.image ? <SponsorImage key={`${sponsor.id}-${sponsor.image.asset_id}`} image={sponsor.image} href={sponsor.url} language={language} /> : null}
       <div><p className="eyebrow">{ui("Sponsored · Supports Community", "Sponsorisé · Finance Community")}</p>
         <h2 id="community-sponsor-title">{sponsor[language].title}</h2><p>{sponsor[language].description}</p></div>
-      <a className="button secondary" href={sponsor.url} target="_blank" rel="sponsored noopener noreferrer" referrerPolicy="no-referrer">
+      <a className="button secondary-blue" href={sponsor.url} target="_blank" rel="sponsored noopener noreferrer" referrerPolicy="no-referrer">
         {ui("View offer", "Découvrir l’offre")} <span aria-hidden="true">↗</span>
         <span className="funding-sr-only">{ui(" (opens in a new tab)", " (nouvel onglet)")}</span>
       </a>
-    </aside> : null}
+    </aside>, sponsorTarget) : null}
     {view === "features" && support ? <section className="community-funding" aria-labelledby="community-support-title">
     <div><p className="eyebrow">{ui("Voluntary support", "Soutien volontaire")}</p>
       <h2 id="community-support-title">{ui("Support NeuroCheckout Community", "Soutenez NeuroCheckout Community")}</h2>
-      <p>{ui("Community is free. Your contribution helps fund its development, maintenance and services. Thank you for your support!", "Community est gratuit. Votre contribution nous aide à financer son développement, sa maintenance et les services nécessaires à son fonctionnement. Merci pour votre soutien !")}</p>
+      <p>{supportMessage}</p>
       <p className="funding-note">{ui("Optional, one-time contribution. Choose your amount on Stripe. No change to your plan, quotas or features.", "Contribution facultative et ponctuelle. Choisissez votre montant sur Stripe. Aucun changement de votre offre, de vos quotas ou de vos fonctionnalités.")}</p>
       {testNotice}
       {paymentError}

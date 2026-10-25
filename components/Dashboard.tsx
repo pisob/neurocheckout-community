@@ -246,6 +246,7 @@ export default function Dashboard() {
   const [activeView, setActiveView] = useState<DashboardView>("overview");
   const [menuExpanded, setMenuExpanded] = useState(false);
   const [fundingTarget, setFundingTarget] = useState<HTMLDivElement | null>(null);
+  const [sponsorTarget, setSponsorTarget] = useState<HTMLDivElement | null>(null);
   const [billingNotice, setBillingNotice] = useState<string | null>(null);
   const capabilitiesRequest = useRef(0);
   const [observationTime, setObservationTime] = useState(Date.now());
@@ -592,6 +593,7 @@ export default function Dashboard() {
             ) : null}
           </div>
         </header>
+        <div ref={setSponsorTarget} />
 
         {status === "loading" ? (
           <div className="state-panel"><span className="loader" /><p>{ui("Securely syncing with NeuroCheckout Cloud…", "Synchronisation sécurisée avec NeuroCheckout Cloud…")}</p></div>
@@ -803,7 +805,7 @@ export default function Dashboard() {
             <CommunityFunding
               capabilities={capabilities} fresh={!syncDelayed && status === "connected" && !!lastSuccessfulSyncAt && observationTime - lastSuccessfulSyncAt.getTime() < 120_000}
               verifiedAt={lastSuccessfulSyncAt?.getTime() ?? null} language={language}
-              view={activeView === "overview" || activeView === "features" ? activeView : "other"} sidebarTarget={fundingTarget}
+              view={activeView === "overview" || activeView === "features" ? activeView : "other"} sidebarTarget={fundingTarget} sponsorTarget={sponsorTarget}
             />
           </>
         ) : null}
