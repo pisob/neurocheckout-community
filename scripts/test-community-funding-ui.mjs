@@ -18,7 +18,8 @@ try {
   page.on('request', req => { if (!req.url().startsWith(origin)) external.push(req.url()); });
   let plan = 'community', status = 'free_active', failFunding = false, failCaps = false, available = true, wrongStripe = false, shortExpiry = false;
   let fundingRequests = 0, paymentRequests = 0;
-  let failImage = false;
+  let failImage = false, rotate = false;
+  const selected = () => page.locator('#community-sponsor-title').textContent();
   const image = { asset_id: 'a'.repeat(64), width: 600, height: 200, animated: true, alt_fr: 'Visuel du partenaire', alt_en: 'Partner creative' };
   const sponsor = { id: 'hosting', url: 'https://partner.example.com/offer', fr: { title: 'Hébergement e-commerce', description: 'Un partenaire pour votre boutique.' }, en: { title: 'E-commerce hosting', description: 'A partner for your store.' } };
   await page.route('**/api/**', async route => {
@@ -36,7 +37,7 @@ try {
       paymentRequests++; body = { url: wrongStripe ? 'https://buy.stripe.com/realPayment' : 'https://buy.stripe.com/test_fixture' };
     } else if (path.endsWith('/community-funding')) {
       fundingRequests++; code = failFunding ? 503 : 200;
-      body = { schema_version: 1, eligible: true, expires_at: new Date(Date.now()+(shortExpiry ? 1200 : 120000)).toISOString(), sponsor: available ? sponsor : null, support: available ? { mode: 'test' } : null };
+      body = { schema_version: 1, eligible: true, expires_at: new Date(Date.now()+(shortExpiry ? 1200 : 120000)).toISOString(), sponsor: available ? sponsor : null, ...(rotate ? { sponsors: available ? [sponsor, { ...sponsor, id: 'second', en: { ...sponsor.en, title: 'Second campaign' } }] : [] } : {}), support: available ? { mode: 'test' } : null };
     } else if (path.endsWith('/shops')) body = { items: [] };
     await route.fulfill({ status: code, contentType: 'application/json', body: JSON.stringify(body) });
   });
@@ -73,12 +74,14 @@ try {
     const banner = page.locator('.community-sponsor-banner');
     await expect(banner).toHaveCount(1);
     await expect(banner).toContainText('E-commerce hosting');
-    const topbar = await page.locator('.topbar').boundingBox();
-    const box = await banner.boundingBox();
-    assert.ok(box.y >= topbar.y + topbar.height - 1, 'The single campaign stays directly below the header');
-    assert.ok(box.y <= topbar.y + topbar.height + 1, 'No page content precedes the campaign');
+    await expect.poll(() => page.evaluate(() => {
+      const header = document.querySelector('.topbar').getBoundingClientRect();
+      const banner = document.querySelector('.community-sponsor-banner').getBoundingClientRect();
+      return Math.abs(banner.top - header.bottom);
+    })).toBeLessThanOrEqual(1);
+
   }
-  assert.equal(fundingRequests, beforeNavigation, 'Page changes reuse the active campaign');
+  assert.equal(fundingRequests, beforeNavigation, 'Page changes use the current eligible list without unnecessary network requests');
   await page.evaluate(() => { location.hash = 'agents'; });
   await expect(page.locator('.agents-view')).toBeVisible();
   await expect(supportButton).toBeVisible();
@@ -90,6 +93,25 @@ try {
   assert.equal(fundingRequests, beforeNavigation, 'One funding state serves both placements and survives navigation');
   assert.equal(paymentRequests, 1, 'Changing view does not prepare another payment link');
   await page.evaluate(() => { location.hash = 'overview'; });
+  rotate = true;
+  await page.reload();
+  await expect(page.locator('#community-sponsor-title')).toHaveText('Second campaign');
+  for (const view of ['agents', 'usage', 'configuration', 'features', 'overview']) {
+    const previous = await selected();
+    await page.evaluate(v => { location.hash = v; }, view);
+    await expect(page.locator('#community-sponsor-title')).not.toHaveText(previous);
+  }
+  const previousReload = await selected();
+  await page.reload();
+  await expect(page.locator('#community-sponsor-title')).not.toHaveText(previousReload);
+  // Browser back/forward also rotates. Consecutive non-overview pages must work.
+  await page.evaluate(() => { location.hash = 'agents'; });
+  await expect(page.locator('nav button.active')).toHaveAttribute('aria-label', 'Agents');
+  const previousBack = await selected();
+  await page.goBack();
+  await expect(page.locator('#community-sponsor-title')).not.toHaveText(previousBack);
+  assert.equal(paymentRequests, 1, 'Rotation does not prepare payments');
+  rotate = false;
   sponsor.image = image;
   await page.reload();
   const creative = page.getByRole('img', { name: 'Partner creative' });

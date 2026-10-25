@@ -805,7 +805,7 @@ export default function Dashboard() {
             <CommunityFunding
               capabilities={capabilities} fresh={!syncDelayed && status === "connected" && !!lastSuccessfulSyncAt && observationTime - lastSuccessfulSyncAt.getTime() < 120_000}
               verifiedAt={lastSuccessfulSyncAt?.getTime() ?? null} language={language}
-              view={activeView === "overview" || activeView === "features" ? activeView : "other"} sidebarTarget={fundingTarget} sponsorTarget={sponsorTarget}
+              view={activeView} sidebarTarget={fundingTarget} sponsorTarget={sponsorTarget}
             />
           </>
         ) : null}

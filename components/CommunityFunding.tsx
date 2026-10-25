@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { fundingEligible, parseFunding, supportUrl, type Funding, type FundingCapabilities } from "@/lib/community-funding";
+import { fundingEligible, parseFunding, nextSponsor, supportUrl, type Funding, type FundingCapabilities } from "@/lib/community-funding";
 import type { UiLanguage } from "@/lib/ui-language";
 import SponsorImage from "@/components/SponsorImage";
 
-type Props = { capabilities: FundingCapabilities | null; fresh: boolean; verifiedAt: number | null; language: UiLanguage; view: "overview" | "features" | "other"; sidebarTarget: HTMLElement | null; sponsorTarget: HTMLElement | null };
+type Props = { capabilities: FundingCapabilities | null; fresh: boolean; verifiedAt: number | null; language: UiLanguage; view: string; sidebarTarget: HTMLElement | null; sponsorTarget: HTMLElement | null };
 
 export default function CommunityFunding({ capabilities, fresh, verifiedAt, language, view, sidebarTarget, sponsorTarget }: Props) {
   const allowed = fundingEligible(capabilities, fresh);
@@ -14,6 +14,8 @@ export default function CommunityFunding({ capabilities, fresh, verifiedAt, lang
   const [destination, setDestination] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selection = useRef<{ view: string; id: string | null } | null>(null);
   const supportRequest = useRef<AbortController | null>(null);
   const ui = (en: string, fr: string) => language === "fr" ? fr : en;
 
@@ -36,8 +38,30 @@ export default function CommunityFunding({ capabilities, fresh, verifiedAt, lang
     return () => { controller.abort(); clearTimeout(deadline); clearTimeout(expiry); supportRequest.current?.abort(); };
   }, [allowed, verifiedAt]);
 
+  useEffect(() => {
+    if (!allowed) {
+      selection.current = null; setSelectedId(null);
+      return;
+    }
+    if (!funding) return;
+    const sponsors = funding.sponsors || [];
+    const current = selection.current;
+    // Background entitlement refreshes update content without changing the ad.
+    if (current?.view === view && sponsors.some(s => s.id === current.id)) return;
+    let previous = current?.id || null;
+    if (!current) {
+      try { previous = sessionStorage.getItem("nc.community.last-sponsor"); } catch { /* In-memory rotation remains available. */ }
+    }
+    const next = nextSponsor(sponsors, previous);
+    selection.current = { view, id: next?.id || null };
+    setSelectedId(next?.id || null);
+    try {
+      if (next) sessionStorage.setItem("nc.community.last-sponsor", next.id);
+    } catch { /* A blocked browser store must not break navigation. */ }
+  }, [allowed, funding, view]);
+
   if (!allowed || !funding || Date.parse(funding.expires_at) <= Date.now()) return null;
-  const sponsor = funding.sponsor;
+  const sponsor = funding.sponsors?.find(s => s.id === selectedId) || null;
   const support = funding.support;
 
   async function prepareSupport() {

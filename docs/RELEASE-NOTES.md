@@ -1,5 +1,13 @@
 # NeuroCheckout Community v0.1.0-preview.52
 
+## 0.1.0-preview.53 — 2026-10-25
+
+Sponsored campaigns change on each page change or refresh, without immediately
+repeating the same campaign when several are available. Background synchronization
+does not rotate the banner. Support buttons and free-plan eligibility are unchanged.
+Update manually with the dashboard Update button when ready.
+
+
 - Explain voluntary support above the sidebar button in English and French.
 - Display the active sponsored campaign below the language and account header on
   every page, with a compact image that preserves its proportions.

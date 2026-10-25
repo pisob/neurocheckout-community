@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fundingEligible, parseFunding, publicFundingUrl, supportUrl } from '../lib/community-funding.ts';
+import { fundingEligible, parseFunding, nextSponsor, publicFundingUrl, supportUrl } from '../lib/community-funding.ts';
 
 const free = { plan: { code: 'community' }, subscription: { status: 'free_active', active: true } };
 test('only fresh confirmed free accounts see funding; paid, trial and unknown never do', () => {
@@ -54,4 +54,20 @@ test('images are optional, bounded asset references, never external tracker URLs
   }
   data.sponsor.image = { ...image, src: 'https://tracker.example.com/pixel' };
   assert.equal(parseFunding(data, now).sponsor.image.src, undefined);
+});
+
+test('rotation validates the full list and avoids immediate repeats with no persistent content', () => {
+  const data = fixture(); const a = data.sponsor, b = { ...a, id: 'second' };
+  const parsed = parseFunding({ ...data, sponsors: [a, b, a, { ...a, id: 'bad', url: 'https://127.0.0.1' }] }, now);
+  assert.deepEqual(parsed.sponsors.map(s => s.id), ['hosting', 'second']);
+  assert.equal(nextSponsor(parsed.sponsors, 'hosting').id, 'second');
+  assert.equal(nextSponsor(parsed.sponsors, 'second').id, 'hosting');
+  assert.equal(nextSponsor([a], 'hosting').id, 'hosting');
+  assert.equal(nextSponsor([], null), null);
+  assert.equal(nextSponsor(parsed.sponsors, null, () => 0).id, 'hosting');
+  assert.equal(nextSponsor(parsed.sponsors, null, () => 0.9).id, 'second');
+  assert.deepEqual(parseFunding({ ...data, sponsors: [] }, now).sponsors, []);
+  assert.deepEqual(parseFunding({ ...data, sponsors: Array(21).fill(a) }, now).sponsors, []);
+  assert.deepEqual(parseFunding({ ...data, sponsors: {} }, now).sponsors, []);
+  assert.equal(parseFunding(data, now).sponsors.length, 1, 'Old Cloud remains supported');
 });
