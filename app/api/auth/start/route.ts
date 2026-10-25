@@ -29,15 +29,15 @@ export async function GET(request: NextRequest) {
       "openid", "profile", "capabilities:read", "account:read",
       "shops:read", "shops:write", "templates:read", "templates:write",
       "byok:read", "byok:write", "connectors:write", "emails:read",
-      "emails:write", "analytics:read", "partners:read", "partners:write",
+      "emails:write", "analytics:read", "partners:read", "partners:write", "billing:write",
     ];
-    // New write scopes stay on the preview Cloud until their matching private
-    // routes are promoted. Existing public installations remain compatible.
+    // Billing is supported by production Cloud. Analytics mutation remains
+    // restricted to preview deployments until its routes are promoted.
     if (
       process.env.NC_DEPLOYMENT_ENV === "staging"
       || authorizationUrl.hostname === "staging.neurocheckout.com"
     ) {
-      scopes.push("analytics:write", "billing:write");
+      scopes.push("analytics:write");
     }
     authorizationUrl.searchParams.set(
       "scope",
