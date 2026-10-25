@@ -520,7 +520,7 @@ export default function Dashboard() {
   ) : null;
 
   return (
-    <main className={`shell${menuExpanded ? "" : " sidebar-collapsed"}`}>
+    <main className="shell">
       <aside className="sidebar">
         <div className="brand">
           <img
@@ -540,22 +540,27 @@ export default function Dashboard() {
           <span>Menu</span><span className="disclosure-sign" aria-hidden="true">{menuExpanded ? "−" : "+"}</span>
         </button>
 
-        <nav id="main-navigation" aria-label={ui("Main navigation", "Navigation principale")}>
-          {navigationViews.map((view, index) => (
-            <button
-              className={`nav-link${activeView === view ? " active" : ""}`}
-              key={view}
-              type="button"
-              aria-label={VIEW_COPY[language][view].label}
-              aria-current={activeView === view ? "page" : undefined}
-              title={VIEW_COPY[language][view].label}
-              onClick={() => selectView(view)}
-            >
-              <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-              <span className="nav-label">{VIEW_COPY[language][view].label}</span>
-            </button>
-          ))}
-        </nav>
+        <div className={`menu-disclosure${menuExpanded ? " is-open" : ""}`}
+          aria-hidden={!menuExpanded} inert={!menuExpanded}>
+          <div className="menu-disclosure-content">
+            <nav id="main-navigation" aria-label={ui("Main navigation", "Navigation principale")}>
+              {navigationViews.map((view, index) => (
+                <button
+                  className={`nav-link${activeView === view ? " active" : ""}`}
+                  key={view}
+                  type="button"
+                  aria-label={VIEW_COPY[language][view].label}
+                  aria-current={activeView === view ? "page" : undefined}
+                  title={VIEW_COPY[language][view].label}
+                  onClick={() => selectView(view)}
+                >
+                  <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="nav-label">{VIEW_COPY[language][view].label}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
 
         <div className="boundary-note">
           <span className="status-dot" />

@@ -78,6 +78,7 @@ try {
     await p.getByRole('link', { name: 'Check synchronization', exact: true }).click();
     await p.locator('.sync-health-view').waitFor();
     assert.equal(await p.locator('nav button.active').getAttribute('aria-label'), 'Sync health');
+    await p.getByRole('button', { name: 'Expand menu', exact: true }).click();
     await p.getByRole('button', { name: /Orders & emails/ }).click();
     await expect(p.locator('nav button.active')).toContainText('Orders & emails');
     await expect(p).toHaveURL(/#converted-orders$/);
