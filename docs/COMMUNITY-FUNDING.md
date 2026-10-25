@@ -58,3 +58,15 @@ metadata is removed. Existing text-only campaigns and old Cloud responses work
 unchanged. Deploy the Cloud media migration and API before releasing this client.
 
 Tests: `npm run test:funding`, then build and `npm run test:funding-ui`.
+
+## Campaign alternation
+
+With a current Cloud, each page change and refresh selects a different active
+campaign when at least two are available. One campaign stays visible on its own;
+none means no banner. Background entitlement refreshes do not change the selection.
+The tab stores only the last public campaign ID in `sessionStorage` to avoid a
+repeat after reload; no visitor identifier, browsing history or campaign content
+is persisted. If browser storage is blocked, navigation still alternates but a
+full reload can repeat. Selection is random among the other eligible campaigns.
+The response's bounded `sponsors` list expires with its earliest scheduled end.
+Old Cloud responses remain supported as a single campaign.
