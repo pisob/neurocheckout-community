@@ -49,7 +49,13 @@ nav { display: grid; gap: 5px; margin-top: 48px; }
 .menu-disclosure.is-open { grid-template-rows: 1fr; visibility: visible; transition-delay: 0s; }
 .menu-disclosure-content { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 
-.boundary-note { display: flex; gap: 10px; margin-top: auto; border-top: 1px solid var(--line); padding: 20px 8px 0; }
+.sidebar-footer { margin-top: auto; flex-shrink: 0; }
+.community-support-sidebar { padding: 16px 0; }
+.community-support-sidebar .button { width: 100%; text-align: center; }
+.community-support-sidebar .button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
+.community-support-sidebar p { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.community-support-sidebar [role="alert"] { color: var(--danger); }
+.boundary-note { display: flex; gap: 10px; border-top: 1px solid var(--line); padding: 20px 8px 0; }
 .boundary-note strong { font-size: 11px; }
 .boundary-note p { margin: 5px 0 0; color: #7894aa; font-size: 10px; line-height: 1.55; }
 .status-dot { display: inline-block; flex: 0 0 auto; width: 7px; height: 7px; margin-top: 4px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 0 4px rgb(98 200 255 / 10%), 0 0 16px rgb(98 200 255 / 45%); }
@@ -663,6 +669,7 @@ h2 { margin: 6px 0 0; font-size: clamp(21px, 2vw, 28px); line-height: 1.1; lette
   .nav-link span, .nav-link::after { display: none; }
   .nav-link .nav-label { display: inline; }
   .boundary-note { display: none; }
+  .community-support-sidebar { padding: 12px 0 0; }
   .workspace { padding: 24px 18px 38px; }
   .topbar { min-height: 0; align-items: flex-start; flex-direction: column; }
   .topbar-actions { width: 100%; justify-content: space-between; }

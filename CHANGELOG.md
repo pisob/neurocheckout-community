@@ -1,3 +1,10 @@
+# NeuroCheckout Community v0.1.0-preview.51
+
+- Add a Support Community button at the bottom of the sidebar, available on every
+  page even when the menu is collapsed.
+- Share the existing verified Stripe flow with Plan & data, including French and
+  English labels, test mode and free Community eligibility.
+
 # NeuroCheckout Community v0.1.0-preview.50
 
 - Fold the menu links upward under the Menu button instead of narrowing the sidebar.

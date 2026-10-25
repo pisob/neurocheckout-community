@@ -46,6 +46,35 @@ try {
   await expect(ad).toHaveAttribute('href', sponsor.url);
   await expect(ad).toHaveAttribute('rel', 'sponsored noopener noreferrer');
   assert.equal(paymentRequests, 0); assert.deepEqual(external, []);
+  const sidebar = page.locator('.community-support-sidebar');
+  const details = page.locator('section.community-funding');
+  const supportButton = sidebar.getByRole('button', { name: 'Support Community', exact: true });
+  await expect(page.getByRole('button', { name: 'Expand menu', exact: true })).toHaveAttribute('aria-expanded', 'false');
+  await expect(supportButton).toBeVisible();
+  mkdirSync('test-results/community-funding', { recursive: true });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 700 });
+    await expect(supportButton).toBeInViewport();
+    await supportButton.focus();
+    await expect(supportButton).toBeFocused();
+    if (width > 780) assert.ok((await supportButton.boundingBox()).y > 350, 'Support stays at the bottom of the desktop sidebar');
+    await page.screenshot({ path: `test-results/community-funding/sidebar-collapsed-${width}.png` });
+    await page.getByRole('button', { name: 'Expand menu', exact: true }).click();
+    await expect(supportButton).toBeInViewport();
+    await page.getByRole('button', { name: 'Collapse menu', exact: true }).click();
+  }
+  const beforeNavigation = fundingRequests;
+  await page.evaluate(() => { location.hash = 'agents'; });
+  await expect(page.locator('.agents-view')).toBeVisible();
+  await expect(supportButton).toBeVisible();
+  await supportButton.click();
+  await expect(sidebar.getByRole('link', { name: 'Continue to Stripe ↗' })).toHaveAttribute('href', 'https://buy.stripe.com/test_fixture');
+  assert.equal(paymentRequests, 1);
+  await page.evaluate(() => { location.hash = 'features'; });
+  await expect(details.getByRole('link', { name: 'Continue to Stripe ↗' })).toHaveAttribute('href', 'https://buy.stripe.com/test_fixture');
+  assert.equal(fundingRequests, beforeNavigation, 'One funding state serves both placements and survives navigation');
+  assert.equal(paymentRequests, 1, 'Changing view does not prepare another payment link');
+  await page.evaluate(() => { location.hash = 'overview'; });
   sponsor.image = image;
   await page.reload();
   const creative = page.getByRole('img', { name: 'Partner creative' });
@@ -76,48 +105,51 @@ try {
   await page.getByRole('button', { name: 'Expand menu', exact: true }).click();
   await page.getByRole('button', { name: /Plan & data/ }).click();
   await expect(page.getByRole('heading', { name: 'Support NeuroCheckout Community' })).toBeVisible();
-  await page.getByRole('button', { name: 'Support Community', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Continue to Stripe ↗' })).toHaveAttribute('href', 'https://buy.stripe.com/test_fixture');
-  assert.equal(paymentRequests, 1);
+  await details.getByRole('button', { name: 'Support Community', exact: true }).click();
+  await expect(details.getByRole('link', { name: 'Continue to Stripe ↗' })).toHaveAttribute('href', 'https://buy.stripe.com/test_fixture');
+  assert.equal(paymentRequests, 2);
+  await expect(sidebar.getByRole('link', { name: 'Continue to Stripe ↗' })).toBeVisible();
 
   // Refresh while upgrading: no reload or reinstall, no stale free fallback.
   plan = 'pro'; status = 'paid_active';
   await page.evaluate(() => window.dispatchEvent(new Event('online')));
-  await expect(page.locator('.community-funding')).toHaveCount(0);
+  await expect(page.locator('.community-funding, .community-support-sidebar')).toHaveCount(0);
   const beforePaid = fundingRequests;
   await page.getByRole('button', { name: /Overview/ }).click();
   await page.evaluate(() => window.dispatchEvent(new Event('online')));
-  await expect(page.locator('.community-funding')).toHaveCount(0);
+  await expect(page.locator('.community-funding, .community-support-sidebar')).toHaveCount(0);
   assert.equal(fundingRequests, beforePaid);
   failCaps = true;
   await page.evaluate(() => window.dispatchEvent(new Event('online')));
   await expect(page.locator('.cloud-status')).toHaveText('Cloud data stale');
-  await expect(page.locator('.community-funding')).toHaveCount(0);
+  await expect(page.locator('.community-funding, .community-support-sidebar')).toHaveCount(0);
   failCaps = false;
 
   for (const paidPlan of ['starter', 'pro', 'enterprise']) {
     plan = paidPlan; status = 'trial_active'; await page.reload();
     await expect(page.locator('.cloud-status')).toHaveText('Account connected');
-    await expect(page.locator('.community-funding')).toHaveCount(0);
+    await expect(page.locator('.community-funding, .community-support-sidebar')).toHaveCount(0);
     assert.equal(fundingRequests, beforePaid);
   }
   plan = 'community'; status = 'free_active'; failFunding = true; await page.reload();
   await expect(page.locator('.cloud-status')).toHaveText('Account connected');
-  await expect(page.locator('.community-funding')).toHaveCount(0);
+  await expect(page.locator('.community-funding, .community-support-sidebar')).toHaveCount(0);
   failFunding = false; available = false; await page.reload();
   await expect(page.locator('.cloud-status')).toHaveText('Account connected');
-  await expect(page.locator('.community-funding')).toHaveCount(0);
+  await expect(page.locator('.community-funding, .community-support-sidebar')).toHaveCount(0);
 
   available = true; await page.reload();
   await expect(page.getByRole('heading', { name: 'E-commerce hosting' })).toBeVisible();
   await page.getByRole('button', { name: 'Expand menu', exact: true }).click();
   await page.getByRole('button', { name: /Plan & data/ }).click(); wrongStripe = true;
-  await page.getByRole('button', { name: 'Support Community', exact: true }).click();
-  await expect(page.getByRole('alert').filter({ hasText: 'Support payments' })).toBeVisible();
+  await details.getByRole('button', { name: 'Support Community', exact: true }).click();
+  await expect(details.getByRole('alert').filter({ hasText: 'Support payments' })).toBeVisible();
+  await expect(sidebar.getByRole('alert').filter({ hasText: 'Support payments' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Continue to Stripe/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'FR', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Soutenez NeuroCheckout Community' })).toBeVisible();
+  await expect(sidebar.getByRole('button', { name: 'Soutenir Community', exact: true })).toBeVisible();
   mkdirSync('test-results/community-funding', { recursive: true });
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -127,9 +159,9 @@ try {
   }
   shortExpiry = true; await page.goto(origin); await page.reload();
   await expect(page.locator('.community-funding')).toBeVisible();
-  await expect(page.locator('.community-funding')).toHaveCount(0, { timeout: 4000 });
+  await expect(page.locator('.community-funding, .community-support-sidebar')).toHaveCount(0, { timeout: 4000 });
   assert.deepEqual(errors, []); assert.deepEqual(external, []);
-  console.log('PASS: sponsor images, pause/reduced motion, failed-media text fallback, free only, upgrades/trials/outage/expiry, sandbox support, no third-party requests, EN/FR, desktop/mobile.');
+  console.log('PASS: persistent sidebar support, collapsed/expanded menu, shared verified payment flow, sponsor images, pause/reduced motion, failed-media text fallback, free only, upgrades/trials/outage/expiry, sandbox support, no third-party requests, EN/FR, desktop/mobile.');
 } finally {
   await browser?.close();
   if (server.exitCode === null) { const stopped = once(server, 'exit'); server.kill('SIGTERM'); await stopped; }
