@@ -7,10 +7,11 @@ review email activity and approvals, and check synchronization.
 
 Official repository: https://github.com/pisob/neurocheckout-community
 
-**Current preview:** Community **0.1.0-preview.55**, with PrestaShop **4.6.14**,
-WooCommerce **1.0.16** and Magento **1.0.12** connectors. Community remains a
-**prerelease**, including when connected to production. Use signed downloads,
-keep a private backup and verify each store before enabling customer emails.
+**Source version:** Community **0.1.0**, with PrestaShop **4.6.14**,
+WooCommerce **1.0.16** and Magento **1.0.12** connectors. Confirm that the matching
+signed tag is published in [official releases](https://github.com/pisob/neurocheckout-community/releases)
+before installing. A development or validation branch does not certify a stable
+release. Keep a private backup and verify each store before enabling customer emails.
 Updating Community or a connector does not activate campaigns.
 
 [User guide — English / français](docs/USER_GUIDE.md) ·
@@ -70,12 +71,12 @@ key. You still sign in and authorize access in the browser. The callback is the
 address where your browser returns to Community, **not your store address**.
 Use exactly the same callback in Cloud and in the setup assistant.
 
-## 3. Download and verify an official preview
+## 3. Download and verify an official release
 
 Install the current signed tag, rather than the development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.55 --depth 1 \
+git clone --branch v0.1.0 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -89,7 +90,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.55
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0
 find "${verification_home}" -depth -delete
 unset verification_home
 ```

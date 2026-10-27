@@ -2,13 +2,14 @@
 
 ## Current status / Statut actuel
 
-Community is still a **prerelease**, including when connected to production.
-Production connectivity is not a stable certification. No stable version is
-declared by this hardening work. The full merchant acceptance journey is pending
-the owner's validation; it must not be marked passed by CI alone.
+A version number or a production connection does not certify a stable release.
+Only a published signed release that has passed the gates below is stable.
+Development and validation branches remain candidates until that publication.
+The owner must accept the full merchant journey; CI alone is insufficient.
 
-Community reste une **préversion**, même connectée à la production. Le parcours
-marchand complet reste à valider par le propriétaire avant toute version stable.
+Un numéro de version ou une connexion à la production ne certifie pas une version
+stable. Seule une version signée, publiée après les validations ci-dessous, est
+stable. Le propriétaire doit accepter le parcours marchand complet.
 
 ## Required acceptance criteria
 
@@ -24,7 +25,7 @@ marchand complet reste à valider par le propriétaire avant toute version stabl
    recovery instructions match the candidate, including launcher upgrades.
 5. CI, typecheck, production build and dependency security checks pass. No unresolved
    release-blocking security, data-loss or duplicate-send issue remains.
-6. **Owner's merchant journey (pending):** install, connect each supported store,
+6. **Owner's merchant journey:** install, connect each supported store,
    verify initial and recurring order history, receive a cart, validate the email
    language/content, send to an authorized test recipient, follow the CTA and verify
    recovery/conversion and no duplicate send. Include multi-store isolation.

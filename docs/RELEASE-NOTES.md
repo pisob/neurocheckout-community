@@ -1,3 +1,16 @@
+# NeuroCheckout Community v0.1.0
+
+- Consolidate encrypted multi-store synchronization, local email originals and
+  conversion evidence for the supported PrestaShop, WooCommerce and Magento connectors.
+- Preserve configuration during temporary Cloud failures and connector key rotations.
+- Retain manual email approvals, per-store isolation and idempotent delivery reconciliation.
+- Keep signed updates, protected backups and rollback available from the dashboard.
+
+Publication requires the exact-source acceptance and observation gates in
+[STABLE-RELEASE.md](STABLE-RELEASE.md). A candidate branch is not a published release.
+Install an official published version with the Update button when ready; no update
+or customer campaign is enabled automatically.
+
 # NeuroCheckout Community v0.1.0-preview.55
 
 - Keep temporary Cloud failures separate from expired sign-in: configuration is
