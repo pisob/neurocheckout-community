@@ -37,7 +37,7 @@ running the setup assistant.
 
 This guide targets **production** at `https://www.neurocheckout.com`.
 Use **0.1.0-preview.34** or a newer compatible release for production synchronization.
-This is a prerelease: keep a private backup and verify each store's connection
+Verify the published release channel, keep a private backup and check each store's connection
 before enabling customer email automation.
 
 1. [Register](https://www.neurocheckout.com/register) or
@@ -87,7 +87,7 @@ assistant.
 Install a fixed signed release, not the moving development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.55 --depth 1 \
+git clone --branch v0.1.0 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 verification_home="$(mktemp -d)"
@@ -95,7 +95,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.55
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
