@@ -1,3 +1,17 @@
+# NeuroCheckout Community v0.1.0-preview.58
+
+Customer journey audits now show unknown amounts as unavailable, keep currencies
+separate and explain when the displayed history is partial. Order receipts and
+qualified purchases remain distinct. Pagination follows the available results,
+and journey explanations use the selected English or French language.
+
+This audit covers journey events shared with NeuroCheckout; history stored only
+on this installation is not included. Install the signed preview using **Update**.
+Existing local data and settings are preserved.
+
+Validation: TypeScript, production build, journey browser scenarios in English
+and French, store isolation, refresh, pagination and release CI.
+
 # NeuroCheckout Community v0.1.0-preview.57
 
 Improve the stability of customer targeting across successive evaluations. The

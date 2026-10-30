@@ -110,7 +110,7 @@ jobs:
         run: npm run test:journeys
 
       - name: Test audited menu links, pagination, scope and response races
-        run: npm run test:menu-audit-ui
+        run: npm run test:menu-audit-ui && npm run test:journey-audit-ui
 
       - name: Test message language and store-specific navigation
         run: npm run test:member-messages
