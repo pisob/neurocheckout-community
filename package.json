@@ -1,6 +1,6 @@
 {
   "name": "neurocheckout-community",
-  "version": "0.1.0-preview.57",
+  "version": "0.1.0-preview.58",
   "private": true,
   "engines": {
     "node": ">=22.13.0",
@@ -46,7 +46,8 @@
     "test:partner-program-ui": "node scripts/test-partner-program-ui.mjs",
     "test:experience": "node scripts/test-plan-labels.mjs && node scripts/test-public-messages.mjs && node scripts/test-email-history-archive.mjs",
     "test:journeys": "node scripts/test-guided-experience-ui.mjs && node scripts/test-plan-actions-ui.mjs && node scripts/test-sent-email-ui.mjs && node scripts/test-email-image-policy.mjs",
-    "test:cloud-interruption-ui": "node scripts/test-cloud-interruption-ui.mjs"
+    "test:cloud-interruption-ui": "node scripts/test-cloud-interruption-ui.mjs",
+    "test:journey-audit-ui": "node scripts/test-journey-audit-ui.mjs"
   },
   "dependencies": {
     "next": "16.4.3",

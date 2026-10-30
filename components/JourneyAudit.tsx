@@ -16,18 +16,20 @@ type Shop = {
 };
 
 type EventSummary = {
-  total_events?: number;
-  unique_sessions?: number;
-  product_views?: number;
-  add_to_cart_intents?: number;
-  cart_views?: number;
-  cart_snapshots?: number;
-  checkout_starts?: number;
-  order_completed?: number;
-  orders_received?: number;
-  attributed_orders?: number;
-  cart_recovery_conversions?: number;
-  resolved_revenue?: number;
+  total_events?: number | null;
+  unique_sessions?: number | null;
+  product_views?: number | null;
+  add_to_cart_intents?: number | null;
+  cart_views?: number | null;
+  cart_snapshots?: number | null;
+  checkout_starts?: number | null;
+  order_completed?: number | null;
+  orders_received?: number | null;
+  attributed_orders?: number | null;
+  cart_recovery_conversions?: number | null;
+  resolved_revenue?: number | null;
+  unknown_revenue_orders?: number | null;
+  qualified_orders?: number | null;
   resolved_revenue_by_currency?: Array<{ currency_code: string; amount: number }>;
 };
 
@@ -59,8 +61,8 @@ type AuditRow = {
   status?: string | null;
   created_at?: string | null;
   journey_summary?: { summary_text?: string | null; lifecycle_state?: string | null } | null;
-  revenue_leaks?: Array<{ severity?: string | null; summary?: string | null; estimated_value?: number | null }> | null;
-  recommended_actions?: Array<{ label?: string | null; next_step?: string | null; owner_agent?: string | null }> | null;
+  revenue_leaks?: Array<{ leak_type?: string | null; severity?: string | null; summary?: string | null; estimated_value?: number | null }> | null;
+  recommended_actions?: Array<{ action_code?: string | null; label?: string | null; next_step?: string | null; owner_agent?: string | null }> | null;
 };
 
 type JourneyPayload = {
@@ -68,17 +70,21 @@ type JourneyPayload = {
   period_days: number;
   period_from?: string | null;
   period_to?: string | null;
-  audit_count: number;
+  audit_count: number | null;
   state: string;
   event_summary: EventSummary;
   recent_sessions: JourneySession[];
   recent_audits: AuditRow[];
   journey_pagination?: {
-    page?: number;
-    total_pages?: number;
-    total_items?: number;
+    page?: number | null;
+    total_pages?: number | null;
+    total_items?: number | null;
     filter_counts?: Record<string, number>;
+    filter?: string;
+    is_truncated?: boolean;
+    candidate_limit?: number;
   } | null;
+  data_quality?: { available?: boolean; partial_history?: boolean; native_history?: string } | null;
   privacy?: { customer_data?: string | null } | null;
 };
 
@@ -89,18 +95,20 @@ function shopUuid(shop: Shop): string {
 }
 
 function formatNumber(value: unknown, language: UiLanguage): string {
-  const parsed = Number(value || 0);
-  return Number.isFinite(parsed) ? parsed.toLocaleString(language === "fr" ? "fr-FR" : "en-US") : "0";
+  if (value == null || value === "" || typeof value === "boolean") return "—";
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed.toLocaleString(language === "fr" ? "fr-FR" : "en-US") : "—";
 }
 
 function formatMoney(value: unknown, currency: string | null | undefined, language: UiLanguage): string {
-  const parsed = Number(value || 0);
-  const code = String(currency || "USD").toUpperCase();
-  if (!Number.isFinite(parsed)) return "—";
+  if (value == null || value === "" || typeof value === "boolean") return "—";
+  const parsed = Number(value);
+  const code = String(currency || "").toUpperCase();
+  if (!Number.isFinite(parsed) || parsed < 0 || !/^[A-Z]{3}$/.test(code)) return "—";
   try {
     return new Intl.NumberFormat(language === "fr" ? "fr-FR" : "en-US", {
       style: "currency",
-      currency: /^[A-Z]{3}$/.test(code) ? code : "USD",
+      currency: code,
       maximumFractionDigits: 2,
     }).format(parsed);
   } catch {
@@ -114,10 +122,10 @@ function formatDate(value: string | null | undefined, language: UiLanguage): str
   return Number.isNaN(parsed.getTime()) ? "—" : parsed.toLocaleString(language === "fr" ? "fr-FR" : "en-US");
 }
 
-function resolvedRevenue(summary: EventSummary, fallbackCurrency: string | null | undefined, language: UiLanguage): string {
+function resolvedRevenue(summary: EventSummary, language: UiLanguage): string {
   const amounts = summary.resolved_revenue_by_currency || [];
   if (amounts.length) return amounts.map((item) => formatMoney(item.amount, item.currency_code, language)).join(" + ");
-  return formatMoney(summary.resolved_revenue, fallbackCurrency, language);
+  return formatMoney(summary.resolved_revenue, null, language);
 }
 
 export default function JourneyAudit({ language }: { language: UiLanguage }) {
@@ -177,10 +185,18 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
       if (!body?.shop || shopUuid(body.shop) !== selectedShopUuid || body.period_days !== days ||
           !body.event_summary || typeof body.event_summary !== "object" ||
           !Array.isArray(body.recent_sessions) || !Array.isArray(body.recent_audits) ||
-          !Number.isSafeInteger(body.audit_count) || body.audit_count < 0) {
+          (body.audit_count !== null && (!Number.isSafeInteger(body.audit_count) || body.audit_count < 0)) ||
+          (body.journey_pagination?.filter && body.journey_pagination.filter !== filter)) {
         throw new Error(ui("Journey data could not be verified for this store. Refresh to retry.", "Les données de parcours n’ont pas pu être vérifiées pour cette boutique. Actualisez pour réessayer."));
       }
       const nextPayload = body as JourneyPayload;
+      const serverPage = nextPayload.journey_pagination?.page;
+      const serverPages = nextPayload.journey_pagination?.total_pages;
+      if (serverPage != null && (!Number.isSafeInteger(serverPage) || serverPage < 1 ||
+          !Number.isSafeInteger(serverPages) || serverPages == null || serverPages < serverPage)) {
+        throw new Error(ui("Journey pagination unavailable. Refresh to retry.", "Pagination indisponible. Actualisez pour réessayer."));
+      }
+      if (serverPage != null && serverPage !== page) setPage(serverPage);
       const sessions = Array.isArray(nextPayload.recent_sessions) ? nextPayload.recent_sessions : [];
       setPayload({ ...nextPayload, recent_sessions: sessions, recent_audits: Array.isArray(nextPayload.recent_audits) ? nextPayload.recent_audits : [] });
       setSelectedSessionKey((current) => sessions.some((item) => item.session_key === current) ? current : sessions[0]?.session_key || "");
@@ -208,15 +224,14 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
     [payload, selectedSessionKey],
   );
   const summary = payload?.event_summary || EMPTY_SUMMARY;
-  const selectedShop = shops.find((shop) => shopUuid(shop) === selectedShopUuid);
-  const orders = Number(summary.orders_received || summary.order_completed || 0);
+  const orders = summary.orders_received ?? summary.order_completed;
   const funnel = [
-    { label: ui("Product views", "Vues produit"), value: Number(summary.product_views || 0) },
-    { label: ui("Add-to-cart", "Ajouts panier"), value: Number(summary.add_to_cart_intents || 0) },
-    { label: ui("Checkout starts", "Débuts checkout"), value: Number(summary.checkout_starts || 0) },
+    { label: ui("Product views", "Vues produit"), value: summary.product_views },
+    { label: ui("Add-to-cart", "Ajouts panier"), value: summary.add_to_cart_intents },
+    { label: ui("Checkout starts", "Débuts checkout"), value: summary.checkout_starts },
     { label: ui("Orders received", "Commandes reçues"), value: orders },
   ];
-  const funnelMax = Math.max(1, ...funnel.map((item) => item.value));
+  const funnelMax = Math.max(1, ...funnel.map((item) => Number(item.value) || 0));
   const totalPages = Math.max(1, Number(payload?.journey_pagination?.total_pages || 1));
 
   return (
@@ -237,17 +252,19 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
       {!loading && payload && shopUuid(payload.shop) === selectedShopUuid ? (
         <>
           <div className="journey-state-line"><span className="status-pill"><span className="status-dot" />{publicEnumLabel(payload.state, language, ui("Available", "Disponible"))}</span><span>{formatNumber(payload.journey_pagination?.total_items || payload.recent_sessions.length, language)} {ui("journeys in this view", "parcours dans cette vue")}</span></div>
+          {payload.data_quality?.available === false ? <p className="config-error" role="status">{ui("Some journey data is temporarily unavailable. Refresh to retry; unknown values are shown as a dash.", "Certaines données de parcours sont temporairement indisponibles. Actualisez pour réessayer ; les valeurs inconnues sont indiquées par un tiret.")}</p> : null}
+          {payload.journey_pagination?.is_truncated || payload.data_quality?.partial_history ? <p className="journey-coverage" role="status">{ui("Partial journey history. This view contains a limited selection of recent journeys; period totals are calculated separately.", "Historique de parcours partiel. Cette vue contient une sélection limitée de parcours récents ; les totaux de la période sont calculés séparément.")}</p> : null}
           <div className="journey-summary" aria-label={ui("Journey summary", "Synthèse du parcours") }>
-            <div><span>{ui("Generated audits", "Audits générés")}</span><strong>{formatNumber(payload.audit_count, language)}</strong><small>{ui("Actionable snapshots", "Snapshots exploitables")}</small></div>
+            <div><span>{ui("Generated audits", "Audits générés")}</span><strong>{formatNumber(payload.audit_count, language)}</strong><small>{ui("Recorded journey analyses", "Analyses de parcours enregistrées")}</small></div>
             <div><span>{ui("Journey events", "Événements parcours")}</span><strong>{formatNumber(summary.total_events, language)}</strong><small>{formatNumber(summary.unique_sessions, language)} {ui("sessions", "sessions")}</small></div>
             <div><span>{ui("Cart snapshots", "Paniers suivis")}</span><strong>{formatNumber(summary.cart_snapshots, language)}</strong><small>{formatNumber(summary.cart_recovery_conversions, language)} {ui("recovered", "récupérés")}</small></div>
             <div><span>{ui("Attributed conversions", "Conversions attribuées")}</span><strong>{formatNumber(summary.attributed_orders, language)}</strong><small>{ui("Orders linked to agents", "Commandes reliées aux agents")}</small></div>
-            <div className="journey-revenue"><span>{ui("Resolved revenue", "Revenu résolu")}</span><strong>{resolvedRevenue(summary, selectedShop?.currency_code, language)}</strong><small>{ui("Value attributed to agents", "Valeur attribuée aux agents")}</small></div>
+            <div className="journey-revenue"><span>{ui("Resolved revenue", "Revenu résolu")}</span><strong>{resolvedRevenue(summary, language)}</strong><small>{Number(summary.unknown_revenue_orders || 0) > 0 ? ui("Some order amounts remain unverified", "Certains montants de commande restent à vérifier") : ui("Qualified net value attributed to agents", "Valeur nette qualifiée attribuée aux agents")}</small></div>
           </div>
 
           <section className="journey-funnel" aria-label={ui("Revenue funnel", "Entonnoir de revenu") }>
             <div><p className="eyebrow">{ui("Revenue funnel", "Entonnoir de revenu")}</p><h2>{ui("Where the journey stops", "Où le parcours s’arrête")}</h2></div>
-            <div className="journey-funnel-bars">{funnel.map((item) => <div key={item.label}><span>{item.label}</span><i><b style={{ width: `${Math.max(item.value > 0 ? 4 : 0, (item.value / funnelMax) * 100)}%` }} /></i><strong>{formatNumber(item.value, language)}</strong></div>)}</div>
+            <div className="journey-funnel-bars">{funnel.map((item) => <div key={item.label}><span>{item.label}</span><i><b style={{ width: `${Math.max((Number(item.value) || 0) > 0 ? 4 : 0, ((Number(item.value) || 0) / funnelMax) * 100)}%` }} /></i><strong>{formatNumber(item.value, language)}</strong></div>)}</div>
           </section>
 
           {payload.recent_sessions.length ? (
@@ -269,19 +286,20 @@ export default function JourneyAudit({ language }: { language: UiLanguage }) {
                   <dl>
                     <div><dt>{ui("Lifecycle", "Cycle")}</dt><dd>{publicEnumLabel(selectedSession.lifecycle_state, language)}</dd></div>
                     <div><dt>{ui("Last signal", "Dernier signal")}</dt><dd>{publicEnumLabel(selectedSession.last_event_type, language, ui("Activity received", "Activité reçue"))}</dd></div>
-                    <div><dt>{ui("Cart value", "Valeur panier")}</dt><dd>{formatMoney(selectedSession.estimated_cart_value, selectedSession.currency_code || selectedShop?.currency_code, language)}</dd></div>
+                    <div><dt>{ui("Cart value", "Valeur panier")}</dt><dd>{formatMoney(selectedSession.estimated_cart_value, selectedSession.currency_code, language)}</dd></div>
                     <div><dt>{ui("Action state", "État de l’action")}</dt><dd>{publicEnumLabel(selectedSession.action_status?.delivery_state || selectedSession.action_status?.state, language)}</dd></div>
                     <div><dt>{ui("Outcome", "Résultat")}</dt><dd>{publicEnumLabel(selectedSession.outcome?.status, language, ui("In progress", "En cours"))}</dd></div>
                     <div><dt>{ui("Priority score", "Score de priorité")}</dt><dd>{selectedSession.priority?.score ?? "—"}</dd></div>
                   </dl>
-                  {(selectedSession.priority?.reasons || []).length ? <div className="journey-reasons"><strong>{ui("Why it matters", "Pourquoi agir")}</strong><ul>{selectedSession.priority?.reasons?.map((reason) => <li key={reason}>{reason}</li>)}</ul></div> : null}
+                  {(selectedSession.priority?.reasons || []).length ? <div className="journey-reasons"><strong>{ui("Why it matters", "Pourquoi agir")}</strong><ul>{selectedSession.priority?.reasons?.map((reason) => <li key={reason}>{publicEnumLabel(reason, language, ui("Observed activity", "Activité observée"))}</li>)}</ul></div> : null}
                 </aside>
               ) : null}
             </div>
-          ) : <div className="operational-state"><p className="eyebrow">{ui("Waiting for signals", "En attente de signaux")}</p><h2>{ui("No journey matches this view yet", "Aucun parcours ne correspond encore à cette vue")}</h2><p>{ui("The connector will populate this audit automatically as customers browse the store.", "Le connecteur alimentera automatiquement cet audit pendant la navigation des clients.")}</p></div>}
+          ) : <div className="operational-state"><p className="eyebrow">{payload.data_quality?.available === false ? ui("Data unavailable", "Données indisponibles") : ui("Waiting for signals", "En attente de signaux")}</p><h2>{ui("No journey matches this view yet", "Aucun parcours ne correspond encore à cette vue")}</h2><p>{payload.data_quality?.available === false ? ui("Refresh to retrieve journey evidence.", "Actualisez pour récupérer les données de parcours.") : ui("The connector will populate this audit automatically as customers browse the store.", "Le connecteur alimentera automatiquement cet audit pendant la navigation des clients.")}</p></div>}
 
-          {payload.recent_audits.length ? <section className="journey-audits"><div><p className="eyebrow">{ui("Recent audits", "Audits récents")}</p><h2>{ui("Revenue leaks and recommended actions", "Fuites de revenu et actions recommandées")}</h2></div>{payload.recent_audits.map((audit) => <article key={audit.id}><span className="status-pill">{publicEnumLabel(audit.status, language, ui("Ready", "Prêt"))}</span><div><strong>{audit.journey_summary?.summary_text || publicEnumLabel(audit.journey_summary?.lifecycle_state, language, ui("Journey snapshot", "Résumé du parcours"))}</strong><small>{formatDate(audit.created_at, language)}</small></div><div><strong>{audit.revenue_leaks?.[0]?.summary || ui("No critical leak detected", "Aucune fuite critique détectée")}</strong><small>{audit.recommended_actions?.[0]?.next_step || audit.recommended_actions?.[0]?.label || ui("Continue monitoring", "Poursuivre la surveillance")}</small></div></article>)}</section> : null}
+          {payload.recent_audits.length ? <section className="journey-audits"><div><p className="eyebrow">{ui("Recent audits", "Audits récents")}</p><h2>{ui("Revenue leaks and recommended actions", "Fuites de revenu et actions recommandées")}</h2></div>{payload.recent_audits.map((audit) => <article key={audit.id}><span className="status-pill">{publicEnumLabel(audit.status, language, ui("Ready", "Prêt"))}</span><div><strong>{publicEnumLabel(audit.journey_summary?.lifecycle_state, language, ui("Journey snapshot", "Résumé du parcours"))}</strong><small>{formatDate(audit.created_at, language)}</small></div><div><strong>{audit.revenue_leaks?.length ? publicEnumLabel(audit.revenue_leaks[0].leak_type, language, ui("Signal to review", "Signal à examiner")) : ui("No critical leak detected", "Aucune fuite critique détectée")}</strong><small>{publicEnumLabel(audit.recommended_actions?.[0]?.action_code, language, ui("Continue monitoring", "Poursuivre la surveillance"))}</small></div></article>)}</section> : null}
 
+          {payload.data_quality?.native_history === "not_loaded" ? <p className="journey-coverage">{ui("This audit covers journey events shared with NeuroCheckout. Store history kept only on this installation is not included.", "Cet audit couvre les événements de parcours partagés avec NeuroCheckout. L’historique conservé uniquement sur cette installation n’est pas inclus.")}</p> : null}
           <p className="journey-privacy">{ui("Raw names, emails, tokens, cookies and session IDs are not exposed in Community. Masked identifiers are used only to help the merchant investigate a journey.", "Les noms, emails bruts, jetons, cookies et identifiants de session ne sont pas exposés dans Community. Les identifiants masqués servent uniquement à aider le marchand à examiner un parcours.")}</p>
         </>
       ) : null}
