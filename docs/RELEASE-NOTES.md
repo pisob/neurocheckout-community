@@ -1,3 +1,17 @@
+# NeuroCheckout Community v0.1.0-preview.56
+
+Business alert messages now open the corresponding store and agent in Community.
+Reading a message preserves the selected language, including when the language
+changes while the read acknowledgment is still in progress. Account notices
+continue to use the configured account page.
+
+This is a signed preview update. Install it using **Update**; local data and
+configuration are preserved. Community remains a prerelease pending merchant
+acceptance. Connectors are updated separately.
+
+Validation: TypeScript, production build, message navigation and language tests
+in English and French, existing dashboard journeys, and release CI.
+
 # NeuroCheckout Community v0.1.0-preview.55
 
 - Keep temporary Cloud failures separate from expired sign-in: configuration is

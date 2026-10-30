@@ -20,7 +20,7 @@ concurrency:
 jobs:
   validate:
     name: Typecheck, build and audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       NEXT_TELEMETRY_DISABLED: "1"
@@ -111,6 +111,9 @@ jobs:
 
       - name: Test audited menu links, pagination, scope and response races
         run: npm run test:menu-audit-ui
+
+      - name: Test message language and store-specific navigation
+        run: npm run test:member-messages
 
       - name: Test published DPA consent in English and French
         run: npm run test:connector-key-dpa-ui

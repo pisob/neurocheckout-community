@@ -5,6 +5,7 @@ import { useEvidenceRefresh } from "@/lib/use-evidence-refresh";
 
 import { publicErrorMessage } from "@/lib/public-presentation";
 import type { UiLanguage } from "@/lib/ui-language";
+import { memberMessageAction } from "@/lib/member-message-action";
 
 type MemberMessage = {
   id: string;
@@ -17,6 +18,7 @@ type MemberMessage = {
   badge?: string | null;
   shop_id?: string | null;
   upgrade_href?: string | null;
+  upgrade_label?: string | null;
   localOnly?: boolean;
 };
 
@@ -67,7 +69,7 @@ function markLocalRead(id: string): void {
   }
 }
 
-export default function MemberMessages({ language }: { language: UiLanguage }) {
+export default function MemberMessages({ language, performanceAvailable = false }: { language: UiLanguage; performanceAvailable?: boolean }) {
   const ui = (english: string, french: string) => language === "fr" ? french : english;
   const [items, setItems] = useState<MemberMessage[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -75,6 +77,8 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
   const [error, setError] = useState("");
   const requestSequence = useRef(0);
   const pendingReads = useRef(new Set<string>());
+  const currentLanguage = useRef(language);
+  currentLanguage.current = language;
 
   const load = useCallback(async () => {
     if (pendingReads.current.size) return;
@@ -130,6 +134,8 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
       if (sequence === requestSequence.current) setLoading(false);
     }
   }, [language]);
+  const currentLoad = useRef(load);
+  currentLoad.current = load;
 
   useEffect(() => {
     void load();
@@ -143,6 +149,7 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
   );
 
   const unreadCount = items.filter((item) => item.unread).length;
+  const selectedAction = selected ? memberMessageAction(selected, language, performanceAvailable) : null;
 
   const formatDate = (value?: string | null) => {
     if (!value) return "";
@@ -165,7 +172,7 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
     }
     pendingReads.current.add(item.id);
     try {
-      const response = await fetch(`/api/cloud/notifications/${encodeURIComponent(item.id)}/read`, { method: "POST", cache: "no-store" });
+      const response = await fetch(`/api/cloud/notifications/${encodeURIComponent(item.id)}/read?locale=${language}`, { method: "POST", cache: "no-store", signal: AbortSignal.timeout(12_000) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(publicErrorMessage(
@@ -175,13 +182,14 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
         ));
       }
       if (payload?.id === item.id) {
-        setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, ...payload, unread: false } : candidate));
+        setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, unread: false } : candidate));
       }
     } catch (readError) {
       setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, unread: true } : candidate));
       setError(readError instanceof Error ? readError.message : ui("Unable to mark this message as read.", "Impossible de marquer ce message comme lu."));
     } finally {
       pendingReads.current.delete(item.id);
+      if (currentLanguage.current !== language) void currentLoad.current();
     }
   };
 
@@ -218,7 +226,7 @@ export default function MemberMessages({ language }: { language: UiLanguage }) {
               <header><div><p className="eyebrow">{selected.badge || ui("NeuroCheckout notice", "Notification NeuroCheckout")}</p><h2>{selected.title}</h2></div>{selected.shop_id ? <span className="status-pill">{selected.shop_id}</span> : null}</header>
               <time>{formatDate(selected.createdAt)}</time>
               <div className="message-body">{selected.body}</div>
-              {selected.upgrade_href ? <a className="button secondary-blue" href="/api/upgrade" target="_blank" rel="noreferrer">{ui("View account options", "Voir les options du compte")}</a> : null}
+              {selectedAction ? <a className="button secondary-blue" href={selectedAction.href} target={selectedAction.external ? "_blank" : undefined} rel={selectedAction.external ? "noreferrer" : undefined}>{selectedAction.label}</a> : null}
             </article>
           ) : null}
         </div>

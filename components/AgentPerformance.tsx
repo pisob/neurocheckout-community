@@ -130,8 +130,11 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
       language,
     ));
     const items = Array.isArray(body?.items) ? body.items as Shop[] : [];
+    const requestedShop = new URLSearchParams(window.location.search).get("notice_shop");
+    const targetShop = requestedShop ? items.find(item => item.shop_id === requestedShop || item.canonical_shop_id === requestedShop || shopUuid(item) === requestedShop) : items[0];
+    if (requestedShop && !targetShop) throw new Error(ui("This message's store is not available in this installation.", "La boutique de ce message n’est pas disponible dans cette installation."));
     setShops(items);
-    setSelectedShopUuid((current) => current || (items[0] ? shopUuid(items[0]) : ""));
+    setSelectedShopUuid((current) => items.some(item => shopUuid(item) === current) ? current : targetShop ? shopUuid(targetShop) : "");
   }, [language]);
 
   const loadPerformance = useCallback(async () => {
@@ -158,8 +161,10 @@ export default function AgentPerformance({ language, supervisorEnabled }: { lang
       }
       if (!body) throw new Error(ui("Cloud returned an invalid performance response.", "Le Cloud a renvoyé une réponse de performance invalide."));
       if (shopUuid(body.shop) !== selectedShopUuid) throw new Error(ui("Store observation mismatch. Refresh to verify.", "Observation d’une autre boutique. Actualisez pour vérifier."));
+      const requestedAgent = new URLSearchParams(window.location.search).get("notice_agent");
+      if (!selectedAgent && requestedAgent && !body.items.some(item => item.agent_name === requestedAgent)) throw new Error(ui("The requested agent observation is unavailable.", "L’observation de l’agent demandé est indisponible."));
       setPayload(body);
-      setSelectedAgent((current) => body.items.some((item) => item.agent_name === current) ? current : body.items[0]?.agent_name || "");
+      setSelectedAgent((current) => body.items.some((item) => item.agent_name === current) ? current : body.items.find(item => item.agent_name === requestedAgent)?.agent_name || body.items[0]?.agent_name || "");
     } catch (loadError) {
       if (sequence !== performanceRequest.current) return;
       setPayload(null);

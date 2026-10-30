@@ -9,9 +9,11 @@ export async function POST(
   context: { params: Promise<{ notificationId: string }> },
 ) {
   const { notificationId } = await context.params;
+  const locale = request.nextUrl.searchParams.get("locale");
+  const target = "/api/v1/member/notifications/mark-read" + (locale === "fr" || locale === "en" ? `?locale=${locale}` : "");
   return authenticatedCloudFetch(
     request,
-    "/api/v1/member/notifications/mark-read",
+    target,
     {
       method: "POST",
       body: JSON.stringify({ notification_id: notificationId }),
