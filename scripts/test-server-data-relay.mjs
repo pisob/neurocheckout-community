@@ -174,3 +174,21 @@ test("relay credentials refuse permissive files, directories and symbolic links 
   symlinkSync(file + ".original", file);
   assert.equal(await relayOnce(options, noNetwork), false);
 });
+
+test('private state uses the authenticated relay and preserves revision conflicts',async t=>{
+ const options=fixture(t);await saveRelayCredential(options,credential());
+ const key='a'.repeat(64),state={revision:'b'.repeat(64),value:'opaque signed content'};
+ let operation='read_private_state',record={key},result;
+ const mock=async(url,init)=>{
+  if(url.endsWith('/api/health'))return Response.json({service:'neurocheckout-community'});
+  if(url.endsWith('/poll'))return Response.json({commands:[{operation,record,request_id:'c'.repeat(32)}]});
+  result=JSON.parse(init.body).result;return Response.json({accepted:true});
+ };
+ assert.equal(await relayOnce(options,mock),true);assert.deepEqual(result,{status:'ok',state:null});
+ operation='write_private_state';record={key,expected_revision:null,state};
+ assert.equal(await relayOnce(options,mock),true);assert.deepEqual(result,{status:'ok',state});
+ operation='read_private_state';record={key};
+ assert.equal(await relayOnce(options,mock),true);assert.deepEqual(result,{status:'ok',state});
+ operation='write_private_state';record={key,expected_revision:null,state:{...state,revision:'d'.repeat(64)}};
+ assert.equal(await relayOnce(options,mock),true);assert.deepEqual(result,{status:'unavailable'});
+});

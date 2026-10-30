@@ -1,3 +1,16 @@
+# NeuroCheckout Community v0.1.0-preview.57
+
+Improve the stability of customer targeting across successive evaluations. The
+small amount of state needed for this remains encrypted in your local vault and
+survives restarts and backups. Concurrent updates preserve the current state.
+
+Install this signed preview with **Update** to enable the improved targeting.
+Existing local data and settings are preserved. Updating does not activate
+campaigns; connector packages remain unchanged.
+
+Validation: encrypted storage, restart and backup recovery, conflicting updates,
+authenticated relay, existing archive and vault tests, and release CI.
+
 # NeuroCheckout Community v0.1.0-preview.56
 
 Business alert messages now open the corresponding store and agent in Community.

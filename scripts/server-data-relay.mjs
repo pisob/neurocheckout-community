@@ -7,6 +7,7 @@ import { readLocalCatalog } from "./local-catalog-reader.mjs";
 import { readCustomerPrices } from "./customer-price-reader.mjs";
 import { readCustomerHistory } from "./customer-history-reader.mjs";
 import { readCustomerCarts } from "./customer-carts-reader.mjs";
+import { PrivateStateStore } from "./private-state-store.mjs";
 import { EmailArchive } from "./email-archive.mjs";
 import { permittedCloud } from "./deployment-environment.mjs";
 
@@ -132,7 +133,7 @@ async function performRelayOnce(options, fetchImpl, sourceTransport) {
     const item = await smallJson(response, 128 * 1024);
     if (!item || Object.keys(item).length !== 1 || !Array.isArray(item.commands) || item.commands.length > 1) return false;
     for (const command of item.commands) {
-      if (!command || Object.keys(command).sort().join(",") !== "operation,record,request_id" || !["read", "read_catalog", "read_customer_prices", "read_customer_history", "read_customer_carts", "archive_email", "confirm_email", "read_email"].includes(command.operation) || !/^[a-f0-9]{32}$/.test(command.request_id)) return false;
+      if (!command || Object.keys(command).sort().join(",") !== "operation,record,request_id" || !["read", "read_catalog", "read_customer_prices", "read_customer_history", "read_customer_carts", "archive_email", "confirm_email", "read_email", "read_private_state", "write_private_state"].includes(command.operation) || !/^[a-f0-9]{32}$/.test(command.request_id)) return false;
       let result, store;
       try {
         if (["archive_email", "confirm_email", "read_email"].includes(command.operation)) {
@@ -156,7 +157,9 @@ async function performRelayOnce(options, fetchImpl, sourceTransport) {
         store = new LocalDataStore(options.directory, Date.now, options.environment);
         if (store.config.shopId !== credential.shop_id) throw new Error("relay_store_mismatch");
         store.bindInstallation(credential.installation_id);
-        result = command.operation === "read_customer_carts"
+        result = ["read_private_state", "write_private_state"].includes(command.operation)
+          ? { status: "ok", state: new PrivateStateStore(store).execute(command.record, command.operation === "write_private_state") }
+          : command.operation === "read_customer_carts"
           ? { status: "ok", result: await readCustomerCarts(store, command.record, sourceTransport) }
           : command.operation === "read_customer_history"
           ? { status: "ok", result: await readCustomerHistory(store, command.record, sourceTransport) }
