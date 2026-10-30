@@ -7,7 +7,7 @@ review email activity and approvals, and check synchronization.
 
 Official repository: https://github.com/pisob/neurocheckout-community
 
-**Current preview:** Community **0.1.0-preview.55**, with PrestaShop **4.6.14**,
+**Current preview:** Community **0.1.0-preview.56**, with PrestaShop **4.6.14**,
 WooCommerce **1.0.16** and Magento **1.0.12** connectors. Community remains a
 **prerelease**, including when connected to production. Use signed downloads,
 keep a private backup and verify each store before enabling customer emails.
@@ -75,7 +75,7 @@ Use exactly the same callback in Cloud and in the setup assistant.
 Install the current signed tag, rather than the development branch:
 
 ```bash
-git clone --branch v0.1.0-preview.55 --depth 1 \
+git clone --branch v0.1.0-preview.56 --depth 1 \
   https://github.com/pisob/neurocheckout-community.git
 cd neurocheckout-community
 ```
@@ -89,7 +89,7 @@ chmod 700 "${verification_home}"
 GNUPGHOME="${verification_home}" gpg --batch --import RELEASE-PUBLIC-KEY.asc
 GNUPGHOME="${verification_home}" gpg --batch --fingerprint \
   2949F3BB3295DB8DD776CC8DCEBA4BC1483B4BB0
-GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.55
+GNUPGHOME="${verification_home}" git verify-tag v0.1.0-preview.56
 find "${verification_home}" -depth -delete
 unset verification_home
 ```
@@ -145,6 +145,10 @@ contains development sources, not an installable module package. Community and
 store connectors are updated separately.
 
 ## Using Community
+
+Internal business alerts open the matching store and agent performance view when
+available. Reading a message keeps your selected language. Account and quota
+messages retain their account-management action.
 
 The [user guide, in English and French](docs/USER_GUIDE.md), covers email style,
 AI-provider configuration, manual approvals, sent email previews, synchronization,

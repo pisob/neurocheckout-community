@@ -1,12 +1,13 @@
 {
   "name": "neurocheckout-community",
-  "version": "0.1.0-preview.55",
+  "version": "0.1.0-preview.56",
   "private": true,
   "engines": {
     "node": ">=22.13.0",
     "npm": ">=10.0.0"
   },
   "scripts": {
+    "test:member-messages": "node --experimental-strip-types --test scripts/test-member-message-action.mjs && node scripts/test-member-messages-ui.mjs",
     "test:email-approvals": "node --experimental-strip-types --test scripts/test-email-approval-archive.mjs",
     "test:connector-key-dpa": "node --experimental-strip-types --test scripts/test-connector-key-dpa.mjs",
     "test:connector-key-dpa-ui": "node scripts/test-connector-key-dpa-ui.mjs",

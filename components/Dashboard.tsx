@@ -794,7 +794,7 @@ export default function Dashboard() {
             ) : null}
 
             {activeView === "messages" && capabilities.features.member_messages ? (
-              <MemberMessages language={language} />
+              <MemberMessages language={language} performanceAvailable={capabilities.features.agent_performance === true} />
             ) : null}
 
             {activeView === "partner-program" && capabilities.features.partner_program ? (
