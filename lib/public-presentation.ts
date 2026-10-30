@@ -73,6 +73,7 @@ const PUBLIC_ENUM_COPY: Record<string, LocalizedCopy> = {
   data_unavailable: { en: "Data unavailable", fr: "Données indisponibles" },
   partial_data: { en: "Partial data", fr: "Données partielles" },
   order_received: { en: "Order observed; payment unverified", fr: "Commande observée ; paiement non vérifié" },
+  order_not_converted: { en: "Order not qualified", fr: "Commande non qualifiée" },
   not_converted: { en: "Order not qualified", fr: "Commande non qualifiée" },
   checkout_in_progress: { en: "Checkout in progress", fr: "Commande en cours" },
   cart_active: { en: "Active cart", fr: "Panier actif" },
