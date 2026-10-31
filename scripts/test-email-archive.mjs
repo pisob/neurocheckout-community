@@ -59,7 +59,7 @@ test('recommendation copies remain distinct from carts, encrypted and immutable 
  const marketing={...copy(1),delivery_id:'community-marketing-1',agent_name:'customer_preference_proactive',variant_id:42,language:'en'};
  archive.prepare(copy(1));archive.prepare(marketing);
  assert.deepEqual(archive.prepare({...marketing,subject:'regenerated',variant_id:43,language:'fr'}).copy,marketing);
- for(const change of [{variant_id:null},{variant_id:true},{variant_id:0},{variant_id:'42'},{variant_id:9007199254740992},{language:null},{language:'invalid-language'}]) {
+ for(const change of [{variant_id:true},{variant_id:0},{variant_id:'42'},{variant_id:9007199254740992},{language:null},{language:'invalid-language'}]) {
   assert.throws(()=>archive.prepare({...marketing,...change}),/invalid/);
  }
  for(const key of ['variant_id','language']) {
@@ -156,4 +156,14 @@ test('invalid private recommendation facts fail before persistence',t=>{
   v=>v.delivery_id='community-edge-1'];
  for(const mutate of invalid){const value=recommendation();mutate(value);assert.throws(()=>archive.prepare(value),/invalid/);}
  assert.equal(archive.db.prepare('SELECT count(*) n FROM email_archive').get().n,0);archive.close();
+});
+
+test('generated originals keep no DB variant identity and remain immutable',t=>{
+ const dir=setup(t);let archive=new EmailArchive(dir);
+ const original={...copy(1),delivery_id:'community-marketing-1',agent_name:'intelligent_email_marketing',variant_id:null,language:'fr'};
+ assert.deepEqual(archive.prepare(original).copy,original);
+ archive.close();archive=new EmailArchive(dir);
+ assert.deepEqual(archive.get(original.delivery_id),original);
+ assert.deepEqual(archive.prepare({...original,subject:'replacement',variant_id:42}).copy,original);
+ archive.close();
 });

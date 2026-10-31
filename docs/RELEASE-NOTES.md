@@ -1,3 +1,11 @@
+# NeuroCheckout Community v0.1.0-preview.59
+
+- Preserve generated recommendation emails in the encrypted local archive without attributing them to a standard template.
+- Keep previously archived originals readable, with their existing signatures and approval checks.
+- Improve sent-email history for generated and previously saved copies.
+
+Update Community before using generated recommendation emails. Stores without a configured language-model key continue to use available standard email variants.
+
 # NeuroCheckout Community v0.1.0-preview.58
 
 Customer journey audits now show unknown amounts as unavailable, keep currencies
