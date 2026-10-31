@@ -25,13 +25,15 @@ export function enrichEmailHistory(items: EmailRecord[], archive?: Archive): Ema
           !item.installation_id || item.installation_id !== archive.installationId?.() ||
           typeof item.community_copy_signature !== "string" || !/^[a-f0-9]{64}$/.test(item.community_copy_signature) ||
           !["customer_preference_proactive", "intelligent_email_marketing"].includes(String(item.agent_name)) ||
-          !diagnostic || diagnostic.source !== "db" || !Number.isSafeInteger(diagnostic.variant_id) ||
-          Number(diagnostic.variant_id) < 1 || typeof diagnostic.language !== "string" ||
+          !diagnostic || !(
+            (diagnostic.source === "db" && Number.isSafeInteger(diagnostic.variant_id) && Number(diagnostic.variant_id) > 0) ||
+            (["byok", "unknown"].includes(String(diagnostic.source)) && diagnostic.variant_id === null)
+          ) || typeof diagnostic.language !== "string" ||
           !/^[a-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})?$/.test(diagnostic.language))) return fallback;
       const copy = archive.get(item.delivery_id);
       if (!copy || copy.delivery_id !== item.delivery_id) return fallback;
       if (marketing && (copy.copy_signature !== item.community_copy_signature || copy.agent_name !== item.agent_name ||
-          copy.variant_id !== diagnostic?.variant_id || copy.language !== diagnostic?.language ||
+          (diagnostic?.source !== "unknown" && copy.variant_id !== diagnostic?.variant_id) || copy.language !== diagnostic?.language ||
           !["subject", "recipient_email", "body_html", "body_text"].every(key => typeof copy[key] === "string") ||
           !hasContent(copy))) return fallback;
       if (item.status === "converted" && typeof item.converted_at === "string") {

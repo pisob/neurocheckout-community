@@ -77,3 +77,10 @@ assert.equal(enrichEmailHistory([marketingItem],{...neverConfirm,get:()=>{throw 
 assert.equal(enrichEmailHistory([marketingItem],{...marketingArchive,confirm:()=>{throw Error('busy');}})[0].preview_available,true);
 assert.equal(enrichEmailHistory([marketingItem])[0].preview_available,false);
 console.log('Recommendation originals: scope, signature, agent, DB variant, status and confirmation isolation passed.');
+
+const generatedItem={...marketingItem,copy_diagnostic:{source:'byok',variant_id:null,language:'fr'}};
+const generatedCopy={...marketingCopy,variant_id:null};
+const generatedArchive={...marketingArchive,get:()=>generatedCopy};
+assert.equal(enrichEmailHistory([generatedItem],generatedArchive)[0].preview_available,true);
+assert.equal(enrichEmailHistory([generatedItem],marketingArchive)[0].preview_available,false);
+assert.equal(enrichEmailHistory([{...generatedItem,copy_diagnostic:{source:'unknown',variant_id:null,language:'fr'}}],generatedArchive)[0].preview_available,true);
