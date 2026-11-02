@@ -36,3 +36,30 @@ test('observation cannot be accelerated, stale, incomplete, future-dated or from
 test('future-dated review cannot certify a pending check',()=>{
   const value=report();value.checks.security_audit.checked_at='2099-01-01';assert.throws(()=>validate(value),/pending/);
 });
+function ownerExceptionReport() {
+  const value=report();value.schema=3;
+  value.observation={source_tree:value.source_tree,status:'waived_by_owner',samples:[],owner_exception:{
+    approved:true,version:value.version,source_tree:value.source_tree,scope:'observation_duration_only',
+    required_hours:72,approved_by:'test-owner',approved_at:new Date(now).toISOString(),
+    reason:'Explicit immediate release request',evidence:'Synthetic owner release decision'}};
+  return value;
+}
+test('explicit owner observation exception is limited to the signed 0.1.0 tree',()=>{
+  assert.equal(validate(ownerExceptionReport()),true);
+  const cases=[r=>r.schema=2,r=>r.observation.source_tree='b'.repeat(40),
+    r=>r.observation.owner_exception.source_tree='b'.repeat(40),r=>r.observation.owner_exception.approved=false,
+    r=>r.observation.owner_exception.version='0.1.1',r=>r.observation.owner_exception.scope='all_checks',
+    r=>r.observation.owner_exception.required_hours=0,r=>r.observation.owner_exception.approved_by='',
+    r=>r.observation.owner_exception.reason='',r=>r.observation.owner_exception.evidence='',
+    r=>r.observation.owner_exception.approved_at='invalid',r=>r.observation.owner_exception.approved_at='2099-01-01',
+    r=>r.owner_acceptance.checked_at=new Date(now-1000).toISOString(),
+    r=>r.observation.samples=report().observation.samples];
+  for(const mutate of cases){const value=ownerExceptionReport();mutate(value);assert.throws(()=>validate(value),/observation_exception/);}
+  const next=ownerExceptionReport();next.version=next.observation.owner_exception.version='0.1.1';
+  assert.throws(()=>validate(next,'0.1.1'),/observation_exception/);
+});
+test('observation exception never waives technical checks, owner acceptance or blockers',()=>{
+  for(const name of requiredChecks){const value=ownerExceptionReport();value.checks[name].status='pending';assert.throws(()=>validate(value),/readiness_pending/);}
+  const blocked=ownerExceptionReport();blocked.blockers=['data_loss'];assert.throws(()=>validate(blocked),/blockers/);
+  const unsigned=ownerExceptionReport();unsigned.owner_acceptance.accepted=false;assert.throws(()=>validate(unsigned),/owner_acceptance/);
+});

@@ -2,13 +2,14 @@
 
 ## Current status / Statut actuel
 
-Community is still a **prerelease**, including when connected to production.
-Production connectivity is not a stable certification. No stable version is
-declared by this hardening work. The full merchant acceptance journey is pending
-the owner's validation; it must not be marked passed by CI alone.
+Community 0.1.0 is the first stable publication candidate, based on preview.59.
+It becomes an official release after its signed assets are published. The owner
+requested immediate publication on 2 November 2026 and accepted the completed
+merchant tests with the observation exception described below.
 
-Community reste une **préversion**, même connectée à la production. Le parcours
-marchand complet reste à valider par le propriétaire avant toute version stable.
+Community 0.1.0 devient officielle après publication de ses archives signées.
+Le propriétaire a demandé une publication immédiate le 2 novembre 2026, avec
+une exception explicite pour la durée d'observation uniquement.
 
 ## Required acceptance criteria
 
@@ -73,6 +74,20 @@ Retain detailed measurements privately and use redacted evidence references in
 the attestation embedded in the public signed tag. The owner must separately
 accept the tested merchant journey; approval to implement changes is not that
 acceptance.
+
+### Owner exception for 0.1.0 only
+
+The owner's explicit 2 November 2026 release decision waives the observation
+window for 0.1.0. The previous window was interrupted; it must not be described
+as completed or converted into synthetic successful samples. Schema 3 records
+`observation.status: "waived_by_owner"`, an empty samples array and a signed
+`owner_exception` with the exact version/tree, approver, approval time, reason,
+evidence reference, `scope: "observation_duration_only"` and `required_hours: 72`.
+
+This exception does not waive any technical check, unresolved blocker, merchant
+acceptance, tag/archive signature or independent GitHub environment approval.
+It is rejected for all other versions. Schema 2 continues to require the full
+observation window. Detailed historical evidence remains private.
 
 Evidence format (replace pending entries only after verification):
 

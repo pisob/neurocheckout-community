@@ -1,3 +1,20 @@
+# NeuroCheckout Community v0.1.0
+
+First stable publication, including all changes from preview.59: encrypted local
+history, store isolation, manual updates, connector key rotation recovery,
+customer targeting state, journey audit and preserved generated email originals.
+
+Compatible official connectors: PrestaShop 4.6.14, WooCommerce 1.0.16 and Magento
+1.0.12. Install Community using **Update** when ready; this publication does not
+update existing installations automatically.
+
+Release decision: on 2 November 2026 the owner explicitly requested immediate
+stable publication based on the completed tests and merchant validations. The
+planned 72-hour observation was interrupted and was not completed. Its duration
+is waived for this release only and recorded in the signed acceptance evidence;
+no uninterrupted 72-hour validation is claimed. Technical checks, signed assets
+and the independent publication review remain required.
+
 # NeuroCheckout Community v0.1.0-preview.59
 
 - Preserve generated recommendation emails in the encrypted local archive without attributing them to a standard template.
