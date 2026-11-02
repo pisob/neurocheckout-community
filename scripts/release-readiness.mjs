@@ -8,7 +8,7 @@ export const requiredChecks = ['frontoffice_regression', 'update_rollback_restor
 export const minimumObservationHours = 72;
 export function validateStableReadiness(report, version, sourceTree, now = Date.now()) {
   if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('stable_version_required');
-  if (report?.schema !== 2 || report.version !== version || report.source_tree !== sourceTree ||
+  if (![2, 3].includes(report?.schema) || report.version !== version || report.source_tree !== sourceTree ||
       !/^[a-f0-9]{40,64}$/.test(sourceTree || '')) throw new Error('readiness_revision_mismatch');
   for (const name of requiredChecks) {
     const check=report.checks?.[name];
@@ -23,6 +23,25 @@ export function validateStableReadiness(report, version, sourceTree, now = Date.
       typeof acceptance.evidence !== 'string' || !acceptance.evidence.trim()) throw new Error('readiness_owner_acceptance');
   const observation = report.observation;
   const samples = observation?.samples;
+  // One release only: the owner explicitly accepted publishing 0.1.0 without
+  // completing the observation window. Preserve that decision in the signed
+  // attestation instead of fabricating passed samples. All checks above and the
+  // independent GitHub environment approval still apply.
+  if (observation?.status === 'waived_by_owner') {
+    const exception = observation.owner_exception;
+    const approvedAt = Date.parse(exception?.approved_at || '');
+    if (report.schema !== 3 || version !== '0.1.0' || observation.source_tree !== sourceTree ||
+        !Array.isArray(samples) || samples.length !== 0 || exception?.approved !== true ||
+        exception.version !== version || exception.source_tree !== sourceTree ||
+        exception.scope !== 'observation_duration_only' || exception.required_hours !== minimumObservationHours ||
+        typeof exception.approved_by !== 'string' || !exception.approved_by.trim() ||
+        typeof exception.reason !== 'string' || !exception.reason.trim() ||
+        typeof exception.evidence !== 'string' || !exception.evidence.trim() ||
+        !Number.isFinite(approvedAt) || approvedAt > now || approvedAt > Date.parse(acceptance.checked_at)) {
+      throw new Error('readiness_observation_exception');
+    }
+    return true;
+  }
   if (observation?.source_tree !== sourceTree || !Array.isArray(samples) || samples.length < 4) throw new Error('readiness_observation');
   let first, previous;
   for (const sample of samples) {
@@ -44,7 +63,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const metadata=JSON.parse(execFileSync('git',['show',`${revision}:package.json`],{encoding:'utf8'}));
     if (metadata.version !== revision.slice(1)) throw new Error('tag_version_mismatch');
     const tree=execFileSync('git',['rev-parse',`${revision}^{tree}`],{encoding:'utf8'}).trim();
-    validateStableReadiness(JSON.parse(readFileSync(reportPath,'utf8')),metadata.version,tree);
+    const report=JSON.parse(readFileSync(reportPath,'utf8'));
+    validateStableReadiness(report,metadata.version,tree);
+    if (report.observation.status === 'waived_by_owner') {
+      console.log('Observation duration waived by the owner for 0.1.0; no completed 72-hour observation is claimed.');
+    }
     console.log('Stable release evidence accepted for this exact source tree.');
   } catch (error) { console.error(error.message); process.exitCode=1; }
 }
