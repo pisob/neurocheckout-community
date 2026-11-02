@@ -8,8 +8,7 @@ review email activity and approvals, and check synchronization.
 Official repository: https://github.com/pisob/neurocheckout-community
 
 **Stable release:** Community **0.1.0**, with PrestaShop **4.6.14**,
-WooCommerce **1.0.16** and Magento **1.0.12** connectors. Community remains a
-**prerelease**, including when connected to production. Use signed downloads,
+WooCommerce **1.0.16** and Magento **1.0.12** connectors. Use signed downloads,
 keep a private backup and verify each store before enabling customer emails.
 Updating Community or a connector does not activate campaigns.
 
